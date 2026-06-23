@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>座位查詢</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F7F6F3;
+  --white: #FFFFFF;
+  --ink: #1A1A1A;
+  --ink-2: #4A4A4A;
+  --ink-3: #8A8A8A;
+  --rule: #E0DDD8;
+  --accent: #1B4F8A;
+  --accent-light: #EBF1F9;
+  --green: #1A6B4A;
+  --green-light: #E8F5EE;
+  --gold: #8B6914;
+  --gold-light: #FBF5E6;
+  --red: #B33A2A;
+}
+
+body {
+  font-family: "Noto Serif TC", serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--accent);
+  padding: 20px 20px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+.header-event {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Search bar ── */
+.search-wrap {
+  position: relative;
+}
+.search-input {
+  width: 100%;
+  padding: 13px 16px 13px 44px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 16px;
+  font-family: "Noto Serif TC", serif;
+  outline: none;
+  transition: background .2s;
+}
+.search-input::placeholder { color: rgba(255,255,255,0.5); }
+.search-input:focus { background: rgba(255,255,255,0.22); }
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 17px;
+  pointer-events: none;
+}
+.clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.clear-btn.show { display: flex; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  margin: 24px 16px;
+  border: 2px dashed var(--rule);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  background: var(--white);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-light); }
+.upload-icon { font-size: 36px; margin-bottom: 10px; }
+.upload-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.upload-sub { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+.upload-btn {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: "Noto Serif TC", serif;
+  cursor: pointer;
+  border: none;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  display: none;
+  margin: 0 16px 16px;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--green);
+  font-size: 12px;
+}
+.status-bar.show { display: flex; align-items: center; gap: 10px; }
+.status-bar.err { border-color: var(--red); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.status-bar.err .status-dot { background: var(--red); }
+.status-text { color: var(--ink-2); flex: 1; }
+.status-change {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+
+/* ── Empty / hint ── */
+.hint {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.hint-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* ── Results ── */
+.result-count {
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+  padding: 0 16px 8px;
+  letter-spacing: 0.5px;
+}
+.result-list { padding: 0 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+
+.result-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border: 1px solid var(--rule);
+  animation: slideIn .2s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+.seat-badge {
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.badge-a { background: var(--accent-light); }
+.badge-b { background: var(--green-light); }
+.badge-c { background: var(--gold-light); }
+.badge-zone {
+  font-family: "DM Mono", monospace;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+.badge-a .badge-zone { color: var(--accent); }
+.badge-b .badge-zone { color: var(--green); }
+.badge-c .badge-zone { color: var(--gold); }
+.badge-seat {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.card-info { flex: 1; min-width: 0; }
+.card-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.card-name mark {
+  background: #FEF08A;
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.card-seat {
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.card-row {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+
+.no-result {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+/* ── Loading spinner ── */
+.spinner {
+  display: none;
+  margin: 40px auto;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--rule);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.spinner.show { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  padding: 20px;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.5px;
+  border-top: 1px solid var(--rule);
+  margin-top: 8px;
+}
+
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-title">🎟 座位查詢系統</div>
+      <div class="header-event" id="event-name">請先上傳席次表</div>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" class="search-input" id="search"
+      placeholder="搜尋姓名、單位、座位編號…"
+      oninput="doSearch()" autocomplete="off" />
+    <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+</div>
+
+<div id="status-bar" class="status-bar">
+  <div class="status-dot"></div>
+  <div class="status-text" id="status-text"></div>
+  <span class="status-change" onclick="resetUpload()">更換檔案</span>
+</div>
+
+<div id="upload-zone" class="upload-zone"
+  ondragover="event.preventDefault();this.classList.add('drag')"
+  ondragleave="this.classList.remove('drag')"
+  ondrop="handleDrop(event)"
+  onclick="document.getElementById('file-input').click()">
+  <div class="upload-icon">📋</div>
+  <div class="upload-title">上傳席次表 Excel</div>
+  <div class="upload-sub">支援 .xlsx 格式<br>上傳後即可開始查詢座位</div>
+  <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">選擇檔案</button>
+</div>
+<input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(event)">
+
+<div class="spinner" id="spinner"></div>
+
+<div id="main-content">
+  <div class="hint" id="hint">
+    <div class="hint-icon">📂</div>
+    <div>上傳席次表後<br>輸入姓名或單位即可查詢</div>
+  </div>
+</div>
+
+<div class="footer" id="footer">TAITRA · 座位查詢系統</div>
+
+<script>
+let DATA = {}; // { "A1-1": "外貿協會 王小明" }
+let eventName = '';
+
+// ── 檔案處理 ──
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+  e.target.value = '';
+}
+
+async function processFile(file) {
+  document.getElementById('spinner').classList.add('show');
+  document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('hint').style.display = 'none';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+
+    // 找最新的 sheet（優先含日期數字的）
+    const sheetName = wb.SheetNames.find(n => /\d{4}/.test(n)) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // 抓活動名稱（第二列通常有標題）
+    for (let i = 0; i < Math.min(5, raw.length); i++) {
+      const row = raw[i].map(v => String(v||'').trim());
+      const titleCell = row.find(v => v.length > 8 && (v.includes('展') || v.includes('典禮') || v.includes('活動') || v.includes('2026')));
+      if (titleCell) { eventName = titleCell.replace(/\s+/g,' ').substring(0, 30); break; }
+    }
+    if (!eventName) eventName = file.name.replace('.xlsx','').replace('.xls','');
+
+    // 解析座位
+    const seatPat = /^[A-Za-z]+\d+-\d+$/;
+    DATA = {};
+    let i = 0;
+
+    while (i < raw.length) {
+      const row = raw[i].map(v => String(v||'').trim());
+      const codes = row.filter(v => seatPat.test(v));
+
+      if (codes.length >= 3) {
+        // 找下一個有實質內容的列作為賓客名列
+        let nameIdx = i + 1;
+        while (nameIdx < raw.length) {
+          const nr = raw[nameIdx].map(v => String(v||'').trim());
+          const hasContent = nr.some(v => v.length > 2 && !seatPat.test(v) && !/^\d+$/.test(v));
+          if (hasContent) break;
+          nameIdx++;
+        }
+        if (nameIdx < raw.length) {
+          const nameRow = raw[nameIdx].map(v => String(v||'').replace(/\s+/g,' ').trim());
+          row.forEach((code, col) => {
+            if (!seatPat.test(code)) return;
+            const name = nameRow[col] || '';
+            DATA[code] = name;
+          });
+          i = nameIdx + 1;
+        } else { i++; }
+      } else { i++; }
+    }
+
+    const total = Object.keys(DATA).length;
+    const filled = Object.values(DATA).filter(v=>v).length;
+
+    if (total === 0) throw new Error('找不到座位資料，請確認 Excel 格式');
+
+    // 成功
+    document.getElementById('spinner').classList.remove('show');
+    document.getElementById('event-name').textContent = eventName;
+    const bar = document.getElementById('status-bar');
+    bar.classList.add('show');
+    document.getElementById('status-text').textContent = `已載入 ${filled} 位賓客・${total} 個座位`;
+    document.getElementById('footer').textContent = `${eventName} · 座位查詢系統`;
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="hint" id="hint">
+        <div class="hint-icon">🔍</div>
+        <div>輸入姓名、單位或座位編號<br>即可查詢</div>
+      </div>`;
+
+    document.getElementById('search').focus();
+
+  } catch(e) {
+    document.getElementById('spinner').classList.remove('show');
+    document.getElementById('upload-zone').style.display = '';
+    const bar = document.getElementById('status-bar');
+    bar.classList.add('show','err');
+    document.getElementById('status-text').textContent = '❌ ' + e.message;
+  }
+}
+
+// ── 搜尋 ──
+function doSearch() {
+  const kw = document.getElementById('search').value.trim();
+  const clearBtn = document.getElementById('clear-btn');
+  clearBtn.classList.toggle('show', kw.length > 0);
+
+  if (Object.keys(DATA).length === 0) return;
+
+  const content = document.getElementById('main-content');
+
+  if (!kw) {
+    content.innerHTML = `<div class="hint" id="hint">
+      <div class="hint-icon">🔍</div>
+      <div>輸入姓名、單位或座位編號<br>即可查詢</div>
+    </div>`;
+    return;
+  }
+
+  const kwLower = kw.toLowerCase();
+  const results = Object.entries(DATA).filter(([code, name]) =>
+    code.toLowerCase().includes(kwLower) ||
+    (name && name.toLowerCase().includes(kwLower))
+  );
+
+  if (results.length === 0) {
+    content.innerHTML = `<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
+    return;
+  }
+
+  const kwEsc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(${kwEsc})`, 'gi');
+
+  let html = `<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
+
+  results.forEach(([code, name]) => {
+    const zone = code.match(/^([A-Za-z]+)/)[1].toUpperCase();
+    const parts = code.split(/-(?=[^-]*$)/);
+    const tableId = parts[0];
+    const seatNum = parts[1];
+    const badgeClass = zone === 'A' ? 'badge-a' : zone === 'B' ? 'badge-b' : 'badge-c';
+    const rowNum = tableId.match(/\d+/)?.[0] || '';
+    const displayName = name || '（未填）';
+    const highlightedName = name ? name.replace(re, '<mark>$1</mark>') : '（未填）';
+    const highlightedCode = code.replace(re, '<mark>$1</mark>');
+
+    html += `
+    <div class="result-card">
+      <div class="seat-badge ${badgeClass}">
+        <div class="badge-zone">${zone}</div>
+        <div class="badge-seat">${tableId}-${seatNum}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${highlightedName}</div>
+        <div class="card-seat">座位：${highlightedCode}</div>
+        <div class="card-row">${zone} 區・第 ${rowNum} 排・第 ${seatNum} 席</div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+function clearSearch() {
+  document.getElementById('search').value = '';
+  document.getElementById('clear-btn').classList.remove('show');
+  doSearch();
+  document.getElementById('search').focus();
+}
+
+function resetUpload() {
+  DATA = {};
+  eventName = '';
+  document.getElementById('upload-zone').style.display = '';
+  document.getElementById('status-bar').className = 'status-bar';
+  document.getElementById('event-name').textContent = '請先上傳席次表';
+  document.getElementById('search').value = '';
+  document.getElementById('clear-btn').classList.remove('show');
+  document.getElementById('main-content').innerHTML = `
+    <div class="hint" id="hint">
+      <div class="hint-icon">📂</div>
+      <div>上傳席次表後<br>輸入姓名或單位即可查詢</div>
+    </div>`;
+}
+</script>
+</body>
+</html>
