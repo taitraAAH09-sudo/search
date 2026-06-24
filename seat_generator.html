@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>座位表產生器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --white: #fff; --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #8A8A8A;
+  --rule: #E0DDD8; --accent: #1B4F8A; --accent-l: #EBF1F9;
+  --green: #1A6B4A; --green-l: #E8F5EE;
+  --gold: #8B6914; --gold-l: #FBF5E6;
+  --red: #B33A2A;
+}
+body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink); min-height:100vh; padding:24px; }
+.container { max-width:640px; margin:0 auto; }
+
+.header { text-align:center; margin-bottom:28px; }
+.header-tag { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:3px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; }
+.header h1 { font-size:20px; font-weight:700; margin-bottom:4px; }
+.header-sub { font-size:12px; color:var(--ink-3); }
+
+.card { background:var(--white); border:1px solid var(--rule); border-radius:14px; padding:20px; margin-bottom:16px; }
+.card-title { font-size:13px; font-weight:700; color:var(--ink-3); font-family:"DM Mono",monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--rule); }
+
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:12px; font-weight:700; color:var(--ink-2); margin-bottom:6px; }
+.field input { width:100%; padding:10px 12px; border:1px solid var(--rule); border-radius:8px; font-size:14px; font-family:"Noto Serif TC",serif; outline:none; background:var(--bg); color:var(--ink); transition:border-color .2s; }
+.field input:focus { border-color:var(--accent); background:#fff; }
+.field-hint { font-size:11px; color:var(--ink-3); margin-top:4px; }
+
+.zones-wrap { display:flex; flex-direction:column; gap:10px; }
+.zone-row { display:flex; align-items:center; gap:10px; }
+.zone-label { font-family:"DM Mono",monospace; font-size:13px; font-weight:700; width:28px; flex-shrink:0; }
+.zone-label.a { color:var(--accent); }
+.zone-label.b { color:var(--green); }
+.zone-label.c { color:var(--gold); }
+.zone-input { flex:1; padding:10px 12px; border:1px solid var(--rule); border-radius:8px; font-size:13px; font-family:"DM Mono",monospace; outline:none; background:var(--bg); color:var(--ink); }
+.zone-input:focus { border-color:var(--accent); background:#fff; }
+.zone-preview { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); width:80px; flex-shrink:0; text-align:right; }
+
+.rows-wrap { display:flex; align-items:center; gap:10px; }
+.rows-wrap input { width:80px; padding:10px 12px; border:1px solid var(--rule); border-radius:8px; font-size:14px; font-family:"DM Mono",monospace; outline:none; background:var(--bg); }
+.rows-wrap input:focus { border-color:var(--accent); background:#fff; }
+.rows-label { font-size:13px; color:var(--ink-2); }
+
+/* Preview */
+.preview-wrap { margin-top:4px; }
+.preview-title { font-size:11px; color:var(--ink-3); font-family:"DM Mono",monospace; margin-bottom:8px; }
+.preview-grid { display:flex; gap:12px; flex-wrap:wrap; }
+.zone-block { }
+.zone-block-name { font-family:"DM Mono",monospace; font-size:10px; font-weight:700; margin-bottom:4px; }
+.zone-block-name.a { color:var(--accent); }
+.zone-block-name.b { color:var(--green); }
+.zone-block-name.c { color:var(--gold); }
+.seat-grid { display:grid; gap:2px; }
+.seat-cell { width:22px; height:22px; border-radius:3px; font-size:8px; display:flex; align-items:center; justify-content:center; font-family:"DM Mono",monospace; }
+.seat-cell.a { background:var(--accent-l); color:var(--accent); border:1px solid #BDD0EA; }
+.seat-cell.b { background:var(--green-l); color:var(--green); border:1px solid #A7D7BE; }
+.seat-cell.c { background:var(--gold-l); color:var(--gold); border:1px solid #D4B86A; }
+
+/* Stats */
+.stats-row { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.stat-chip { background:var(--bg); border:1px solid var(--rule); border-radius:6px; padding:6px 12px; font-family:"DM Mono",monospace; font-size:11px; }
+.stat-chip span { font-weight:700; color:var(--accent); }
+
+/* Buttons */
+.btn-row { display:flex; gap:10px; margin-top:16px; }
+.btn { flex:1; padding:13px; border-radius:10px; border:none; font-size:14px; font-weight:700; cursor:pointer; font-family:"Noto Serif TC",serif; transition:all .2s; }
+.btn-preview { background:var(--bg); color:var(--ink); border:1px solid var(--rule); }
+.btn-preview:hover { background:var(--rule); }
+.btn-gen { background:var(--accent); color:#fff; }
+.btn-gen:hover { background:#143d6a; }
+.btn-gen:disabled { background:#ccc; cursor:not-allowed; }
+
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; display:none; z-index:99; white-space:nowrap; }
+.toast.show { display:block; animation:fadeIn .2s; }
+@keyframes fadeIn { from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%);} }
+
+.info-box { background:var(--accent-l); border:1px solid #BDD0EA; border-radius:10px; padding:12px 14px; font-size:12px; color:var(--accent); line-height:1.7; margin-bottom:16px; }
+.info-box strong { font-weight:700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-tag">TAITRA · Event Management</div>
+    <h1>座位表產生器</h1>
+    <div class="header-sub">輸入展名與席次配置，自動產生可上傳的 Excel</div>
+  </div>
+
+  <div class="info-box">
+    💡 產生的 Excel 可以直接上傳到前台座位系統的「📂 上傳 Excel 更新座位」功能。<br>
+    <strong>格式：</strong>座位碼（A1-1）+ 賓客姓名欄位，系統會自動識別三區。
+  </div>
+
+  <!-- 基本資訊 -->
+  <div class="card">
+    <div class="card-title">📋 基本資訊</div>
+    <div class="field">
+      <label>展覽名稱</label>
+      <input type="text" id="event-name" placeholder="例：2026 台北國際食品展" oninput="updatePreview()">
+    </div>
+    <div class="field">
+      <label>排數（每區相同）</label>
+      <div class="rows-wrap">
+        <input type="number" id="rows" value="6" min="1" max="20" oninput="updatePreview()">
+        <span class="rows-label">排</span>
+      </div>
+      <div class="field-hint">A / B / C 三區使用相同排數</div>
+    </div>
+  </div>
+
+  <!-- 席次設定 -->
+  <div class="card">
+    <div class="card-title">💺 每排席次設定</div>
+    <div class="zones-wrap">
+      <div class="zone-row">
+        <span class="zone-label a">A</span>
+        <input type="number" class="zone-input" id="seats-a" value="8" min="1" max="20" oninput="updatePreview()" placeholder="席/排">
+        <span class="zone-preview" id="prev-a">48 席</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-label b">B</span>
+        <input type="number" class="zone-input" id="seats-b" value="9" min="1" max="20" oninput="updatePreview()" placeholder="席/排">
+        <span class="zone-preview" id="prev-b">54 席</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-label c">C</span>
+        <input type="number" class="zone-input" id="seats-c" value="8" min="1" max="20" oninput="updatePreview()" placeholder="席/排">
+        <span class="zone-preview" id="prev-c">48 席</span>
+      </div>
+    </div>
+    <div class="field-hint" style="margin-top:10px;">例：8/9/8 表示 A區每排8席、B區每排9席、C區每排8席</div>
+  </div>
+
+  <!-- 預覽 -->
+  <div class="card">
+    <div class="card-title">👁 座位預覽</div>
+    <div class="preview-wrap">
+      <div class="preview-title">座位格局示意（只顯示前3排）</div>
+      <div class="preview-grid" id="preview-grid"></div>
+      <div class="stats-row" id="stats-row"></div>
+    </div>
+  </div>
+
+  <!-- 產生按鈕 -->
+  <div class="btn-row">
+    <button class="btn btn-preview" onclick="updatePreview()">🔄 更新預覽</button>
+    <button class="btn btn-gen" id="btn-gen" onclick="generateExcel()">📥 產生 Excel 下載</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function getConfig() {
+  const rows = parseInt(document.getElementById('rows').value) || 6;
+  const seatsA = parseInt(document.getElementById('seats-a').value) || 8;
+  const seatsB = parseInt(document.getElementById('seats-b').value) || 9;
+  const seatsC = parseInt(document.getElementById('seats-c').value) || 8;
+  const eventName = document.getElementById('event-name').value.trim() || '活動名稱';
+  return { rows, seatsA, seatsB, seatsC, eventName };
+}
+
+function updatePreview() {
+  const { rows, seatsA, seatsB, seatsC } = getConfig();
+
+  // Update seat count labels
+  document.getElementById('prev-a').textContent = (rows * seatsA) + ' 席';
+  document.getElementById('prev-b').textContent = (rows * seatsB) + ' 席';
+  document.getElementById('prev-c').textContent = (rows * seatsC) + ' 席';
+
+  // Preview grid (max 3 rows)
+  const previewRows = Math.min(rows, 3);
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+
+  [['A', seatsA, 'a'], ['B', seatsB, 'b'], ['C', seatsC, 'c']].forEach(([zone, seats, cls]) => {
+    const block = document.createElement('div');
+    block.className = 'zone-block';
+    const name = document.createElement('div');
+    name.className = `zone-block-name ${cls}`;
+    name.textContent = zone + ' 區';
+    block.appendChild(name);
+    const sg = document.createElement('div');
+    sg.className = 'seat-grid';
+    sg.style.gridTemplateColumns = `repeat(${Math.min(seats, 10)}, 22px)`;
+    for (let r = 1; r <= previewRows; r++) {
+      for (let s = 1; s <= Math.min(seats, 10); s++) {
+        const cell = document.createElement('div');
+        cell.className = `seat-cell ${cls}`;
+        cell.textContent = r === 1 ? s : '';
+        block.appendChild(sg);
+        sg.appendChild(cell);
+      }
+    }
+    block.appendChild(sg);
+    if (rows > 3) {
+      const more = document.createElement('div');
+      more.style.cssText = 'font-size:10px;color:#8A8A8A;text-align:center;margin-top:4px;font-family:"DM Mono",monospace;';
+      more.textContent = `⋯ 共 ${rows} 排`;
+      block.appendChild(more);
+    }
+    grid.appendChild(block);
+  });
+
+  // Stats
+  const total = rows * (seatsA + seatsB + seatsC);
+  const stats = document.getElementById('stats-row');
+  stats.innerHTML = `
+    <div class="stat-chip">總席數 <span>${total}</span></div>
+    <div class="stat-chip">A區 <span>${rows * seatsA}</span></div>
+    <div class="stat-chip">B區 <span>${rows * seatsB}</span></div>
+    <div class="stat-chip">C區 <span>${rows * seatsC}</span></div>
+    <div class="stat-chip">排數 <span>${rows}</span></div>
+  `;
+}
+
+function generateExcel() {
+  const { rows, seatsA, seatsB, seatsC, eventName } = getConfig();
+  const now = new Date();
+  const dateStr = now.getFullYear() + '/'
+    + (now.getMonth()+1).toString().padStart(2,'0') + '/'
+    + now.getDate().toString().padStart(2,'0');
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':'
+    + now.getMinutes().toString().padStart(2,'0');
+  const updateStr = `更新時間：${dateStr} ${timeStr}`;
+
+  // Build AOA (array of arrays) for the sheet
+  // Row 0: 展名 | 更新時間
+  // Row 1: 空行
+  // Row 2: A區 標題行 (col 0 空, col 1~seatsA: 座位碼) | (gap) | B區 | (gap) | C區
+  // Row 3: 賓客名 (空)
+  // Row 4: A2-1 ... 依此類推
+
+  // Column layout:
+  // col 0: 排號
+  // col 1 ~ seatsA: A區座位碼
+  // col seatsA+1: 空格
+  // col seatsA+2 ~ seatsA+1+seatsB: B區座位碼
+  // col seatsA+seatsB+2: 空格
+  // col seatsA+seatsB+3 ~ seatsA+seatsB+2+seatsC: C區座位碼
+
+  const colA_start = 1;
+  const colA_end = seatsA;
+  const colB_start = seatsA + 2;
+  const colB_end = seatsA + 1 + seatsB;
+  const colC_start = seatsA + seatsB + 3;
+  const colC_end = seatsA + seatsB + 2 + seatsC;
+  const totalCols = colC_end + 1;
+
+  const aoa = [];
+
+  // Row 0: 展名 + 更新時間
+  const row0 = Array(totalCols).fill('');
+  row0[0] = eventName;
+  row0[totalCols - 1] = updateStr;
+  aoa.push(row0);
+
+  // Row 1: 區名標題
+  const row1 = Array(totalCols).fill('');
+  row1[colA_start] = 'A區';
+  row1[colB_start] = 'B區';
+  row1[colC_start] = 'C區';
+  aoa.push(row1);
+
+  // Row 2: 欄號
+  const row2 = Array(totalCols).fill('');
+  for (let s = 1; s <= seatsA; s++) row2[colA_start + s - 1] = s;
+  for (let s = 1; s <= seatsB; s++) row2[colB_start + s - 1] = s;
+  for (let s = 1; s <= seatsC; s++) row2[colC_start + s - 1] = s;
+  aoa.push(row2);
+
+  // Data rows: 每排兩列（座位碼列 + 賓客名列）
+  for (let r = 1; r <= rows; r++) {
+    // 座位碼列
+    const codeRow = Array(totalCols).fill('');
+    codeRow[0] = r;
+    for (let s = 1; s <= seatsA; s++) codeRow[colA_start + s - 1] = `A${r}-${s}`;
+    for (let s = 1; s <= seatsB; s++) codeRow[colB_start + s - 1] = `B${r}-${s}`;
+    for (let s = 1; s <= seatsC; s++) codeRow[colC_start + s - 1] = `C${r}-${s}`;
+    aoa.push(codeRow);
+
+    // 賓客名列（空白）
+    const nameRow = Array(totalCols).fill('');
+    aoa.push(nameRow);
+  }
+
+  // Build workbook
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths
+  const colWidths = [];
+  colWidths.push({ wch: 4 }); // row number col
+  for (let i = 1; i < totalCols; i++) colWidths.push({ wch: 18 });
+  ws['!cols'] = colWidths;
+
+  // Row heights
+  const rowHeights = [];
+  rowHeights.push({ hpt: 20 }); // title
+  rowHeights.push({ hpt: 16 }); // zone labels
+  rowHeights.push({ hpt: 14 }); // col numbers
+  for (let r = 0; r < rows; r++) {
+    rowHeights.push({ hpt: 14 }); // code row
+    rowHeights.push({ hpt: 30 }); // name row (bigger for filling in)
+  }
+  ws['!rows'] = rowHeights;
+
+  const wb = XLSX.utils.book_new();
+  // Sheet name with date
+  const sheetDate = now.getFullYear().toString().slice(2)
+    + (now.getMonth()+1).toString().padStart(2,'0')
+    + now.getDate().toString().padStart(2,'0');
+  XLSX.utils.book_append_sheet(wb, ws, sheetDate);
+
+  // Filename
+  const safeEvent = eventName.replace(/[\/\\:*?"<>|]/g, '').substring(0, 20);
+  const ts = now.getFullYear().toString().slice(2)
+    + (now.getMonth()+1).toString().padStart(2,'0')
+    + now.getDate().toString().padStart(2,'0') + '_'
+    + now.getHours().toString().padStart(2,'0')
+    + now.getMinutes().toString().padStart(2,'0');
+  XLSX.writeFile(wb, `席次表_${safeEvent}_${ts}.xlsx`);
+
+  showToast(`✅ 已產生「席次表_${safeEvent}_${ts}.xlsx」，共 ${rows * (seatsA+seatsB+seatsC)} 個座位`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Init
+updatePreview();
+</script>
+</body>
+</html>
