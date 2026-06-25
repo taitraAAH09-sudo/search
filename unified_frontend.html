@@ -319,6 +319,22 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
   <span class="sync-lbl" id="sync-lbl">連線中...</span>
 </h1>
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
+<!-- 首頁：未登入時顯示 -->
+<div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
+  <div style="font-size:56px;margin-bottom:20px;">🎟</div>
+  <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
+  <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">
+    支援方陣與圓桌格局<br>同時管理最多 4 個活動（A/B/C/D）
+  </div>
+  <button onclick="handleAuth()"
+    style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;font-family:'Noto Serif TC',serif;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
+    🔐 登入開始製作新活動
+  </button>
+  <div style="font-size:11px;color:#9CA3AF;margin-top:14px;">密碼由系統管理員提供</div>
+</div>
+
+<!-- 主內容：選擇活動後顯示 -->
+<div id="main-content" style="display:none;">
 <div class="top">
   <div class="stats">
     <div class="stat"><span class="sv" id="st-total">0</span><span class="sl">總席數</span></div>
@@ -501,9 +517,11 @@ async function confirmEventSelect() {
   const sub = document.getElementById('header-sub');
   if (sub) sub.textContent = selectedEvent.toUpperCase() + ' · ' + (selectedLayout === 'round' ? '圓桌模式' : '方陣模式');
 
-  // 關閉 Modal
+  // 關閉 Modal，顯示主內容
   document.getElementById('event-select-bg').style.display = 'none';
   document.getElementById('btn-switch-event').style.display = '';
+  document.getElementById('landing-page').style.display = 'none';
+  document.getElementById('main-content').style.display = '';
 
   // 更新 Firebase refs 並重新載入
   updateRefs();
@@ -609,6 +627,7 @@ window.addEventListener('DOMContentLoaded', () => {
       selectedLayout = sessionStorage.getItem('taitra_layout') || 'grid';
       document.getElementById('event-name-input').value =
         sessionStorage.getItem('taitra_event_name_'+lastEv) || '';
+      document.getElementById('landing-page').style.display = 'none';
       confirmEventSelect();
     } else {
       showEventSelect();
@@ -1503,5 +1522,6 @@ window.addEventListener('resize', () => {
     if(Object.keys(seatMap).length > 0) buildVenue(Object.keys(seatMap));
 });
 </script>
+</div><!-- /main-content -->
 </body>
 </html>
