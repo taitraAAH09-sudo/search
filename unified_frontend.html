@@ -1,9 +1,8 @@
-
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2026 醫療展晚會 · 座位系統</title>
+<title>TAITRA 活動座位管理系統</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#F0F4F8;padding:16px;}
@@ -315,10 +314,11 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
   </div>
 </div>
 
-<h1>🎟 2026 醫療展晚會 · 座位系統
+<h1 id="main-title">🎟 TAITRA 活動座位管理系統
   <div class="sync-dot off" id="sync-dot"></div>
   <span class="sync-lbl" id="sync-lbl">連線中...</span>
 </h1>
+  <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 <div class="top">
   <div class="stats">
     <div class="stat"><span class="sv" id="st-total">0</span><span class="sl">總席數</span></div>
@@ -353,7 +353,7 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 </div>
 
 <div class="venue" id="venue-wrap">
-  <div class="stage">STAGE / 舞台 (資料載入中...)</div>
+  <div class="stage">請登入後選擇活動開始使用</div>
   <div id="vr"></div>
 </div>
 
@@ -498,6 +498,8 @@ async function confirmEventSelect() {
   const displayName = eventName || EVENTS[selectedEvent].label;
   document.getElementById('main-title').textContent = '🎟 ' + displayName;
   document.title = displayName + ' · 座位系統';
+  const sub = document.getElementById('header-sub');
+  if (sub) sub.textContent = selectedEvent.toUpperCase() + ' · ' + (selectedLayout === 'round' ? '圓桌模式' : '方陣模式');
 
   // 關閉 Modal
   document.getElementById('event-select-bg').style.display = 'none';
@@ -591,6 +593,12 @@ window.doLogin = function() {
 };
 
 // 自動恢復登入狀態（在 DOM 載入後執行）
+// 把函數掛到 window 供 onclick 使用
+window.confirmEventSelect = confirmEventSelect;
+window.selectEvent = selectEvent;
+window.selectLayout = selectLayout;
+window.showEventSelect = showEventSelect;
+
 window.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('taitra_auth') === '1') {
     isAdmin = true;
