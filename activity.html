@@ -934,47 +934,40 @@ window.toggleOccupied=function(){
   refreshAll();scheduleSave();openModal(modalCode);
 };
 
+// ── ⚙️ 架構設定 Modal 專屬邏輯 ──
 document.getElementById('btn-layout-apply').addEventListener('click', async () => {
     if (!isAdmin) { toast('請先登入才能修改座位架構', 'ter'); return; }
-    if(!confirm("⚠️ 警告：這將會直接覆寫資料庫裡的座位結構！\n\n同 ID 座位的名單會保留，但縮小規模可能導致部分座位消失。\n確定要執行嗎？")) return;
+    if(!confirm("⚠️ 警告：這將會直接覆寫該活動的座位結構！\n\n確定要執行嗎？")) return;
     
     const mode = document.getElementById('l-mode').value;
     const newMaster = {};
     const ZK = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
+    // 1. 生成資料結構 (與原本相同)
     if (mode === 'grid') {
         const rows = parseInt(document.getElementById('l-rows').value, 10);
-        const zonesInput = document.getElementById('l-zones').value;
-        const zones = zonesInput.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-        if(zones.length === 0) { alert("區塊設定錯誤，請重新輸入！"); return; }
+        const zones = document.getElementById('l-zones').value.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
         for (let r = 1; r <= rows; r++) {
             for (let z = 0; z < zones.length; z++) {
                 for (let s = 1; s <= zones[z]; s++) {
                     const code = `${ZK[z]}${r}-${s}`;
-                    newMaster[code] = seatMap[code] || ""; 
+                    newMaster[code] = ""; // 初始化為空字串
                 }
             }
         }
     } else if (mode === 'round') {
-        const rowsInput = document.getElementById('l-round-rows').value;
-        const rowCounts = rowsInput.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-        const seats     = parseInt(document.getElementById('l-seats').value, 10);
-        const headTables= parseInt(document.getElementById('l-head-tables').value, 10) || 0;
+        const rowCounts = document.getElementById('l-round-rows').value.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+        const seats = parseInt(document.getElementById('l-seats').value, 10);
+        const headTables = parseInt(document.getElementById('l-head-tables').value, 10) || 0;
         const headSeats = parseInt(document.getElementById('l-head-seats').value, 10) || 12;
 
-        if (rowCounts.length === 0) { alert("一般桌各排桌數設定錯誤，請重新輸入！"); return; }
-
         for (let t = 1; t <= headTables; t++) {
-            for (let s = 1; s <= headSeats; s++) { const code = `H${t}-${s}`; newMaster[code] = seatMap[code] || ""; }
+            for (let s = 1; s <= headSeats; s++) { newMaster[`H${t}-${s}`] = ""; }
         }
-        
         let tSeq = 1;
         for (let r = 0; r < rowCounts.length; r++) {
             for (let t = 0; t < rowCounts[r]; t++) {
-                for (let s = 1; s <= seats; s++) {
-                    const code = `R${r+1}_T${tSeq}-${s}`;
-                    newMaster[code] = seatMap[code] || "";
-                }
+                for (let s = 1; s <= seats; s++) { newMaster[`R${r+1}_T${tSeq}-${s}`] = ""; }
                 tSeq++;
             }
         }
@@ -982,10 +975,25 @@ document.getElementById('btn-layout-apply').addEventListener('click', async () =
 
     setSyncStatus('saving');
     try {
-        await set(masterRef, newMaster);
-        toast('🎉 座位架構已成功更新並同步！', 'tok');
+        // 【核心修正】：這裡強制清空該活動路徑並寫入新結構，確保 Firebase 有效觸發 onValue
+        // 如果是新活動，這一行會直接建立資料庫
+        await set(ref(db, PROJECT_ID), {
+            seats_master2026: newMaster,
+            assignments2026: null, // 新架構必須清除舊分配
+            tags2026: null,
+            seats2026: null
+        });
+        
+        toast('🎉 座位架構已成功建立！', 'tok');
         document.getElementById('layout-modal-bg').classList.remove('show');
-    } catch (e) { setSyncStatus('error'); toast('架構更新失敗，請檢查網路。', 'ter'); }
+        
+        // 強制刷新頁面狀態
+        refreshAll();
+    } catch (e) {
+        console.error(e);
+        setSyncStatus('error');
+        toast('架構更新失敗，請檢查網路。', 'ter');
+    }
 });
 
 function refreshAll(){renderSeats();updateStats();renderChips();}
