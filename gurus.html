@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2026 COMPUTEX 處內主管出席一覽表</title>
+<title id="page-title">2026 COMPUTEX 處內主管出席一覽表</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root,[data-theme="light"]{
@@ -199,14 +199,14 @@ textarea.fi{resize:vertical;min-height:48px;}
 <div class="hdr">
   <div class="hdr-top">
     <div>
-      <div class="eyebrow">TAITRA · COMPUTEX 2026</div>
-      <h1>處內主管出席一覽表</h1>
+      <div class="eyebrow" id="ui-eyebrow">TAITRA · 活動出席管理</div>
+      <h1 id="ui-h1">處內主管出席一覽表</h1>
       <div class="sub" id="sub">連線中…</div>
     </div>
     <div class="hdr-btns">
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="切換白天/黑夜模式">🌙</button>
+      <button class="btn" id="btn-settings" onclick="openSettings()" disabled><span>⚙️</span><span class="btn-label"> 展名／長官設定</span></button>
       <button class="btn btn-p" id="btn-add" onclick="openAdd()" disabled><span>＋</span><span class="btn-label"> 新增活動</span></button>
-      <button class="btn btn-g" onclick="toggleImport()"><span>↑</span><span class="btn-label"> 匯入資料</span></button>
       <button class="btn" onclick="exportCSV()"><span>↓</span><span class="btn-label"> 匯出 CSV</span></button>
     </div>
   </div>
@@ -215,13 +215,7 @@ textarea.fi{resize:vertical;min-height:48px;}
       <option value="">所有日期</option>
     </select>
     <div class="chip on" data-p="" onclick="toggleP(this)">全部</div>
-    <div class="chip" data-p="chair" onclick="toggleP(this)">董事長</div>
-    <div class="chip" data-p="sec" onclick="toggleP(this)">秘書長</div>
-    <div class="chip" data-p="qiu" onclick="toggleP(this)">邱副秘</div>
-    <div class="chip" data-p="zhou" onclick="toggleP(this)">周副秘</div>
-    <div class="chip" data-p="vchair" onclick="toggleP(this)">陳副董</div>
-    <div class="chip" data-p="deng" onclick="toggleP(this)">鄧處長</div>
-    <div class="chip" data-p="zhang" onclick="toggleP(this)">張副座</div>
+    <div id="person-chips" style="display:contents;"></div>
     <div class="sw-wrap on" id="sw-past" onclick="togglePast()"><div class="sw"></div><span id="sw-lbl">隱藏已過日期</span></div>
   </div>
 </div>
@@ -233,25 +227,6 @@ textarea.fi{resize:vertical;min-height:48px;}
   <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-msg">連線中…</span></div>
 </div>
 
-<div id="import-panel" class="import-panel" style="display:none">
-  <div class="import-head" onclick="toggleImport()">
-    <span>📥 匯入種子資料（42 筆）→ 寫入 Firebase</span>
-    <span style="color:var(--tx3);font-size:11px">收合 ▲</span>
-  </div>
-  <div class="import-body">
-    <div class="import-info">從最新 xlsx 解析的 <strong>42 筆活動</strong>。<br>⚠️「覆蓋寫入」清除現有資料；「合併寫入」保留現有資料。</div>
-    <div class="preview-wrap"><table>
-      <thead><tr><th>日期</th><th>時間</th><th>活動名稱</th><th>董事長</th><th>鄧處長</th></tr></thead>
-      <tbody id="preview-body"></tbody>
-    </table></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-p" id="btn-write" onclick="writeSeed()">🚀 覆蓋寫入 Firebase</button>
-      <button class="btn" onclick="mergeSeed()">➕ 合併寫入</button>
-      <span id="import-status" style="font-size:11px;color:var(--tx2)"></span>
-    </div>
-  </div>
-</div>
-
 <div id="main-content">
   <div class="loading"><div class="spin"></div>從 Firebase 載入資料…</div>
 </div>
@@ -260,30 +235,20 @@ textarea.fi{resize:vertical;min-height:48px;}
   <div class="modal">
     <h2 id="mt">新增活動</h2>
     <div class="fg2">
-      <div class="fg"><label>日期</label><input class="fi" id="fdv" placeholder="6月2日(二)"></div>
+      <div class="fg"><label>日期</label>
+        <input class="fi" id="fdv-picker" type="date" onchange="onDatePickerChange()">
+        <div style="font-size:11px;color:var(--tx2);margin-top:3px;" id="fdv-preview">尚未選擇日期</div>
+        <input type="hidden" id="fdv">
+      </div>
       <div class="fg"><label>時間</label><input class="fi" id="ftv" placeholder="10:00-11:00"></div>
     </div>
     <div class="fg"><label>活動名稱</label><input class="fi" id="fev"></div>
     <div class="fg"><label>地點</label><input class="fi" id="flv"></div>
     <div class="fg"><label>出席人員</label>
-      <div class="pgrid">
-        <div class="pck" data-k="chair" onclick="tpck(this)">董事長</div>
-        <div class="pck" data-k="sec" onclick="tpck(this)">秘書長</div>
-        <div class="pck" data-k="qiu" onclick="tpck(this)">邱副秘</div>
-        <div class="pck" data-k="zhou" onclick="tpck(this)">周副秘</div>
-        <div class="pck" data-k="vchair" onclick="tpck(this)">陳副董</div>
-        <div class="pck" data-k="deng" onclick="tpck(this)">鄧處長</div>
-        <div class="pck" data-k="zhang" onclick="tpck(this)">張副座</div>
-      </div>
+      <div class="pgrid" id="pgrid-container"></div>
     </div>
+    <div class="fg2" id="form-fields-container"></div>
     <div class="fg2">
-      <div class="fg"><label>董事長出席形式</label><input class="fi" id="rc" placeholder="致詞/出席…"></div>
-      <div class="fg"><label>秘書長出席形式</label><input class="fi" id="rs" placeholder="出席…"></div>
-      <div class="fg"><label>邱副秘出席形式</label><input class="fi" id="rq" placeholder="出席…"></div>
-      <div class="fg"><label>周副秘出席形式</label><input class="fi" id="rz" placeholder="出席…"></div>
-      <div class="fg"><label>陳副董出席形式</label><input class="fi" id="rv" placeholder="出席…"></div>
-      <div class="fg"><label>鄧處長出席形式</label><input class="fi" id="rd" placeholder="陪同…"></div>
-      <div class="fg"><label>張副座出席形式</label><input class="fi" id="rh" placeholder="陪同…"></div>
       <div class="fg"><label>陪同人員</label><input class="fi" id="re"></div>
       <div class="fg"><label>主政單位</label><input class="fi" id="fu"></div>
     </div>
@@ -295,6 +260,28 @@ textarea.fi{resize:vertical;min-height:48px;}
     </div>
   </div>
 </div>
+<div id="settings-modal" class="mbg" style="display:none">
+  <div class="modal">
+    <h2>⚙️ 展名／長官設定</h2>
+    <div class="fg"><label>頂部標籤（例如 TAITRA · 活動名稱）</label><input class="fi" id="set-eyebrow"></div>
+    <div class="fg"><label>主標題</label><input class="fi" id="set-h1"></div>
+    <div class="fg"><label>瀏覽器分頁標題</label><input class="fi" id="set-pagetitle"></div>
+    <div style="height:1px;background:var(--bd);margin:16px 0;"></div>
+    <div class="fg"><label>長官欄位管理</label>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;">新增、刪除或修改長官職稱。修改職稱名稱不會影響既有活動的出席紀錄（系統用內部代碼對應，不是用顯示名稱）。</div>
+      <div id="people-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input class="fi" id="new-person-label" placeholder="新長官職稱，例如「林副處長」" style="flex:1;">
+        <button class="btn btn-p" onclick="addPerson()" style="white-space:nowrap;">＋ 新增長官</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn btn-p" onclick="saveSettings()">儲存設定</button>
+    </div>
+  </div>
+</div>
+
 <div class="pw-bg" id="pw-bg">
   <div class="pw-box">
     <h3>🔐 需要驗證</h3>
@@ -313,7 +300,7 @@ textarea.fi{resize:vertical;min-height:48px;}
 <script type="module">
 
 /* ── PASSWORD GATE ── */
-const STAFF_PW = 'cpx2026';
+const STAFF_PW = '請自訂工作人員密碼';
 let _pwAuthed = false, _pwCallback = null;
 function requirePw(fn){
   if(_pwAuthed){fn();return;}
@@ -346,74 +333,138 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, set, update, remove, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB9H0Pc0_ecOmbF0zvwBW2S0JNQnn4lefg",
-  authDomain: "computex20260602.firebaseapp.com",
-  databaseURL: "https://computex20260602-default-rtdb.firebaseio.com",
-  projectId: "computex20260602",
-  storageBucket: "computex20260602.firebasestorage.app",
-  messagingSenderId: "111696785290",
-  appId: "1:111696785290:web:d31b2dfe9cd22a25b7e273"
+  apiKey: "AIzaSyDM9gqNxouPzNvj1EPtzVL1QMeH2wfEv6s",
+  authDomain: "gurus-cfa66.firebaseapp.com",
+  databaseURL: "https://gurus-cfa66-default-rtdb.firebaseio.com",
+  projectId: "gurus-cfa66",
+  storageBucket: "gurus-cfa66.firebasestorage.app",
+  messagingSenderId: "584897610628",
+  appId: "1:584897610628:web:d5d7331c022c3b1a3493d1"
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const ACT_REF = ref(db, 'activities');
-
-const SEED = [
-  {id:'s1',date:'5月26日(二)',time:'12:00-14:00',event:'媒體茶敘',loc:'TAI-ONE SPACE共享辦公室 2215會議室',chair:'主持',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'張永承組長',guest:'',unit:'行政處',contact:'秦慧君 ext.1406'},
-  {id:'s2',date:'5月26日(二)',time:'14:30-15:00',event:'世貿展前記者會',loc:'TAI-ONE SPACE共享辦公室',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'張永承組長',guest:'14:30-14:40 James致詞',unit:'展覽處',contact:'林姿岑、邱德全 ext.2631 ext.2647'},
-  {id:'s3',date:'5月31日(日)',time:'17:00-19:00',event:'Media Mixer',loc:'寒舍艾美三樓琥珀廳',chair:'',sec:'致詞',qiu:'',zhou:'',vchair:'',deng:'',zhang:'陪同',escort:'張永承組長',guest:'',unit:'展覽處',contact:'林姿岑、許妃棻'},
-  {id:'s4',date:'5月31日(日)',time:'17:30-18:30',event:'全球記者會彩排',loc:'南港展覽館2館7樓701CDGH會議室',chair:'彩排',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'張永承組長',guest:'TCA 陳俊聖 理事長',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s5',date:'6月1日(一)',time:'09:30-12:00',event:'陪胡副署長拜會馬紹爾群島大使館',loc:'臺北市士林區天母西路62巷9之1號4樓',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'出席/09:30公務車',escort:'周佳樺組長',guest:'',unit:'展覽處',contact:'佳樺組長 ext.2662'},
-  {id:'s6',date:'6月1日(一)',time:'10:00-10:30',event:'美國Embedded Computing Design（podcast）',loc:'南港展覽館2館7樓',chair:'受訪',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s7',date:'6月1日(一)',time:'11:00-12:00',event:'COMPUTEX 2026 全球記者會彩排',loc:'南港展覽館2館7樓701CDGH會議室',chair:'彩排',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'張永承組長',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s8',date:'6月1日(一)',time:'14:00-15:15',event:'全球記者會 + Qualcomm開場',loc:'南港展覽館2館7樓701CDGH會議室',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'TCA 陳俊聖 理事長',unit:'展覽處',contact:'華紹強 ext.2636'},
-  {id:'s9',date:'6月1日(一)',time:'14:45-15:00',event:'與 KoL 互動',loc:'南港展覽館2館7樓',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s10',date:'6月1日(一)',time:'15:30-16:00',event:'Bloomberg 專訪',loc:'南港展覽館2館7樓',chair:'受訪',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s11',date:'6月1日(一)',time:'16:00-16:30',event:'義大利媒體專訪',loc:'南港展覽館2館7樓',chair:'受訪',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s12',date:'6月1日(一)',time:'16:30-17:30',event:'COMPUTEX 2026 開幕典禮第一次彩排',loc:'南港展覽館1館4樓M區門廳',chair:'彩排',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'陪同',escort:'張永承組長',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s13',date:'6月1日(一)',time:'17:30',event:'董事長北大荒',loc:'',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'陪同',escort:'張永承組長',guest:'',unit:'展覽處',contact:''},
-  {id:'s14',date:'6月1日(一)',time:'18:00',event:'處長宴請日本東京團',loc:'富錦樹101（東京團-胡菁菁-日刊）',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'主人',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'蔡雅君 ext.2201'},
-  {id:'s15',date:'6月2日(二)',time:'08:30-09:30',event:'COMPUTEX 2026 開幕典禮第二次彩排',loc:'南港展覽館1館4樓M區門廳',chair:'彩排',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'陪同',escort:'張永承組長',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s16',date:'6月2日(二)',time:'09:30-09:50',event:'媒體聯訪',loc:'南港展覽館1館4樓M區門廳',chair:'受訪',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'鍾伯甫 ext.1610'},
-  {id:'s17',date:'6月2日(二)',time:'09:30-09:40',event:'接待國際貿易署胡啟娟副署長',loc:'南港展覽館1館1樓大門>1樓第5貴賓室',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'接待',escort:'',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s18',date:'6月2日(二)',time:'09:40-09:50',event:'接待龔明鑫經濟部長',loc:'南港展覽館1館1樓大門>1樓第5貴賓室',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'接待',escort:'',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s19',date:'6月2日(二)',time:'09:45-11:00',event:'新加坡中華總商會',loc:'南港展覽館1館1樓L區',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'致意',zhang:'',escort:'',guest:'',unit:'',contact:''},
-  {id:'s20',date:'6月2日(二)',time:'09:50-09:55',event:'恭迎行政院卓榮泰院長',loc:'南港展覽館1館1樓大門',chair:'接待',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s21',date:'6月2日(二)',time:'09:55-09:58',event:'恭迎總統',loc:'南港展覽館1館1樓大門',chair:'接待',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s22',date:'6月2日(二)',time:'10:00-11:30',event:'COMPUTEX 2026 開幕典禮暨導覽',loc:'南港展覽館1館4樓M區門廳',chair:'致詞暨揭幕',sec:'',qiu:'出席',zhou:'出席',vchair:'出席',deng:'陪同',zhang:'陪同',escort:'張永承組長',guest:'賴清德總統、卓榮泰院長、陳俊聖理事長、龔明鑫部長、林宜敬部長、吳承文主委',unit:'展覽處',contact:'曾湘羚 ext.2878'},
-  {id:'s23',date:'6月2日(二)',time:'10:50-11:10',event:'香港澳門工商團體拍照',loc:'台北南港展覽館1館1樓J區精神堡壘',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'徐毅勤 ext.2621'},
-  {id:'s24',date:'6月2日(二)',time:'11:30-12:00',event:'華航 x GQ Service Lounge 小開幕',loc:'南港展覽館2館4樓Service Lounge',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'詹景勛 ext.2639'},
-  {id:'s25',date:'6月2日(二)',time:'13:30-14:30',event:'InnoVEX 2026 開幕典禮',loc:'南港展覽館2館4樓InnoVEX Center Stage',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'陪同',zhang:'',escort:'張永承組長',guest:'卓榮泰院長、陳俊聖理事長',unit:'貿協/TCA',contact:'許妃棻 ext.2871'},
-  {id:'s26',date:'6月2日(二)',time:'13:30-13:45',event:'Intel CEO Keynote 開場',loc:'南港展覽館2館7樓',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'華紹強 ext.2636'},
-  {id:'s27',date:'6月2日(二)',time:'14:30-14:45',event:'亞利桑那ACA與台灣企二代茶會',loc:'國貿大樓七樓天空廣場',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'張永承組長',guest:'',unit:'市場處',contact:'巫宜學 ext.1843'},
-  {id:'s28',date:'6月2日(二)',time:'14:30-17:30',event:'YAMAZAKI MAZAK 上席執行役員澤田洋祐及日本AI領域公司買主',loc:'南港一館4F',chair:'',sec:'',qiu:'',zhou:'',vchair:'致意',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'何擎宙 ext.2635'},
-  {id:'s29',date:'6月2日(二)',time:'15:00-15:30',event:'咖啡機小開幕',loc:'世貿一館正門',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'張永承組長',guest:'',unit:'展覽處',contact:'邱德全 ext.2647'},
-  {id:'s30',date:'6月2日(二)',time:'18:00-20:00',event:'Intel Gala Dinner',loc:'Humble House Taipei',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'出席',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'張永承 ext.2630'},
-  {id:'s31',date:'6月3日(三)',time:'09:30-09:40',event:'元太電子紙國際創新論壇',loc:'世貿一館2樓第3-5會議室',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'邱德全 ext.2647'},
-  {id:'s32',date:'6月3日(三)',time:'09:30-11:00',event:'台灣豐田通商貴賓團導覽',loc:'世貿一館1F正門口電梯前',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'出席',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'何擎宙 ext.2635'},
-  {id:'s33',date:'6月3日(三)',time:'09:50-11:10',event:'立法委員沈柏洋參觀InnoVex',loc:'',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:''},
-  {id:'s34',date:'6月3日(三)',time:'10:30-10:45',event:'NXP CEO Keynote 開場',loc:'南港展覽館2館7樓',chair:'致詞暨揭幕',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'陪同',escort:'',guest:'',unit:'展覽處',contact:'華紹強 ext.2636'},
-  {id:'s35',date:'6月3日(三)',time:'11:00',event:'周副秘書長參觀展覽',loc:'',chair:'',sec:'',qiu:'',zhou:'出席',vchair:'',deng:'',zhang:'陪同',escort:'',guest:'',unit:'展覽處',contact:''},
-  {id:'s36',date:'6月3日(三)',time:'12:30-14:00',event:'董事長宴請日刊工業',loc:'世貿名人坊',chair:'主人',sec:'',qiu:'',zhou:'',vchair:'',deng:'出席',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'張永承 ext.2630'},
-  {id:'s37',date:'6月3日(三)',time:'13:00-15:00',event:'立委許智傑貴賓導覽',loc:'南港一館4F',chair:'',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'出席',escort:'群佩組長、支援PM盧玟妏',guest:'',unit:'行政處',contact:'鍾伯甫 ext.1610'},
-  {id:'s38',date:'6月3日(三)',time:'14:30-15:00',event:'西門子大中華區總裁 Xiao Song 及台灣區總裁 Frank Grunert拜會',loc:'國貿大樓七樓天王星',chair:'主持',sec:'',qiu:'',zhou:'',vchair:'',deng:'出席',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'張永承 ext.2630'},
-  {id:'s39',date:'6月3日(三)',time:'15:30-16:00',event:'CNN專訪',loc:'南港一館4樓',chair:'受訪',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'林姿岑 ext.2631'},
-  {id:'s40',date:'6月3日(三)',time:'18:30',event:'TCA辦理COMPUTEX/InnoVEX Party',loc:'台北101（89樓觀景台）',chair:'',sec:'',qiu:'',zhou:'',vchair:'出席',deng:'',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'賴俞伶 ext.2634'},
-  {id:'s41',date:'6月4日(四)',time:'18:30',event:'Newegg的CEO Anthony宴請James',loc:'Bellavita侯布雄',chair:'出席',sec:'',qiu:'',zhou:'',vchair:'',deng:'出席',zhang:'',escort:'',guest:'',unit:'展覽處',contact:'張永承 ext.2630'},
-  {id:'s42',date:'6月5日(五)',time:'10:00-10:15',event:'Newegg PC Builder',loc:'世貿一館2樓第3-5會議室',chair:'致詞',sec:'',qiu:'',zhou:'',vchair:'',deng:'',zhang:'',escort:'張永承組長',guest:'',unit:'展覽處',contact:'邱德全 ext.2647'}
-];
+const SETTINGS_REF = ref(db, 'settings');
 
 const DATE_MAP = {
   '5月26日(二)':'2026-05-26','5月31日(日)':'2026-05-31',
   '6月1日(一)':'2026-06-01','6月2日(二)':'2026-06-02',
   '6月3日(三)':'2026-06-03','6月4日(四)':'2026-06-04','6月5日(五)':'2026-06-05',
 };
-const PEOPLE = ['chair','sec','qiu','zhou','vchair','deng','zhang'];
-const P_LABELS = {chair:'董事長',sec:'秘書長',qiu:'邱副秘',zhou:'周副秘',vchair:'陳副董',deng:'鄧處長',zhang:'張副座'};
+// ★ 長官欄位、展名等設定改為可變動的狀態，預設值如下，實際內容會被 Firebase settings 覆寫
+const DEFAULT_PEOPLE = ['chair','sec','qiu','zhou','vchair','deng','zhang'];
+const DEFAULT_P_LABELS = {chair:'董事長',sec:'秘書長',qiu:'邱副秘',zhou:'周副秘',vchair:'陳副董',deng:'鄧處長',zhang:'張副座'};
+let PEOPLE = [...DEFAULT_PEOPLE];
+let P_LABELS = {...DEFAULT_P_LABELS};
+let EVENT_EYEBROW = 'TAITRA · 活動出席管理';
+let EVENT_H1 = '處內主管出席一覽表';
+let EVENT_PAGETITLE = '2026 活動出席管理';
+let settingsLoaded = false;
 
 let ACT=[], editId=null, activeP='', hidePast=true;
 // ★ 關鍵：日期篩選狀態獨立維護，不依賴 DOM select 的 value
 let filterDate = '';
+
+/* ── SETTINGS (展名／長官管理) ── */
+function genPersonKey(){
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+function applySettingsToUI(){
+  document.getElementById('ui-eyebrow').textContent = EVENT_EYEBROW;
+  document.getElementById('ui-h1').textContent = EVENT_H1;
+  document.getElementById('page-title').textContent = EVENT_PAGETITLE;
+  document.title = EVENT_PAGETITLE;
+  buildPersonChips();
+}
+function buildPersonChips(){
+  const box = document.getElementById('person-chips');
+  box.innerHTML = PEOPLE.map(p=>
+    `<div class="chip${activeP===p?' on':''}" data-p="${p}" onclick="toggleP(this)">${esc(P_LABELS[p])}</div>`
+  ).join('');
+}
+onValue(SETTINGS_REF, snap=>{
+  const s = snap.val();
+  if(s){
+    if(s.eyebrow) EVENT_EYEBROW = s.eyebrow;
+    if(s.h1) EVENT_H1 = s.h1;
+    if(s.pageTitle) EVENT_PAGETITLE = s.pageTitle;
+    if(s.people && typeof s.people === 'object'){
+      const ids = Object.keys(s.people);
+      if(ids.length){
+        PEOPLE = ids;
+        P_LABELS = {};
+        ids.forEach(id=>{ P_LABELS[id] = s.people[id]; });
+      }
+    }
+  }
+  settingsLoaded = true;
+  applySettingsToUI();
+  if(ACT.length || data_loaded_once) render();
+  document.getElementById('btn-settings').disabled = false;
+}, err=>{
+  settingsLoaded = true;
+  applySettingsToUI();
+  document.getElementById('btn-settings').disabled = false;
+});
+let data_loaded_once = false;
+
+window.openSettings = ()=>requirePw(_openSettings);
+function _openSettings(){
+  document.getElementById('set-eyebrow').value = EVENT_EYEBROW;
+  document.getElementById('set-h1').value = EVENT_H1;
+  document.getElementById('set-pagetitle').value = EVENT_PAGETITLE;
+  renderPeopleList();
+  document.getElementById('settings-modal').style.display='flex';
+}
+window.closeSettings = ()=>{ document.getElementById('settings-modal').style.display='none'; };
+
+// 編輯中的長官清單暫存（尚未儲存），格式 {id: label}
+let _draftPeople = null;
+function renderPeopleList(){
+  _draftPeople = {};
+  PEOPLE.forEach(id=>{ _draftPeople[id] = P_LABELS[id]; });
+  drawPeopleList();
+}
+function drawPeopleList(){
+  const box = document.getElementById('people-list');
+  const ids = Object.keys(_draftPeople);
+  if(!ids.length){
+    box.innerHTML = '<div style="font-size:11px;color:var(--tx3);">目前沒有任何長官欄位，請在下方新增。</div>';
+    return;
+  }
+  box.innerHTML = ids.map(id=>`
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input class="fi" data-pid="${id}" value="${esc(_draftPeople[id])}" oninput="renamePerson('${id}', this.value)" style="flex:1;">
+      <button class="ab dl" onclick="removePerson('${id}')" title="刪除">✕</button>
+    </div>
+  `).join('');
+}
+window.renamePerson = (id, val)=>{ _draftPeople[id] = val; };
+window.removePerson = (id)=>{
+  if(!confirm('確定刪除「'+(_draftPeople[id]||id)+'」這個長官欄位嗎？\n（已儲存活動中此長官的出席紀錄不會被刪除，只是日後不再顯示這個選項）')) return;
+  delete _draftPeople[id];
+  drawPeopleList();
+};
+window.addPerson = ()=>{
+  const inp = document.getElementById('new-person-label');
+  const label = inp.value.trim();
+  if(!label) return toast('請輸入長官職稱','err');
+  const id = genPersonKey();
+  _draftPeople[id] = label;
+  inp.value = '';
+  drawPeopleList();
+};
+window.saveSettings = async ()=>{
+  const eyebrow = document.getElementById('set-eyebrow').value.trim() || 'TAITRA · 活動出席管理';
+  const h1 = document.getElementById('set-h1').value.trim() || '出席一覽表';
+  const pageTitle = document.getElementById('set-pagetitle').value.trim() || '活動出席管理';
+  const peopleObj = {..._draftPeople};
+  try{
+    await set(SETTINGS_REF, { eyebrow, h1, pageTitle, people: peopleObj });
+    toast('✓ 設定已儲存','ok');
+    closeSettings();
+  }catch(e){ toast('✗ 儲存失敗：'+e.message,'err'); }
+};
 
 /* ── THEME ── */
 const saved = localStorage.getItem('theme')||'light';
@@ -434,6 +485,7 @@ onValue(ACT_REF, snap=>{
     const da=dk(a.date), db2=dk(b.date);
     return da!==db2 ? (da<db2?-1:1) : ((a.time||'')<(b.time||'')?-1:1);
   }) : [];
+  data_loaded_once = true;
   setDot('live','即時同步');
   document.getElementById('btn-add').disabled = false;
   // ★ 重建日期選單時保留 filterDate
@@ -464,43 +516,26 @@ window.onDateChange = ()=>{
   render();
 };
 
-/* ── IMPORT ── */
-(()=>{
-  const tb = document.getElementById('preview-body');
-  tb.innerHTML = SEED.slice(0,8).map(r=>
-    `<tr><td>${esc(r.date)}</td><td>${esc(r.time)}</td><td>${esc(r.event)}</td><td>${esc(r.chair||'')}</td><td>${esc(r.deng||'')}</td></tr>`
-  ).join('') + `<tr><td colspan="5" style="color:var(--tx3);text-align:center;padding:5px">…共 ${SEED.length} 筆</td></tr>`;
-})();
-
-window.toggleImport=()=>requirePw(_toggleImport);
-function _toggleImport(){
-  const p = document.getElementById('import-panel');
-  p.style.display = p.style.display==='none' ? '' : 'none';
-};
-window.writeSeed=()=>requirePw(()=>_writeSeed());
-async function _writeSeed(){
-  if(!confirm('確定清除現有資料並寫入 '+SEED.length+' 筆？')) return;
-  const btn=document.getElementById('btn-write'); btn.disabled=true; btn.textContent='寫入中…';
-  try{
-    const obj={}; SEED.forEach(r=>{obj[r.id]={...r};});
-    await set(ACT_REF,obj);
-    toast('✓ 已寫入 '+SEED.length+' 筆','ok');
-    document.getElementById('import-status').textContent='✓ 完成';
-  }catch(e){ toast('✗ '+e.message,'err'); }
-  finally{ btn.disabled=false; btn.textContent='🚀 覆蓋寫入 Firebase'; }
-};
-window.mergeSeed=()=>requirePw(()=>_mergeSeed());
-async function _mergeSeed(){
-  document.getElementById('import-status').textContent='合併中…';
-  try{
-    const obj={}; SEED.forEach(r=>{obj[r.id]={...r};});
-    await update(ACT_REF,obj);
-    toast('✓ 合併完成','ok');
-    document.getElementById('import-status').textContent='✓ 合併完成';
-  }catch(e){ toast('✗ '+e.message,'err'); }
-};
-
 /* ── UTILS ── */
+const WEEKDAY_CN = ['日','一','二','三','四','五','六'];
+// yyyy-mm-dd → "6月2日(二)" 格式，自動代入星期幾
+function isoToLabel(iso){
+  if(!iso) return '';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d.getTime())) return '';
+  const m = d.getMonth()+1, day = d.getDate();
+  const wd = WEEKDAY_CN[d.getDay()];
+  return `${m}月${day}日(${wd})`;
+}
+// "6月2日(二)" 或既有 DATE_MAP 標籤 → yyyy-mm-dd，供日期選擇器回填使用
+function labelToIso(lbl){
+  if(!lbl) return '';
+  if(DATE_MAP[lbl]) return DATE_MAP[lbl];
+  const m = lbl.match(/(\d+)月(\d+)日/);
+  if(!m) return '';
+  const year = new Date().getFullYear();
+  return `${year}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+}
 function dk(lbl){
   if(!lbl) return '';
   if(DATE_MAP[lbl]) return DATE_MAP[lbl];
@@ -632,10 +667,31 @@ function render(){
 }
 
 /* ── MODAL ── */
+function buildModalPersonFields(){
+  const pgrid = document.getElementById('pgrid-container');
+  pgrid.innerHTML = PEOPLE.map(id=>
+    `<div class="pck" data-k="${id}" onclick="tpck(this)">${esc(P_LABELS[id])}</div>`
+  ).join('') || '<div style="font-size:11px;color:var(--tx3);">尚未設定長官欄位，請先到「展名／長官設定」新增</div>';
+
+  const ff = document.getElementById('form-fields-container');
+  ff.innerHTML = PEOPLE.map(id=>
+    `<div class="fg"><label>${esc(P_LABELS[id])}出席形式</label><input class="fi" id="r_${id}" placeholder="出席／致詞／陪同…"></div>`
+  ).join('');
+}
+window.onDatePickerChange = ()=>{
+  const v = document.getElementById('fdv-picker').value; // yyyy-mm-dd
+  if(!v){ document.getElementById('fdv').value=''; document.getElementById('fdv-preview').textContent='尚未選擇日期'; return; }
+  const label = isoToLabel(v);
+  document.getElementById('fdv').value = label;
+  document.getElementById('fdv-preview').textContent = '將儲存為：' + label;
+};
 window.openAdd=()=>requirePw(_openAdd);
 function _openAdd(){
   editId=null; g('mt').textContent='新增活動';
-  ['fdv','ftv','fev','flv','rc','rs','rq','rz','rv','rd','rh','re','fu','fgi','fc'].forEach(id=>g(id).value='');
+  buildModalPersonFields();
+  ['ftv','fev','flv','re','fu','fgi','fc'].forEach(id=>g(id).value='');
+  g('fdv').value=''; g('fdv-picker').value=''; g('fdv-preview').textContent='尚未選擇日期';
+  PEOPLE.forEach(id=>{ const el=g('r_'+id); if(el) el.value=''; });
   document.querySelectorAll('.pck').forEach(e=>e.classList.remove('on'));
   g('modal').style.display='flex';
 };
@@ -643,12 +699,13 @@ window.openEdit=id=>requirePw(()=>_openEdit(id));
 function _openEdit(id){
   const a=ACT.find(x=>x.id===id); if(!a) return;
   editId=id; g('mt').textContent='編輯活動';
+  buildModalPersonFields();
   g('fdv').value=a.date||''; g('ftv').value=a.time||'';
+  const iso = labelToIso(a.date||'');
+  g('fdv-picker').value = iso||'';
+  g('fdv-preview').textContent = a.date ? '將儲存為：'+a.date : '尚未選擇日期';
   g('fev').value=a.event||''; g('flv').value=a.loc||'';
-  g('rc').value=a.chair||''; g('rs').value=a.sec||'';
-  g('rq').value=a.qiu||''; g('rz').value=a.zhou||'';
-  g('rv').value=a.vchair||''; g('rd').value=a.deng||'';
-  g('rh').value=a.zhang||'';
+  PEOPLE.forEach(pid=>{ const el=g('r_'+pid); if(el) el.value = a[pid]||''; });
   g('re').value=a.escort||''; g('fu').value=a.unit||'';
   g('fgi').value=a.guest||''; g('fc').value=a.contact||'';
   document.querySelectorAll('.pck').forEach(e=>e.classList.toggle('on',!!a[e.dataset.k]));
@@ -658,16 +715,20 @@ window.tpck = el=>el.classList.toggle('on');
 window.closeM = ()=>g('modal').style.display='none';
 window.saveE = async()=>{
   const ev=g('fev').value.trim(); if(!ev){alert('請填寫活動名稱');return;}
-  const pr=(k,r)=>document.querySelector('.pck[data-k="'+k+'"]').classList.contains('on')?(g(r).value.trim()||'出席'):'';
+  const pr=(id)=>{
+    const pck = document.querySelector('.pck[data-k="'+id+'"]');
+    if(!pck || !pck.classList.contains('on')) return '';
+    const inp = g('r_'+id);
+    return (inp ? inp.value.trim() : '') || '出席';
+  };
   const entry={
     date:g('fdv').value.trim(), time:g('ftv').value.trim(),
     event:ev, loc:g('flv').value.trim(),
-    chair:pr('chair','rc'), sec:pr('sec','rs'), qiu:pr('qiu','rq'),
-    zhou:pr('zhou','rz'), vchair:pr('vchair','rv'), deng:pr('deng','rd'), zhang:pr('zhang','rh'),
     escort:g('re').value.trim(), unit:g('fu').value.trim(),
     guest:g('fgi').value.trim(), contact:g('fc').value.trim(),
     updatedAt:Date.now()
   };
+  PEOPLE.forEach(id=>{ entry[id] = pr(id); });
   const btn=g('btn-save'); btn.disabled=true; btn.textContent='儲存中…';
   try{
     if(editId){ entry.id=editId; await update(ref(db,'activities/'+editId),entry); toast('✓ 已更新：'+ev,'ok'); }
@@ -686,11 +747,11 @@ async function _delE(id){
 
 /* ── EXPORT ── */
 window.exportCSV = ()=>{
-  const h=['日期','時間','活動名稱','地點','董事長','秘書長','邱副秘','周副秘','陳副董','鄧處長','張副座','陪同','貴賓/主講人','主政單位','聯絡人'];
-  const rows=ACT.map(a=>[a.date,a.time,a.event,a.loc,a.chair,a.sec,a.qiu,a.zhou,a.vchair,a.deng,a.zhang,a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const h=['日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓/主講人','主政單位','聯絡人'];
+  const rows=ACT.map(a=>[a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  const a=document.createElement('a'); a.href=url; a.download='2026COMPUTEX出席一覽表.csv'; a.click();
+  const a=document.createElement('a'); a.href=url; a.download=(EVENT_H1||'出席一覽表').replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
   URL.revokeObjectURL(url);
 };
 
