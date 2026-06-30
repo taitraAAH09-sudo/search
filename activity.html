@@ -1047,9 +1047,10 @@ async function processExcelFile(file) {
     const ws = wb.Sheets[sheetName];
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    const seatPat = /^[A-Za-z]+\d+-\d+$/;
+    const seatPat = /^[A-Za-z]+\d+(_T\d+)?-\d+$/;
     const newAssign = {};
     const newMaster = {};
+    const newTags = {};
 
     // 自動偵測每列的座位碼，依連續同字母分組來判斷區段範圍
     function detectZones(row) {
@@ -1069,6 +1070,7 @@ async function processExcelFile(file) {
       return zones;
     }
 
+    // ── 格式 A：橫式（座位碼列 + 賓客名列交錯，多欄並排）──
     let i = 0;
     while (i < raw.length) {
       const row = raw[i].map(v => (v === null || v === undefined) ? '' : String(v).trim());
@@ -1091,32 +1093,53 @@ async function processExcelFile(file) {
       }
     }
 
+    // ── 格式 B：直式（A欄=座位碼，B欄=姓名，C欄=標記）──
+    if (Object.keys(newMaster).length === 0) {
+      raw.forEach(row => {
+        const code = String(row[0] || '').trim();
+        if (!seatPat.test(code)) return; // 跳過標題列、群組標題列（如【Head Table】）
+        const name = String(row[1] || '').replace(/\s+/g,' ').trim();
+        const tag = String(row[2] || '').trim();
+        newMaster[code] = name;
+        if (name) newAssign[code] = name;
+        if (tag && tag !== 'undefined') newTags[code] = tag;
+      });
+    }
+
     const totalMaster = Object.keys(newMaster).length;
     const totalAssign = Object.keys(newAssign).length;
+    const totalTags = Object.keys(newTags).length;
 
     if (totalMaster === 0) {
-      showExcelStatus('❌ 找不到座位資料，請確認 Excel 格式（座位碼列＋賓客名列）', 'err');
+      showExcelStatus('❌ 找不到座位資料，請確認 Excel 格式（座位碼欄如 A1-1、H1-1、R1_T1-1）', 'err');
       return;
     }
 
+    // 自動偵測排版模式：座位碼含 _T 或 H 開頭 → 圓桌，否則 → 方陣
+    const sampleCodes = Object.keys(newMaster);
+    const isRound = sampleCodes.some(c => c.includes('_T') || /^H\d/.test(c));
+    const detectedLayout = isRound ? 'round' : 'grid';
+
     const ok = confirm(
       `解析完成（Sheet: ${sheetName}）\n` +
+      `排版模式：${isRound ? '⭕ 圓桌' : '⬜ 方陣'}\n` +
       `座位格局：${totalMaster} 格\n` +
-      `賓客資料：${totalAssign} 筆\n\n` +
-      `將覆寫「${PROJECT_ID}」的座位結構，確定要執行嗎？`
+      `賓客資料：${totalAssign} 筆\n` +
+      (totalTags > 0 ? `標記資料：${totalTags} 筆\n` : '') +
+      `\n將覆寫「${PROJECT_ID}」的座位結構，確定要執行嗎？`
     );
     if (!ok) { showExcelStatus('已取消', 'info'); return; }
 
     showExcelStatus('寫入 Firebase 中…', 'info');
-    layoutMode = 'grid';
-    sessionStorage.setItem('taitra_layout', 'grid');
+    layoutMode = detectedLayout;
+    sessionStorage.setItem('taitra_layout', detectedLayout);
 
     await set(ref(db, PROJECT_ID + '/seats_master2026'), newMaster);
     await set(ref(db, PROJECT_ID + '/assignments2026'), newAssign);
-    await set(ref(db, PROJECT_ID + '/tags2026'), null);
+    await set(ref(db, PROJECT_ID + '/tags2026'), totalTags > 0 ? newTags : null);
     await set(ref(db, PROJECT_ID + '/seats2026'), null);
 
-    showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位`, 'ok');
+    showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位（${isRound ? '圓桌' : '方陣'}模式）`, 'ok');
     toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
     document.getElementById('layout-modal-bg').classList.remove('show');
     refreshAll();
