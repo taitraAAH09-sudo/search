@@ -1134,10 +1134,16 @@ async function processExcelFile(file) {
     layoutMode = detectedLayout;
     sessionStorage.setItem('taitra_layout', detectedLayout);
 
-    await set(ref(db, PROJECT_ID + '/seats_master2026'), newMaster);
-    await set(ref(db, PROJECT_ID + '/assignments2026'), newAssign);
-    await set(ref(db, PROJECT_ID + '/tags2026'), totalTags > 0 ? newTags : null);
-    await set(ref(db, PROJECT_ID + '/seats2026'), null);
+    // 【核心修正】整節點覆寫，徹底清除舊格局殘留（含自訂桌名、報到記錄），
+    // 避免新舊座位格局同時存在
+    await set(ref(db, PROJECT_ID), {
+      seats_master2026: newMaster,
+      assignments2026: Object.keys(newAssign).length ? newAssign : null,
+      tags2026: totalTags > 0 ? newTags : null,
+      seats2026: null,
+      table_names2026: null,
+      checkins2026: null
+    });
 
     showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位（${isRound ? '圓桌' : '方陣'}模式）`, 'ok');
     toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
@@ -1196,7 +1202,9 @@ window.applyLayout = async function() {
             seats_master2026: newMaster,
             assignments2026: null, // 新架構必須清除舊分配
             tags2026: null,
-            seats2026: null
+            seats2026: null,
+            table_names2026: null, // 同步清除舊桌名，避免跟新格局殘留並存
+            checkins2026: null
         });
         
         toast('🎉 座位架構已成功建立！', 'tok');
