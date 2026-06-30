@@ -392,14 +392,7 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
       <input type="text" id="gi" placeholder="輸入新賓客名字，按 Enter" onkeydown="if(event.key==='Enter')addGuest()" />
       <button class="btn" onclick="addGuest()">新增</button>
     </div>
-    <div class="admin-only" style="display:none;flex;gap:6px;align-items:center;flex-wrap:wrap;">
-      <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;">📋 批次</span>
-      <input type="text" id="gi-bulk" placeholder="貼上多筆，逗號或換行分隔" style="flex:1;font-size:12px;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;outline:none;" onkeydown="if(event.key==='Enter')bulkAddGuests()" />
-      <button class="btn" onclick="bulkAddGuests()">匯入</button>
-      <label class="btn" style="cursor:pointer;margin:0;" title="從 Excel 匯入賓客名單">📊 Excel
-        <input type="file" id="guest-excel-input" accept=".xlsx,.xls" style="display:none;" onchange="importGuestsFromExcel(this)">
-      </label>
-    </div>
+
   </div>
   <div class="chips" id="chips"></div>
 </div>
@@ -1301,46 +1294,6 @@ window.addGuest=function(){
   if(guests.includes(n))return toast('此賓客已在名單中','ter');
   guests.push(n); guests.sort(); inp.value=''; refreshAll(); toast('已新增','tok');
 };
-window.bulkAddGuests=function(){
-  const inp=document.getElementById('gi-bulk');
-  const raw=inp.value.trim();
-  if(!raw) return toast('請輸入賓客名單','ter');
-  const names=raw.split(/[,，\n]/).map(s=>s.trim()).filter(s=>s.length>0);
-  let added=0, dup=0;
-  names.forEach(n=>{
-    if(guests.includes(n)){dup++;return;}
-    guests.push(n); added++;
-  });
-  guests.sort(); inp.value=''; refreshAll();
-  let msg = `已新增 ${added} 筆`; if(dup>0) msg += `，${dup} 筆重複略過`; toast(msg, added>0?'tok':'tin');
-};
-
-window.importGuestsFromExcel=function(input){
-  const file=input.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      let added=0, dup=0, skipped=0;
-      rows.forEach((row,idx)=>{
-        const val=String(row[0]||'').trim();
-        if(!val) return;
-        if(idx===0 && /^(姓名|賓客|名稱|name|guest)/i.test(val)){skipped++;return;}
-        if(guests.includes(val)){dup++;return;}
-        guests.push(val); added++;
-      });
-      guests.sort(); input.value=''; refreshAll();
-      let msg=`Excel 匯入：新增 ${added} 筆`;
-      if(dup>0) msg+=`，${dup} 筆重複略過`;
-      if(skipped>0) msg+=`，${skipped} 筆標題略過`;
-      toast(msg, added>0?'tok':'tin');
-    }catch(err){ toast('Excel 讀取失敗：'+err.message,'ter'); }
-  };
-  reader.readAsArrayBuffer(file);
-};
-
 window.doReset = async function() {
   const eventName = document.getElementById('event-name-input').value;
   if (!confirm(`⚠️ 警告：確定要【徹底清除】所有資料嗎？\n這將會直接刪除「${eventName}」的所有座位、名單與報到紀錄！\n清除後資料將無法復原，確定要執行嗎？`)) return;
