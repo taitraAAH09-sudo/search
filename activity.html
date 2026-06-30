@@ -244,52 +244,88 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
     <div class="modal-handle"></div>
     <div class="modal-code">⚙️ 建立座位庫架構</div>
     <div class="modal-name" style="background:#FFFBEB; color:#B45309;">覆寫並套用新的座位結構到當前活動資料庫。</div>
-    
-    <div class="layout-form">
-      <div>
-        <label>排版模式</label>
-        <select id="l-mode" onchange="(function(v){document.getElementById('l-grid-settings').style.display=v==='grid'?'block':'none';document.getElementById('l-round-settings').style.display=v==='round'?'block':'none';})(this.value)">
-          <option value="grid">方陣排排坐</option>
-          <option value="round">圓桌晚宴</option>
-        </select>
-      </div>
 
-      <div id="l-grid-settings">
-        <div style="margin-bottom: 12px;">
-          <label>總排數</label>
-          <input type="number" id="l-rows" value="10" min="1">
-        </div>
-        <div>
-          <label>各區座位數 (由左至右)</label>
-          <input type="text" id="l-zones" value="6,9,6" placeholder="例如: 6,9,6">
-        </div>
-      </div>
-
-      <div id="l-round-settings" style="display: none;">
-        <div style="margin-bottom: 12px;">
-          <label>一般桌各排桌數 (由前至後)</label>
-          <input type="text" id="l-round-rows" value="10,9,11" placeholder="例如: 10,9,11">
-        </div>
-        <div style="margin-bottom: 12px;">
-          <label>一般桌每桌人數 (椅數)</label>
-          <input type="number" id="l-seats" value="10" min="1">
-        </div>
-        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:12px;margin-top:4px;">
-          <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:10px;">👑 主桌設定（選填）</div>
-          <div style="margin-bottom: 10px;">
-            <label>主桌桌數（0 = 不設主桌）</label>
-            <input type="number" id="l-head-tables" value="0" min="0">
-          </div>
-          <div>
-            <label>主桌每桌人數</label>
-            <input type="number" id="l-head-seats" value="12" min="1">
-          </div>
-        </div>
-      </div>
+    <!-- 分頁切換 -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;background:#F3F4F6;border-radius:10px;padding:4px;">
+      <button id="tab-manual-btn" onclick="switchLayoutTab('manual')"
+        style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#1B4F8A;color:#fff;">
+        ✏️ 手動設定
+      </button>
+      <button id="tab-excel-btn" onclick="switchLayoutTab('excel')"
+        style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#6B7280;">
+        📂 上傳 Excel
+      </button>
     </div>
 
-    <button class="btn btn-primary" id="btn-layout-apply" onclick="applyLayout()" style="width:100%; padding:12px; font-size:14px;">套用並寫入資料庫</button>
-    <button class="modal-close" id="btn-layout-close" onclick="document.getElementById('layout-modal-bg').classList.remove('show')">取消</button>
+    <!-- 手動設定面板 -->
+    <div id="layout-tab-manual">
+      <div class="layout-form">
+        <div>
+          <label>排版模式</label>
+          <select id="l-mode" onchange="(function(v){document.getElementById('l-grid-settings').style.display=v==='grid'?'block':'none';document.getElementById('l-round-settings').style.display=v==='round'?'block':'none';})(this.value)">
+            <option value="grid">方陣排排坐</option>
+            <option value="round">圓桌晚宴</option>
+          </select>
+        </div>
+
+        <div id="l-grid-settings">
+          <div style="margin-bottom: 12px;">
+            <label>總排數</label>
+            <input type="number" id="l-rows" value="10" min="1">
+          </div>
+          <div>
+            <label>各區座位數 (由左至右)</label>
+            <input type="text" id="l-zones" value="6,9,6" placeholder="例如: 6,9,6">
+          </div>
+        </div>
+
+        <div id="l-round-settings" style="display: none;">
+          <div style="margin-bottom: 12px;">
+            <label>一般桌各排桌數 (由前至後)</label>
+            <input type="text" id="l-round-rows" value="10,9,11" placeholder="例如: 10,9,11">
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label>一般桌每桌人數 (椅數)</label>
+            <input type="number" id="l-seats" value="10" min="1">
+          </div>
+          <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:12px;margin-top:4px;">
+            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:10px;">👑 主桌設定（選填）</div>
+            <div style="margin-bottom: 10px;">
+              <label>主桌桌數（0 = 不設主桌）</label>
+              <input type="number" id="l-head-tables" value="0" min="0">
+            </div>
+            <div>
+              <label>主桌每桌人數</label>
+              <input type="number" id="l-head-seats" value="12" min="1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-layout-apply" onclick="applyLayout()" style="width:100%; padding:12px; font-size:14px; margin-top:14px;">套用並寫入資料庫</button>
+    </div>
+
+    <!-- Excel 上傳面板 -->
+    <div id="layout-tab-excel" style="display:none;">
+      <div style="background:#EBF1F9;border:1px solid #BDD0EA;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#1B4F8A;line-height:1.7;">
+        💡 上傳已排好的座位表 Excel，系統會自動辨識「座位碼列＋賓客名列」的格式，<strong>同時建立座位架構並匯入賓客名單</strong>，不需要再手動設定排數。
+      </div>
+
+      <div onclick="document.getElementById('excel-upload-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#1B4F8A';this.style.background='#EBF1F9';"
+        ondragleave="this.style.borderColor='#E5E7EB';this.style.background='#F9FAFB';"
+        ondrop="handleExcelDrop(event)"
+        style="border:2px dashed #E5E7EB;border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;background:#F9FAFB;transition:all .2s;margin-bottom:14px;">
+        <div style="font-size:32px;margin-bottom:8px;">📋</div>
+        <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">點擊或拖曳上傳 Excel</div>
+        <div style="font-size:11px;color:#9CA3AF;">支援 .xlsx 格式</div>
+      </div>
+      <input type="file" id="excel-upload-input" accept=".xlsx,.xls" style="display:none">
+
+      <div id="excel-upload-status" style="display:none;font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:10px;"></div>
+    </div>
+
+    <button class="modal-close" id="btn-layout-close" onclick="document.getElementById('layout-modal-bg').classList.remove('show')" style="margin-top:10px;">取消</button>
   </div>
 </div>
 
@@ -936,6 +972,142 @@ window.toggleOccupied=function(){
 };
 
 // ── ⚙️ 架構設定 Modal 專屬邏輯 ──
+// ── 分頁切換 ──
+window.switchLayoutTab = function(tab) {
+  const manualBtn = document.getElementById('tab-manual-btn');
+  const excelBtn = document.getElementById('tab-excel-btn');
+  const manualPanel = document.getElementById('layout-tab-manual');
+  const excelPanel = document.getElementById('layout-tab-excel');
+  if (tab === 'manual') {
+    manualBtn.style.background = '#1B4F8A'; manualBtn.style.color = '#fff';
+    excelBtn.style.background = 'transparent'; excelBtn.style.color = '#6B7280';
+    manualPanel.style.display = ''; excelPanel.style.display = 'none';
+  } else {
+    excelBtn.style.background = '#1B4F8A'; excelBtn.style.color = '#fff';
+    manualBtn.style.background = 'transparent'; manualBtn.style.color = '#6B7280';
+    excelPanel.style.display = ''; manualPanel.style.display = 'none';
+  }
+};
+
+function showExcelStatus(msg, type) {
+  const el = document.getElementById('excel-upload-status');
+  el.style.display = 'block';
+  el.textContent = msg;
+  if (type === 'ok') { el.style.background = '#E8F5EE'; el.style.color = '#1A6B4A'; }
+  else if (type === 'err') { el.style.background = '#FBEAE8'; el.style.color = '#B33A2A'; }
+  else { el.style.background = '#F3F4F6'; el.style.color = '#4A4A4A'; }
+}
+
+window.handleExcelDrop = function(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = '#E5E7EB';
+  event.currentTarget.style.background = '#F9FAFB';
+  const file = event.dataTransfer.files[0];
+  if (file) processExcelFile(file);
+};
+
+document.getElementById('excel-upload-input').addEventListener('change', function(event) {
+  const file = event.target.files[0];
+  if (file) processExcelFile(file);
+  event.target.value = '';
+});
+
+async function processExcelFile(file) {
+  if (!isAdmin) { toast('請先登入才能上傳座位表', 'ter'); return; }
+  if (!PROJECT_ID || PROJECT_ID === 'EVENT_DEFAULT') {
+    showExcelStatus('❌ 請先選擇活動再上傳 Excel', 'err');
+    return;
+  }
+
+  showExcelStatus('解析 Excel 中…', 'info');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheetName = wb.SheetNames.find(n => /\d{4}/.test(n)) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const seatPat = /^[A-Za-z]+\d+-\d+$/;
+    const newAssign = {};
+    const newMaster = {};
+
+    // 自動偵測每列的座位碼，依連續同字母分組來判斷區段範圍
+    function detectZones(row) {
+      const zones = {};
+      let curZone = null, curStart = null;
+      row.forEach((val, col) => {
+        const v = String(val || '').trim();
+        if (seatPat.test(v)) {
+          const z = v.match(/^([A-Za-z]+)/)[1].toUpperCase();
+          if (z !== curZone) {
+            if (curZone) zones[curZone] = [curStart, col];
+            curZone = z; curStart = col;
+          }
+        }
+      });
+      if (curZone) zones[curZone] = [curStart, row.length];
+      return zones;
+    }
+
+    let i = 0;
+    while (i < raw.length) {
+      const row = raw[i].map(v => (v === null || v === undefined) ? '' : String(v).trim());
+      const codes = row.filter(v => seatPat.test(v));
+      if (codes.length >= 3 && i + 1 < raw.length) {
+        const nameRow = raw[i+1].map(v => (v === null || v === undefined) ? '' : String(v).replace(/\s+/g,' ').trim());
+        const zones = detectZones(row);
+        Object.values(zones).forEach(([start, end]) => {
+          for (let col = start; col < end; col++) {
+            const code = row[col] || '';
+            const name = nameRow[col] || '';
+            if (!seatPat.test(code)) continue;
+            newMaster[code] = name;
+            if (name) newAssign[code] = name;
+          }
+        });
+        i += 2;
+      } else {
+        i++;
+      }
+    }
+
+    const totalMaster = Object.keys(newMaster).length;
+    const totalAssign = Object.keys(newAssign).length;
+
+    if (totalMaster === 0) {
+      showExcelStatus('❌ 找不到座位資料，請確認 Excel 格式（座位碼列＋賓客名列）', 'err');
+      return;
+    }
+
+    const ok = confirm(
+      `解析完成（Sheet: ${sheetName}）\n` +
+      `座位格局：${totalMaster} 格\n` +
+      `賓客資料：${totalAssign} 筆\n\n` +
+      `將覆寫「${PROJECT_ID}」的座位結構，確定要執行嗎？`
+    );
+    if (!ok) { showExcelStatus('已取消', 'info'); return; }
+
+    showExcelStatus('寫入 Firebase 中…', 'info');
+    layoutMode = 'grid';
+    sessionStorage.setItem('taitra_layout', 'grid');
+
+    await set(ref(db, PROJECT_ID + '/seats_master2026'), newMaster);
+    await set(ref(db, PROJECT_ID + '/assignments2026'), newAssign);
+    await set(ref(db, PROJECT_ID + '/tags2026'), null);
+    await set(ref(db, PROJECT_ID + '/seats2026'), null);
+
+    showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位`, 'ok');
+    toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
+    document.getElementById('layout-modal-bg').classList.remove('show');
+    refreshAll();
+
+  } catch(e) {
+    console.error(e);
+    showExcelStatus('❌ 錯誤：' + e.message, 'err');
+  }
+}
+
 window.applyLayout = async function() {
     if (!isAdmin) { toast('請先登入才能修改座位架構', 'ter'); return; }
     if(!confirm("⚠️ 警告：這將會直接覆寫該活動的座位結構！\n\n確定要執行嗎？")) return;
