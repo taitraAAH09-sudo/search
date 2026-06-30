@@ -597,6 +597,7 @@ const dtt=document.getElementById('dtt');
 
 function setSyncStatus(s){
   const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-lbl');
+  if(!dot||!lbl) return; // 防呆：元素不存在時不執行，避免整個流程中斷
   if(s==='ok'){dot.className='sync-dot';lbl.textContent='已同步';}
   else if(s==='saving'){dot.className='sync-dot saving';lbl.textContent='儲存中...';}
   else{dot.className='sync-dot off';lbl.textContent='連線失敗';}
