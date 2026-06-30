@@ -1514,8 +1514,8 @@ window.doExport = async function() {
     let curRow = 5;
     for (let r = 1; r <= maxRow.v; r++) {
         const codeRowIdx = curRow, nameRowIdx = curRow + 1;
-        ws.getRow(codeRowIdx).height = 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 17 : 90;
+        ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
+        ws.getRow(nameRowIdx).height = useVertical ? 170 : 90;
 
         // 排號標示在最左欄（對齊姓名列）
         const rowLabelCell = ws.getCell(nameRowIdx, 1);
