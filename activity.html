@@ -288,7 +288,7 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
       </div>
     </div>
 
-    <button class="btn btn-primary" id="btn-layout-apply" style="width:100%; padding:12px; font-size:14px;">套用並寫入資料庫</button>
+    <button class="btn btn-primary" id="btn-layout-apply" onclick="applyLayout()" style="width:100%; padding:12px; font-size:14px;">套用並寫入資料庫</button>
     <button class="modal-close" id="btn-layout-close" onclick="document.getElementById('layout-modal-bg').classList.remove('show')">取消</button>
   </div>
 </div>
@@ -935,7 +935,7 @@ window.toggleOccupied=function(){
 };
 
 // ── ⚙️ 架構設定 Modal 專屬邏輯 ──
-document.getElementById('btn-layout-apply').addEventListener('click', async () => {
+window.applyLayout = async function() {
     if (!isAdmin) { toast('請先登入才能修改座位架構', 'ter'); return; }
     if(!confirm("⚠️ 警告：這將會直接覆寫該活動的座位結構！\n\n確定要執行嗎？")) return;
     
@@ -994,7 +994,7 @@ document.getElementById('btn-layout-apply').addEventListener('click', async () =
         setSyncStatus('error');
         toast('架構更新失敗，請檢查網路。', 'ter');
     }
-});
+};
 
 function refreshAll(){renderSeats();updateStats();renderChips();}
 function renderSeats(){
@@ -1254,5 +1254,6 @@ window.addEventListener('resize', () => {
     }, 200);
 });
 </script>
+</div><!-- /main-content -->
 </body>
 </html>
