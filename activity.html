@@ -41,7 +41,7 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .stage{text-align:center;font-size:11px;color:#9CA3AF;letter-spacing:2px;border:0.5px solid #E5E7EB;border-radius:6px;padding:4px;margin-bottom:.6rem;}
 
 /* ── 方陣專屬樣式 ── */
-.zone-header-row{display:flex;margin-bottom:4px;padding-left:26px;width:100%;}
+.zone-header-row{display:flex;margin-bottom:4px;width:100%;}
 .zh{text-align:center;font-size:10px;font-weight:600;padding:2px 0;border-radius:4px;}
 .zh-a{color:#185FA5;background:#DBEAFE;}
 .zh-b{color:#065F46;background:#D1FAE5;}
@@ -358,6 +358,8 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
     <button class="btn" id="btn-login" onclick="handleAuth()" style="border-color:#FCA5A5;color:#B91C1C;background:#FEF2F2;">🔒 登入</button>
     <button class="btn btn-setting admin-only" id="btn-setting" style="display:none;" onclick="document.getElementById('layout-modal-bg').classList.add('show')">⚙️ 架構設定</button>
     <button class="btn btn-ex" id="exbtn" onclick="doExport()">⬇ 匯出 XLSX</button>
+    <button class="btn" id="btn-lookup" onclick="openLookup()"
+      style="border-color:#1A6B4A;color:#1A6B4A;background:#E8F5EE;display:none;">🔍 手機查詢</button>
     <button class="btn btn-rst admin-only" style="display:none;" onclick="doReset()">⚠️ 徹底重置</button>
   </div>
 </div>
@@ -530,6 +532,7 @@ window.confirmEventSelect = async function() {
 
   document.getElementById('event-select-bg').style.display = 'none';
   document.getElementById('btn-switch-event').style.display = '';
+  document.getElementById('btn-lookup').style.display = '';
   document.getElementById('landing-page').style.display = 'none';
   document.getElementById('main-content').style.display = '';
 
@@ -851,6 +854,20 @@ function buildGridVenue(keys, wrap) {
         });
         wrap.appendChild(row);
     }
+
+    // ── 渲染後校正：用第一排實際座位寬度覆寫標題寬度，徹底消除累積誤差 ──
+    requestAnimationFrame(() => {
+        const firstRow = wrap.querySelector('.vrow');
+        if (!firstRow) return;
+        const zoneDivs = firstRow.querySelectorAll('.vzone');
+        const hdrCells = wrap.querySelectorAll('.zone-header-row .zh');
+        zoneDivs.forEach((zd, i) => {
+            if (hdrCells[i]) {
+                const realWidth = zd.getBoundingClientRect().width;
+                hdrCells[i].style.width = realWidth + 'px';
+            }
+        });
+    });
 }
 
 function attachSeatEvents(el, code) {
@@ -973,6 +990,15 @@ window.toggleOccupied=function(){
 
 // ── ⚙️ 架構設定 Modal 專屬邏輯 ──
 // ── 分頁切換 ──
+window.openLookup = function() {
+  if (!PROJECT_ID || PROJECT_ID === 'EVENT_DEFAULT') {
+    toast('請先選擇活動', 'ter');
+    return;
+  }
+  const url = 'lookup_dynamic.html?event=' + encodeURIComponent(PROJECT_ID);
+  window.open(url, '_blank');
+};
+
 window.switchLayoutTab = function(tab) {
   const manualBtn = document.getElementById('tab-manual-btn');
   const excelBtn = document.getElementById('tab-excel-btn');
