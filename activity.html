@@ -1106,6 +1106,36 @@ async function processExcelFile(file) {
       });
     }
 
+    // ── 格式 C：中文座位碼（左1A / 右3B…座位碼列 + 賓客名列交錯）──
+    // 轉換成系統通用格式：左→Z（A區）、右→Y（B區），數字=欄位，字母排號轉成排數
+    // 例：左1A → ZA1-1，右3B → YB1-3（A/B/C/D/E 排號轉成區域字母尾碼，確保不與其他活動衝突）
+    const cnSeatPat = /^([左右])(\d+)([A-Za-z])$/;
+    if (Object.keys(newMaster).length === 0) {
+      let ci = 0;
+      while (ci < raw.length) {
+        const row = raw[ci].map(v => (v === null || v === undefined) ? '' : String(v).trim());
+        const cnCodes = row.filter(v => cnSeatPat.test(v));
+        if (cnCodes.length >= 3 && ci + 1 < raw.length) {
+          const nameRow = raw[ci+1].map(v => (v === null || v === undefined) ? '' : String(v).replace(/\s+/g,' ').trim());
+          row.forEach((origCode, col) => {
+            const m = origCode.match(cnSeatPat);
+            if (!m) return;
+            const [, side, seatNum, rowLetter] = m;
+            // 左→A區，右→B區；rowLetter(A/B/C/D/E) 轉成排數(1/2/3/4/5)；seatNum 是該排內的座位序號
+            const zoneCode = (side === '左' ? 'A' : 'B');
+            const rowIdx = rowLetter.charCodeAt(0) - 64; // A=1, B=2, C=3...
+            const code = `${zoneCode}${rowIdx}-${seatNum}`; // 例：A1-1（左1A）、B3-5（右5C）
+            const name = nameRow[col] || '';
+            newMaster[code] = name;
+            if (name) newAssign[code] = name;
+          });
+          ci += 2;
+        } else {
+          ci++;
+        }
+      }
+    }
+
     const totalMaster = Object.keys(newMaster).length;
     const totalAssign = Object.keys(newAssign).length;
     const totalTags = Object.keys(newTags).length;
