@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>座位查詢</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --white: #FFFFFF; --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #8A8A8A;
+  --rule: #E0DDD8; --accent: #1B4F8A; --accent-light: #EBF1F9;
+  --green: #1A6B4A; --green-light: #E8F5EE;
+  --gold: #8B6914; --gold-light: #FBF5E6;
+  --red: #B33A2A;
+}
+body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+
+.header { background:var(--accent); padding:20px 20px 16px; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,0.15); }
+.header-tag { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:2px; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-bottom:4px; }
+.header-title { font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; word-break:break-all; }
+.conn-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; }
+.conn-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); transition:background .3s; }
+.conn-dot.ok { background:#4ADE80; } .conn-dot.err { background:#F87171; }
+.conn-lbl { font-family:"DM Mono",monospace; font-size:10px; color:rgba(255,255,255,0.6); }
+
+.search-wrap { position:relative; }
+.search-input { width:100%; padding:13px 44px; border-radius:10px; border:none; background:rgba(255,255,255,0.15); color:#fff; font-size:16px; font-family:"Noto Serif TC",serif; outline:none; transition:background .2s; }
+.search-input::placeholder { color:rgba(255,255,255,0.45); }
+.search-input:focus { background:rgba(255,255,255,0.22); }
+.s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
+.clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
+.clear-btn.show { display:flex; }
+
+.stats-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:14px 16px; background:var(--white); border-bottom:1px solid var(--rule); }
+@media(min-width:480px){ .stats-bar { grid-template-columns:repeat(4,1fr); } }
+.stat { background:var(--bg); border-radius:10px; padding:10px 12px; text-align:center; border:1px solid var(--rule); }
+.stat-num { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; }
+.stat-lbl { font-size:10px; color:var(--ink-3); margin-top:1px; }
+
+.hint { padding:48px 20px; text-align:center; color:var(--ink-3); font-size:14px; line-height:1.8; }
+.hint-icon { font-size:42px; margin-bottom:12px; }
+
+.result-count { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); padding:12px 16px 6px; }
+.result-list { padding:0 16px 32px; display:flex; flex-direction:column; gap:10px; }
+
+.result-card { background:var(--white); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.06); border:1px solid var(--rule); animation:slideIn .18s ease; }
+.result-card.is-checked { opacity:0.55; }
+@keyframes slideIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;} }
+
+.seat-badge { flex-shrink:0; width:56px; height:56px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.badge-blue { background:var(--accent-light); } .badge-blue .badge-zone { color:var(--accent); }
+.badge-green { background:var(--green-light); } .badge-green .badge-zone { color:var(--green); }
+.badge-gold { background:var(--gold-light); } .badge-gold .badge-zone { color:var(--gold); }
+.badge-zone { font-family:"DM Mono",monospace; font-size:13px; font-weight:700; line-height:1.2; text-align:center; }
+.badge-seat { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+
+.card-info { flex:1; min-width:0; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
+.card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
+.card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
+.card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+
+.checkin-btn { flex-shrink:0; padding:8px 12px; border-radius:8px; border:1.5px solid var(--green); background:var(--green-light); color:var(--green); font-size:12px; font-weight:700; cursor:pointer; font-family:"Noto Serif TC",serif; white-space:nowrap; transition:all .15s; }
+.checkin-btn:hover { background:var(--green); color:#fff; }
+.checkin-btn.done { background:#D1FAE5; border-color:#6EE7B7; color:#065F46; cursor:default; }
+
+.no-result { padding:40px 20px; text-align:center; color:var(--ink-3); font-size:14px; }
+.error-box { padding:60px 24px; text-align:center; }
+.error-icon { font-size:48px; margin-bottom:16px; }
+.error-title { font-size:16px; font-weight:700; color:var(--red); margin-bottom:8px; }
+.error-msg { font-size:13px; color:var(--ink-3); line-height:1.7; }
+
+.footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">TAITRA · Event Lookup</div>
+  <div class="header-title" id="event-title">座位查詢系統</div>
+  <div class="conn-row">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="conn-lbl" id="conn-lbl">連線中…</div>
+  </div>
+  <div class="search-wrap">
+    <span class="s-icon">🔍</span>
+    <input type="text" class="search-input" id="search"
+      placeholder="搜尋姓名、單位或座位編號…"
+      oninput="doSearch()" autocomplete="off" />
+    <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat">
+    <div class="stat-num" id="st-checkin" style="color:var(--green);">0%</div>
+    <div class="stat-lbl">整體報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-ceremony" style="color:#E11D48;">0%</div>
+    <div class="stat-lbl">合影貴賓報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
+    <div class="stat-lbl">空位數</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-total" style="color:var(--accent);">0</div>
+    <div class="stat-lbl">總席數</div>
+  </div>
+</div>
+
+<div id="main">
+  <div class="hint"><div class="hint-icon">⏳</div><div>載入資料中…</div></div>
+</div>
+
+<div class="footer" id="footer">TAITRA · 座位查詢系統</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,onValue}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const fb=initializeApp({
+  apiKey:"AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
+  authDomain:"taitra-table.firebaseapp.com",
+  databaseURL:"https://taitra-table-default-rtdb.firebaseio.com",
+  projectId:"taitra-table",
+  storageBucket:"taitra-table.firebasestorage.app",
+  messagingSenderId:"802855818617",
+  appId:"1:802855818617:web:b7cf3b45e13b70ae660ba8"
+},'lookup-dynamic');
+
+const db=getDatabase(fb);
+const DB_URL="https://taitra-table-default-rtdb.firebaseio.com";
+
+// 從網址讀取活動代碼：?event=EVENT_xxx
+const params=new URLSearchParams(window.location.search);
+const PROJECT_ID=params.get('event');
+
+if(!PROJECT_ID){
+  document.getElementById('main').innerHTML=`
+    <div class="error-box">
+      <div class="error-icon">🔗</div>
+      <div class="error-title">缺少活動參數</div>
+      <div class="error-msg">請從前台系統點擊「🔍 手機查詢」按鈕進入，<br>或確認網址包含 ?event=活動代碼</div>
+    </div>`;
+  document.getElementById('conn-lbl').textContent='等待活動參數';
+  throw new Error('No event param');
+}
+
+document.getElementById('event-title').textContent = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ');
+document.title = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ') + ' · 座位查詢';
+
+let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={};
+let loaded=false;
+
+function setConn(ok){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-lbl');
+  if(ok){dot.className='conn-dot ok';lbl.textContent='已連線 · 即時同步';}
+  else{dot.className='conn-dot err';lbl.textContent='連線失敗';}
+}
+
+function updateStats(){
+  const total=Object.keys(DATA).length;
+  const filled=Object.values(DATA).filter(v=>v).length;
+  const checkinCount=Object.keys(CHECKINS).length;
+  const empty=total-filled;
+
+  const ceremonySeats=Object.keys(TAGS).filter(c=>TAGS[c]==='ceremony'||TAGS[c]==='photo');
+  const ceremonyCheckin=ceremonySeats.filter(c=>CHECKINS[c]).length;
+  const ceremonyTotal=ceremonySeats.length;
+
+  const checkinPct=filled>0?Math.round(checkinCount/filled*100):0;
+  const ceremonyPct=ceremonyTotal>0?Math.round(ceremonyCheckin/ceremonyTotal*100):0;
+
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-empty').textContent=empty;
+  document.getElementById('st-checkin').textContent=checkinPct+'%';
+  document.getElementById('st-checkin-sub').textContent=checkinCount+' / '+filled;
+  document.getElementById('st-ceremony').textContent=ceremonyPct+'%';
+  document.getElementById('st-ceremony-sub').textContent=ceremonyCheckin+' / '+ceremonyTotal;
+  document.getElementById('stats-bar').style.display='';
+
+  const now=new Date();
+  document.getElementById('footer').textContent=
+    PROJECT_ID+' · 最後同步 '+
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
+
+onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
+  DATA={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>DATA[c]=n||'');
+  if(loaded){ updateStats(); doSearch(); }
+},()=>setConn(false));
+
+onValue(ref(db,PROJECT_ID+'/assignments2026'),snap=>{
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+  if(loaded){ updateStats(); doSearch(); }
+});
+
+onValue(ref(db,PROJECT_ID+'/tags2026'),snap=>{
+  TAGS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,t])=>{ TAGS[c]=t; });
+  if(loaded) updateStats();
+});
+
+onValue(ref(db,PROJECT_ID+'/table_names2026'),snap=>{
+  TABLE_NAMES={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ TABLE_NAMES[c]=v; });
+  if(loaded) doSearch();
+});
+
+onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
+  CHECKINS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ CHECKINS[c]=v; });
+  loaded=true;
+  setConn(true);
+  updateStats();
+  doSearch();
+},()=>{
+  loaded=true;
+  setConn(false);
+});
+
+function parseSeatCode(code){
+  // 主桌：H1-3（自訂名稱優先）
+  const mh=code.match(/^(H\\d+)-(\\d+)$/);
+  if(mh){
+    const [,tCode,seat]=mh;
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\\.+$/,'').trim():null;
+    const tableLabel=customName?`第 ${customName} 桌`:'主桌';
+    const badgeLabel=customName?`第${customName}桌`:'主桌';
+    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
+  }
+  // 圓桌：R1_T2-5（用自訂桌名顯示）
+  const m=code.match(/^R(\\d+)_T(\\d+)-(\\d+)$/);
+  if(m){
+    const [,row,table,seat]=m;
+    const tCode=code.split('-')[0];
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\\.+$/,'').trim():null;
+    const tableLabel=customName?`第 ${customName} 桌`:`第 ${table} 桌`;
+    const badgeLabel=customName?`第${customName}桌`:`第${table}桌`;
+    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
+  }
+  // 方陣：A1-3
+  const m2=code.match(/^([A-Za-z]+)(\\d+)-(\\d+)$/);
+  if(m2){
+    const [,zone,row,seat]=m2;
+    return { detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:zone, badgeBot:`${row}排${seat}席`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
+  }
+  return { detail:code, badgeTop:code, badgeBot:'', color:'blue' };
+}
+
+window.doSearch=function(){
+  const kw=(document.getElementById('search').value||'').trim();
+  document.getElementById('clear-btn').classList.toggle('show',kw.length>0);
+  const main=document.getElementById('main');
+
+  if(!loaded) return;
+
+  if(!kw){
+    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>輸入姓名、單位或座位編號<br>即可查詢</div></div>';
+    return;
+  }
+
+  const kwL=kw.toLowerCase();
+  const results=Object.entries(DATA).filter(([code,name])=>
+    code.toLowerCase().includes(kwL)||(name&&name.toLowerCase().includes(kwL))
+  );
+
+  if(!results.length){
+    main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
+    return;
+  }
+
+  const kwE=kw.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
+  const re=new RegExp(`(${kwE})`,'gi');
+
+  let html=`<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
+  results.forEach(([code,name])=>{
+    const p=parseSeatCode(code);
+    const hn=name?name.replace(re,'<mark>$1</mark>'):'（空位）';
+    const hc=code.replace(re,'<mark>$1</mark>');
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
+      <div class="seat-badge badge-${p.color}">
+        <div class="badge-zone">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${hn}</div>
+        <div class="card-seat">座位編號：${hc}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+      <button class="checkin-btn ${CHECKINS[code]?'done':''}"
+        onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
+        ${CHECKINS[code]?'✅ 已報到':'報到'}
+      </button>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+};
+
+window.toggleCheckin=async function(code, checkIn){
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${code}.json`;
+  if(checkIn){
+    await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({time,name:DATA[code]||''})});
+  }else{
+    await fetch(url,{method:'DELETE'});
+  }
+};
+
+window.clearSearch=function(){
+  document.getElementById('search').value='';
+  document.getElementById('clear-btn').classList.remove('show');
+  doSearch();
+  document.getElementById('search').focus();
+};
+</script>
+</body>
+</html>
