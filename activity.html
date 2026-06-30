@@ -72,7 +72,7 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .sh.filled { background: #F59E0B; border-color: #B45309; color: #fff; cursor: grab; }
 
 /* ── 座位共用樣式 ── */
-.seat{height:34px;border-radius:4px;cursor:pointer;font-size:8px;line-height:1.15;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:1px;white-space:normal;word-break:break-all;-webkit-transform:translateZ(0);transform:translateZ(0);}
+.seat{height:40px;border-radius:4px;cursor:pointer;font-size:8px;line-height:1.15;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:1px;white-space:normal;word-break:break-all;-webkit-transform:translateZ(0);transform:translateZ(0);}
 .seat:hover{transform:scale(1.15) translateZ(0);z-index:2;position:relative;}
 .sa{background:#E6F1FB;border-color:#85B7EB;color:#185FA5;}
 .sb{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
@@ -1263,8 +1263,8 @@ function renderSeats(){
     else if(g) el.classList.add('filled');
     el.draggable=!!(g||occ);
     
-    if(layoutMode === 'round') el.textContent = occ?'占':g?(g.trim().slice(0,3)||'?'): code.split('-')[1];
-    else el.textContent = occ?'占':g?(g.trim().slice(0,3)||'?'):'';
+    if(layoutMode === 'round') el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'): code.split('-')[1];
+    else el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'):'';
     el.title=code+(occ?' — 佔用':g?' — '+g:'');
   });
 }
@@ -1378,7 +1378,12 @@ window.doReset = async function() {
   }
 };
 
-window.doExport = function() {
+window.doExport = function(vertical) {
+    if (vertical === undefined) {
+        const choice = confirm('文字方向：\n\n確定＝直書（適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀）');
+        return window.doExport(choice);
+    }
+    const isVertical = vertical;
     const keys = Object.keys(seatMap).sort((a, b) => {
         const pa = a.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
         const pb = b.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
@@ -1517,6 +1522,9 @@ window.doExport = function() {
     }
 
     // 資料區樣式
+    const nameAlignment = isVertical
+        ? { horizontal:'center', vertical:'center', wrapText:true, textRotation:255 } // 255 = 直書（由上至下）
+        : { horizontal:'center', vertical:'top', wrapText:true };
     for (let r = 1; r <= maxRow.v; r++) {
         const nameRowIdx = 4 + (r-1)*2;      // 0-indexed row in sheet
         const codeRowIdx = nameRowIdx + 1;
@@ -1524,7 +1532,7 @@ window.doExport = function() {
             const nameAddr = colLetter(c) + (nameRowIdx+1);
             const codeAddr = colLetter(c) + (codeRowIdx+1);
             if (ws[nameAddr] !== undefined || c < totalCols) {
-                setStyle(nameAddr, { font:{name:'微軟正黑體',sz:14,bold:true}, fill:{fgColor:{rgb:C_NAME_BG}}, alignment:{horizontal:'center',vertical:'top',wrapText:true}, border:{top:{style:'hair'}} });
+                setStyle(nameAddr, { font:{name:'微軟正黑體',sz:14,bold:true}, fill:{fgColor:{rgb:C_NAME_BG}}, alignment:nameAlignment, border:{top:{style:'hair'}} });
                 setStyle(codeAddr, { font:{name:'Arial',sz:12,bold:true}, fill:{fgColor:{rgb:C_CODE_BG}}, alignment:{horizontal:'center'} });
             }
         }
@@ -1532,12 +1540,14 @@ window.doExport = function() {
 
     // 欄寬
     const cols = [{ wch: 4 }];
-    zones.forEach(z => { for (let s=0; s<maxSeatPerZone[z]; s++) cols.push({ wch: 19 }); cols.push({ wch: 2 }); });
+    const seatColWidth = isVertical ? 9 : 19;
+    zones.forEach(z => { for (let s=0; s<maxSeatPerZone[z]; s++) cols.push({ wch: seatColWidth }); cols.push({ wch: 2 }); });
     ws['!cols'] = cols;
 
     // 列高
     const rows = [{ hpt: 40 }, { hpt: 8 }, { hpt: 24 }, { hpt: 16 }];
-    for (let r = 1; r <= maxRow.v; r++) { rows.push({ hpt: 100 }); rows.push({ hpt: 14 }); }
+    const nameRowHeight = isVertical ? 170 : 100;
+    for (let r = 1; r <= maxRow.v; r++) { rows.push({ hpt: nameRowHeight }); rows.push({ hpt: 14 }); }
     ws['!rows'] = rows;
 
     XLSX.utils.book_append_sheet(wb, ws, '席次圖');
