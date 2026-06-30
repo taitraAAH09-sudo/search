@@ -1464,10 +1464,14 @@ window.doExport = async function() {
 
     const ws = wb.addWorksheet('席次圖');
 
+    // 詢問是否使用直書（會影響欄寬、列高與姓名文字方向）
+    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（逐字由上往下排列，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
+    const seatColWidth = useVertical ? 11 : 16;
+
     // 欄寬
     ws.getColumn(1).width = 5;
     zones.forEach(z => {
-        for (let s = 0; s < maxSeatPerZone[z]; s++) ws.getColumn(colStarts[z] + s).width = 16;
+        for (let s = 0; s < maxSeatPerZone[z]; s++) ws.getColumn(colStarts[z] + s).width = seatColWidth;
         ws.getColumn(colStarts[z] + maxSeatPerZone[z]).width = 2; // 區與區之間的空欄
     });
 
@@ -1506,15 +1510,12 @@ window.doExport = async function() {
     });
     ws.getRow(4).height = 16;
 
-    // 詢問是否使用直書（僅影響姓名儲存格的文字方向）
-    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（逐字由上往下排列，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
-
     // 資料區：每排兩列（座位碼列在上、姓名列在下）
     let curRow = 5;
     for (let r = 1; r <= maxRow.v; r++) {
         const codeRowIdx = curRow, nameRowIdx = curRow + 1;
         ws.getRow(codeRowIdx).height = 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 130 : 90;
+        ws.getRow(nameRowIdx).height = useVertical ? 17 : 90;
 
         // 排號標示在最左欄（對齊姓名列）
         const rowLabelCell = ws.getCell(nameRowIdx, 1);
@@ -1538,7 +1539,7 @@ window.doExport = async function() {
                 const name = asgn[code] || '';
                 const nameCell = ws.getCell(nameRowIdx, col);
                 nameCell.value = name;
-                nameCell.font = { name:'微軟正黑體', size:13, bold:true };
+                nameCell.font = { name: useVertical ? '@微軟正黑體' : '微軟正黑體', size:13, bold:true };
                 nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
                 nameCell.alignment = useVertical
                     ? { horizontal:'center', vertical:'middle', wrapText:true, textRotation:'vertical' }
