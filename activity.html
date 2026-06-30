@@ -1378,12 +1378,7 @@ window.doReset = async function() {
   }
 };
 
-window.doExport = function(vertical) {
-    if (vertical === undefined) {
-        const choice = confirm('文字方向：\n\n確定＝直書（適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀）');
-        return window.doExport(choice);
-    }
-    const isVertical = vertical;
+window.doExport = function() {
     const keys = Object.keys(seatMap).sort((a, b) => {
         const pa = a.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
         const pb = b.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
@@ -1469,21 +1464,21 @@ window.doExport = function(vertical) {
     zones.forEach(z => { for (let s = 1; s <= maxSeatPerZone[z]; s++) colNumRow[colStarts[z]+s-1] = s; });
     aoa.push(colNumRow);
 
-    // 資料區：每排兩列（姓名列 + 座位碼列）
+    // 資料區：每排兩列（座位碼列在上 + 姓名列在下）
     for (let r = 1; r <= maxRow.v; r++) {
-        const nameRow = new Array(totalCols).fill('');
         const codeRow = new Array(totalCols).fill('');
-        nameRow[0] = r;
+        const nameRow = new Array(totalCols).fill('');
+        codeRow[0] = r;
         zones.forEach(z => {
             for (let s = 1; s <= maxSeatPerZone[z]; s++) {
                 const code = `${z}${r}-${s}`;
                 const col = colStarts[z] + s - 1;
-                nameRow[col] = asgn[code] || '';
                 codeRow[col] = keys.includes(code) ? code : '';
+                nameRow[col] = asgn[code] || '';
             }
         });
-        aoa.push(nameRow);
         aoa.push(codeRow);
+        aoa.push(nameRow);
     }
 
     const wb = XLSX.utils.book_new();
@@ -1491,10 +1486,18 @@ window.doExport = function(vertical) {
 
     // ── 樣式設定 ──
     const C_TITLE_BG = 'FF132742', C_TITLE_FG = 'FFFFFFFF';
-    const C_ZONE_BG  = 'FF1D5EA8', C_ZONE_FG  = 'FFFFFFFF';
-    const C_COLNUM_BG= 'FFD4E6F8';
-    const C_NAME_BG  = 'FFD4E6F8';
-    const C_CODE_BG  = 'FFEBF4FF';
+    const C_COLNUM_BG= 'FF1D5EA8'; // 深藍底
+    const C_COLNUM_FG= 'FFFFFFFF';
+    // 每個區塊輪流套用一組底色（座位碼底色較深、姓名底色較淺），模仿範例的交替視覺
+    const ZONE_PALETTE = [
+        { code:'FFD4E6F8', name:'FFE8F1FB' }, // 淺藍
+        { code:'FFD9EAD3', name:'FFEAF4E5' }, // 淺綠
+        { code:'FFFFF2CC', name:'FFFFF9E0' }, // 淺黃
+        { code:'FFF4CCCC', name:'FFFAE5E5' }, // 淺紅
+        { code:'FFE6D9F2', name:'FFF0E8FA' }, // 淺紫
+    ];
+    const zoneColorMap = {};
+    zones.forEach((z, i) => { zoneColorMap[z] = ZONE_PALETTE[i % ZONE_PALETTE.length]; });
 
     function setStyle(addr, style) {
         if (!ws[addr]) ws[addr] = { t: 's', v: '' };
@@ -1507,47 +1510,46 @@ window.doExport = function(vertical) {
     ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
     setStyle('A1', { font: { name:'Arial', sz:17, bold:true, color:{rgb:C_TITLE_FG} }, fill:{fgColor:{rgb:C_TITLE_BG}}, alignment:{horizontal:'center',vertical:'center'} });
 
-    // 區塊標頭樣式 + 合併
+    // 區塊標頭樣式 + 合併（依區塊套用對應色系）
     zones.forEach(z => {
         const startCol = colStarts[z], endCol = colStarts[z] + maxSeatPerZone[z] - 1;
         ws['!merges'].push({ s: { r: 2, c: startCol }, e: { r: 2, c: endCol } });
         const addr = colLetter(startCol) + '3';
-        setStyle(addr, { font:{name:'Arial',sz:11,bold:true,color:{rgb:C_ZONE_FG}}, fill:{fgColor:{rgb:C_ZONE_BG}}, alignment:{horizontal:'center'} });
+        const zoneCode = zoneColorMap[z].code;
+        setStyle(addr, { font:{name:'Arial',sz:11,bold:true,color:{rgb:'FFFFFFFF'}}, fill:{fgColor:{rgb:zoneCode}}, alignment:{horizontal:'center'} });
     });
 
-    // 欄號列樣式
+    // 欄號列樣式（深色底白字，標示 1/2/3...）
     for (let c = 1; c < totalCols; c++) {
         const addr = colLetter(c) + '4';
-        if (colNumRow[c] !== '') setStyle(addr, { font:{name:'Arial',sz:9,bold:true}, fill:{fgColor:{rgb:C_COLNUM_BG}}, alignment:{horizontal:'center'} });
+        if (colNumRow[c] !== '') setStyle(addr, { font:{name:'Arial',sz:10,bold:true,color:{rgb:C_COLNUM_FG}}, fill:{fgColor:{rgb:C_COLNUM_BG}}, alignment:{horizontal:'center'} });
     }
 
-    // 資料區樣式
-    const nameAlignment = isVertical
-        ? { horizontal:'center', vertical:'center', wrapText:true, textRotation:255 } // 255 = 直書（由上至下）
-        : { horizontal:'center', vertical:'top', wrapText:true };
+    // 資料區樣式：座位碼列在上（小字、淺底）、姓名列在下（粗體大字、依區塊交替色、自動換行）
     for (let r = 1; r <= maxRow.v; r++) {
-        const nameRowIdx = 4 + (r-1)*2;      // 0-indexed row in sheet
-        const codeRowIdx = nameRowIdx + 1;
-        for (let c = 1; c < totalCols; c++) {
-            const nameAddr = colLetter(c) + (nameRowIdx+1);
-            const codeAddr = colLetter(c) + (codeRowIdx+1);
-            if (ws[nameAddr] !== undefined || c < totalCols) {
-                setStyle(nameAddr, { font:{name:'微軟正黑體',sz:14,bold:true}, fill:{fgColor:{rgb:C_NAME_BG}}, alignment:nameAlignment, border:{top:{style:'hair'}} });
-                setStyle(codeAddr, { font:{name:'Arial',sz:12,bold:true}, fill:{fgColor:{rgb:C_CODE_BG}}, alignment:{horizontal:'center'} });
+        const codeRowIdx = 4 + (r-1)*2;      // 0-indexed row in sheet
+        const nameRowIdx = codeRowIdx + 1;
+        zones.forEach(z => {
+            const palette = zoneColorMap[z];
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const col = colStarts[z] + s - 1;
+                const codeAddr = colLetter(col) + (codeRowIdx+1);
+                const nameAddr = colLetter(col) + (nameRowIdx+1);
+                setStyle(codeAddr, { font:{name:'Arial',sz:10,bold:true}, fill:{fgColor:{rgb:palette.code}}, alignment:{horizontal:'center'}, border:{top:{style:'medium',color:{rgb:'FFFFFFFF'}}} });
+                setStyle(nameAddr, { font:{name:'微軟正黑體',sz:13,bold:true}, fill:{fgColor:{rgb:palette.name}}, alignment:{horizontal:'center',vertical:'center',wrapText:true} });
             }
-        }
+        });
     }
 
     // 欄寬
     const cols = [{ wch: 4 }];
-    const seatColWidth = isVertical ? 9 : 19;
-    zones.forEach(z => { for (let s=0; s<maxSeatPerZone[z]; s++) cols.push({ wch: seatColWidth }); cols.push({ wch: 2 }); });
+    zones.forEach(z => { for (let s=0; s<maxSeatPerZone[z]; s++) cols.push({ wch: 18 }); cols.push({ wch: 2 }); });
     ws['!cols'] = cols;
 
     // 列高
     const rows = [{ hpt: 40 }, { hpt: 8 }, { hpt: 24 }, { hpt: 16 }];
-    const nameRowHeight = isVertical ? 170 : 100;
-    for (let r = 1; r <= maxRow.v; r++) { rows.push({ hpt: nameRowHeight }); rows.push({ hpt: 14 }); }
+    // 座位碼列矮、姓名列高（容納多行粗體文字）
+    for (let r = 1; r <= maxRow.v; r++) { rows.push({ hpt: 18 }); rows.push({ hpt: 90 }); }
     ws['!rows'] = rows;
 
     XLSX.utils.book_append_sheet(wb, ws, '席次圖');
