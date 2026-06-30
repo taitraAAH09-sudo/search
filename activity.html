@@ -1435,7 +1435,7 @@ window.doExport = async function() {
         return;
     }
 
-    // ── 方陣模式：產生視覺化美化排版（座位碼列在上、姓名列在下、依區塊交替色、姓名可選直書）──
+    // ── 方陣模式 ──
     const zoneSet = new Set(), maxSeatPerZone = {}, maxRow = { v: 0 };
     keys.forEach(k => {
         const m = k.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
@@ -1448,105 +1448,218 @@ window.doExport = async function() {
     const zones = Array.from(zoneSet).sort();
     const zoneNames = { A: 'A 區（左）', B: 'B 區（中）', C: 'C 區（右）', D: 'D 區', E: 'E 區' };
 
-    let colStarts = {}, curCol = 2; // ExcelJS 欄位從 1 開始，第1欄留給排號
-    zones.forEach(z => { colStarts[z] = curCol; curCol += maxSeatPerZone[z] + 1; });
-    const totalCols = curCol - 1;
-
     const ZONE_PALETTE = [
-        { code:'FFD4E6F8', name:'FFE8F1FB', zone:'FF1D5EA8' }, // 淺藍
-        { code:'FFD9EAD3', name:'FFEAF4E5', zone:'FF4A8C3F' }, // 淺綠
-        { code:'FFFFF2CC', name:'FFFFF9E0', zone:'FFB8960C' }, // 淺黃
-        { code:'FFF4CCCC', name:'FFFAE5E5', zone:'FFB23B3B' }, // 淺紅
-        { code:'FFE6D9F2', name:'FFF0E8FA', zone:'FF7A4FB5' }, // 淺紫
+        { code:'FFD4E6F8', name:'FFE8F1FB', zone:'FF1D5EA8' },
+        { code:'FFD9EAD3', name:'FFEAF4E5', zone:'FF4A8C3F' },
+        { code:'FFFFF2CC', name:'FFFFF9E0', zone:'FFB8960C' },
+        { code:'FFF4CCCC', name:'FFFAE5E5', zone:'FFB23B3B' },
+        { code:'FFE6D9F2', name:'FFF0E8FA', zone:'FF7A4FB5' },
     ];
     const zoneColorMap = {};
     zones.forEach((z, i) => { zoneColorMap[z] = ZONE_PALETTE[i % ZONE_PALETTE.length]; });
 
     const ws = wb.addWorksheet('席次圖');
 
-    // 詢問是否使用直書（會影響欄寬、列高與姓名文字方向）
-    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（逐字由上往下排列，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
-    const seatColWidth = useVertical ? 11 : 16;
+    // 詢問是否使用直書（直書模式：每個座位佔兩欄，機構名稱 + 姓名職稱逐字垂直排列並排）
+    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（機構名稱與姓名職稱逐字垂直排列，左右並排，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
 
-    // 欄寬
-    ws.getColumn(1).width = 5;
-    zones.forEach(z => {
-        for (let s = 0; s < maxSeatPerZone[z]; s++) ws.getColumn(colStarts[z] + s).width = seatColWidth;
-        ws.getColumn(colStarts[z] + maxSeatPerZone[z]).width = 2; // 區與區之間的空欄
-    });
-
-    // Row 1: 標題
-    ws.mergeCells(1, 1, 1, totalCols);
-    const titleCell = ws.getCell(1, 1);
-    titleCell.value = eventName + ' 席次圖';
-    titleCell.font = { name:'Arial', size:17, bold:true, color:{argb:'FFFFFFFF'} };
-    titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF132742'} };
-    titleCell.alignment = { horizontal:'center', vertical:'middle' };
-    ws.getRow(1).height = 40;
-
-    ws.getRow(2).height = 8; // 空行
-
-    // Row 3: 區塊標頭
-    zones.forEach(z => {
-        const startCol = colStarts[z], endCol = colStarts[z] + maxSeatPerZone[z] - 1;
-        ws.mergeCells(3, startCol, 3, endCol);
-        const cell = ws.getCell(3, startCol);
-        cell.value = zoneNames[z] || (z + ' 區');
-        cell.font = { name:'Arial', size:11, bold:true, color:{argb:'FFFFFFFF'} };
-        cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:zoneColorMap[z].zone} };
-        cell.alignment = { horizontal:'center', vertical:'middle' };
-    });
-    ws.getRow(3).height = 24;
-
-    // Row 4: 欄號
-    zones.forEach(z => {
-        for (let s = 1; s <= maxSeatPerZone[z]; s++) {
-            const cell = ws.getCell(4, colStarts[z] + s - 1);
-            cell.value = s;
-            cell.font = { name:'Arial', size:10, bold:true, color:{argb:'FFFFFFFF'} };
-            cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1D5EA8'} };
-            cell.alignment = { horizontal:'center', vertical:'middle' };
-        }
-    });
-    ws.getRow(4).height = 16;
-
-    // 資料區：每排兩列（座位碼列在上、姓名列在下）
-    let curRow = 5;
-    for (let r = 1; r <= maxRow.v; r++) {
-        const codeRowIdx = curRow, nameRowIdx = curRow + 1;
-        ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 170 : 90;
-
-        // 排號標示在最左欄（對齊姓名列）
-        const rowLabelCell = ws.getCell(nameRowIdx, 1);
-        rowLabelCell.value = r;
-        rowLabelCell.font = { name:'Arial', size:11, bold:true };
-        rowLabelCell.alignment = { horizontal:'center', vertical:'middle' };
-
-        zones.forEach(z => {
-            const palette = zoneColorMap[z];
-            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
-                const col = colStarts[z] + s - 1;
-                const code = `${z}${r}-${s}`;
-                const exists = keys.includes(code);
-
-                const codeCell = ws.getCell(codeRowIdx, col);
-                codeCell.value = exists ? code : '';
-                codeCell.font = { name:'Arial', size:10, bold:true };
-                codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
-                codeCell.alignment = { horizontal:'center', vertical:'middle' };
-
-                const name = asgn[code] || '';
-                const nameCell = ws.getCell(nameRowIdx, col);
-                nameCell.value = name;
-                nameCell.font = { name: useVertical ? '@微軟正黑體' : '微軟正黑體', size:13, bold:true };
-                nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
-                nameCell.alignment = useVertical
-                    ? { horizontal:'center', vertical:'middle', wrapText:true, textRotation:'vertical' }
-                    : { horizontal:'center', vertical:'middle', wrapText:true };
+    // 把一段文字轉成逐字斷行字串，強制 Excel 顯示成單欄逐字往下排列
+    // 中文逐字斷行；英文以空格分隔單字，單字內不斷行（避免大量空白行）
+    function toCharStack(str) {
+        if (!str) return '';
+        const tokens = str.split(' ').filter(t => t.length > 0);
+        const lines = [];
+        tokens.forEach(token => {
+            if (/^[A-Za-z0-9.,'-]+$/.test(token)) {
+                lines.push(token); // 英文/數字單字整體一行
+            } else {
+                Array.from(token).forEach(ch => lines.push(ch)); // 中文逐字
             }
         });
-        curRow += 2;
+        return lines.join('\n');
+    }
+    // 切分機構名稱／姓名職稱：以第一個空格為界
+    function splitOrgName(str) {
+        if (!str) return { org: '', name: '' };
+        const idx = str.indexOf(' ');
+        if (idx < 0) return { org: str, name: '' };
+        return { org: str.slice(0, idx), name: str.slice(idx + 1).trim() };
+    }
+
+    if (useVertical) {
+        // ── 直書模式：每個座位佔兩欄（機構欄 + 姓名欄），座位碼跨欄置頂 ──
+        let colStarts = {}, curCol = 2;
+        // 直書模式下每個座位需要 2 欄空間
+        zones.forEach(z => { colStarts[z] = curCol; curCol += maxSeatPerZone[z] * 2 + 1; });
+        const totalCols = curCol - 1;
+
+        ws.getColumn(1).width = 5;
+        zones.forEach(z => {
+            for (let s = 0; s < maxSeatPerZone[z] * 2; s++) ws.getColumn(colStarts[z] + s).width = 5;
+            ws.getColumn(colStarts[z] + maxSeatPerZone[z] * 2).width = 2;
+        });
+
+        // Row 1: 標題
+        ws.mergeCells(1, 1, 1, totalCols);
+        const titleCell = ws.getCell(1, 1);
+        titleCell.value = eventName + ' 席次圖';
+        titleCell.font = { name:'Arial', size:17, bold:true, color:{argb:'FFFFFFFF'} };
+        titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF132742'} };
+        titleCell.alignment = { horizontal:'center', vertical:'middle' };
+        ws.getRow(1).height = 40;
+        ws.getRow(2).height = 8;
+
+        // Row 3: 區塊標頭
+        zones.forEach(z => {
+            const startCol = colStarts[z], endCol = colStarts[z] + maxSeatPerZone[z] * 2 - 1;
+            ws.mergeCells(3, startCol, 3, endCol);
+            const cell = ws.getCell(3, startCol);
+            cell.value = zoneNames[z] || (z + ' 區');
+            cell.font = { name:'Arial', size:11, bold:true, color:{argb:'FFFFFFFF'} };
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:zoneColorMap[z].zone} };
+            cell.alignment = { horizontal:'center', vertical:'middle' };
+        });
+        ws.getRow(3).height = 24;
+
+        // Row 4: 欄號（每個座位的兩欄合併顯示一個編號）
+        zones.forEach(z => {
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const startCol = colStarts[z] + (s - 1) * 2;
+                ws.mergeCells(4, startCol, 4, startCol + 1);
+                const cell = ws.getCell(4, startCol);
+                cell.value = s;
+                cell.font = { name:'Arial', size:10, bold:true, color:{argb:'FFFFFFFF'} };
+                cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1D5EA8'} };
+                cell.alignment = { horizontal:'center', vertical:'middle' };
+            }
+        });
+        ws.getRow(4).height = 12;
+
+        // 資料區：每排兩列（座位碼列 + 直書姓名列）
+        let curRow = 5;
+        for (let r = 1; r <= maxRow.v; r++) {
+            const codeRowIdx = curRow, nameRowIdx = curRow + 1;
+            ws.getRow(codeRowIdx).height = 12;
+            ws.getRow(nameRowIdx).height = 170;
+
+            const rowLabelCell = ws.getCell(nameRowIdx, 1);
+            rowLabelCell.value = r;
+            rowLabelCell.font = { name:'Arial', size:11, bold:true };
+            rowLabelCell.alignment = { horizontal:'center', vertical:'middle' };
+
+            zones.forEach(z => {
+                const palette = zoneColorMap[z];
+                for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                    const orgCol = colStarts[z] + (s - 1) * 2;
+                    const nameCol = orgCol + 1;
+                    const code = `${z}${r}-${s}`;
+                    const exists = keys.includes(code);
+
+                    // 座位碼（跨兩欄合併，橫書）
+                    ws.mergeCells(codeRowIdx, orgCol, codeRowIdx, nameCol);
+                    const codeCell = ws.getCell(codeRowIdx, orgCol);
+                    codeCell.value = exists ? code : '';
+                    codeCell.font = { name:'Arial', size:10, bold:true };
+                    codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
+                    codeCell.alignment = { horizontal:'center', vertical:'middle' };
+
+                    const fullName = asgn[code] || '';
+                    const { org, name } = splitOrgName(fullName);
+
+                    // 機構欄：中文逐字直書
+                    const orgCell = ws.getCell(nameRowIdx, orgCol);
+                    orgCell.value = toCharStack(org);
+                    orgCell.font = { name:'@微軟正黑體', size:13, bold:true };
+                    orgCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
+                    orgCell.alignment = { horizontal:'center', vertical:'top', wrapText:true };
+
+                    // 姓名欄：逐字直書（中英文皆適用）
+                    const nameCell = ws.getCell(nameRowIdx, nameCol);
+                    nameCell.value = toCharStack(name);
+                    nameCell.font = { name:'@微軟正黑體', size:12, bold:true };
+                    nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', wrapText:true };
+                }
+            });
+            curRow += 2;
+        }
+    } else {
+        // ── 橫書模式：每個座位佔一欄（座位碼列在上、姓名列在下）──
+        let colStarts = {}, curCol = 2;
+        zones.forEach(z => { colStarts[z] = curCol; curCol += maxSeatPerZone[z] + 1; });
+        const totalCols = curCol - 1;
+
+        ws.getColumn(1).width = 5;
+        zones.forEach(z => {
+            for (let s = 0; s < maxSeatPerZone[z]; s++) ws.getColumn(colStarts[z] + s).width = 16;
+            ws.getColumn(colStarts[z] + maxSeatPerZone[z]).width = 2;
+        });
+
+        ws.mergeCells(1, 1, 1, totalCols);
+        const titleCell = ws.getCell(1, 1);
+        titleCell.value = eventName + ' 席次圖';
+        titleCell.font = { name:'Arial', size:17, bold:true, color:{argb:'FFFFFFFF'} };
+        titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF132742'} };
+        titleCell.alignment = { horizontal:'center', vertical:'middle' };
+        ws.getRow(1).height = 40;
+        ws.getRow(2).height = 8;
+
+        zones.forEach(z => {
+            const startCol = colStarts[z], endCol = colStarts[z] + maxSeatPerZone[z] - 1;
+            ws.mergeCells(3, startCol, 3, endCol);
+            const cell = ws.getCell(3, startCol);
+            cell.value = zoneNames[z] || (z + ' 區');
+            cell.font = { name:'Arial', size:11, bold:true, color:{argb:'FFFFFFFF'} };
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:zoneColorMap[z].zone} };
+            cell.alignment = { horizontal:'center', vertical:'middle' };
+        });
+        ws.getRow(3).height = 24;
+
+        zones.forEach(z => {
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const cell = ws.getCell(4, colStarts[z] + s - 1);
+                cell.value = s;
+                cell.font = { name:'Arial', size:10, bold:true, color:{argb:'FFFFFFFF'} };
+                cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1D5EA8'} };
+                cell.alignment = { horizontal:'center', vertical:'middle' };
+            }
+        });
+        ws.getRow(4).height = 16;
+
+        let curRow = 5;
+        for (let r = 1; r <= maxRow.v; r++) {
+            const codeRowIdx = curRow, nameRowIdx = curRow + 1;
+            ws.getRow(codeRowIdx).height = 18;
+            ws.getRow(nameRowIdx).height = 90;
+
+            const rowLabelCell = ws.getCell(nameRowIdx, 1);
+            rowLabelCell.value = r;
+            rowLabelCell.font = { name:'Arial', size:11, bold:true };
+            rowLabelCell.alignment = { horizontal:'center', vertical:'middle' };
+
+            zones.forEach(z => {
+                const palette = zoneColorMap[z];
+                for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                    const col = colStarts[z] + s - 1;
+                    const code = `${z}${r}-${s}`;
+                    const exists = keys.includes(code);
+
+                    const codeCell = ws.getCell(codeRowIdx, col);
+                    codeCell.value = exists ? code : '';
+                    codeCell.font = { name:'Arial', size:10, bold:true };
+                    codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
+                    codeCell.alignment = { horizontal:'center', vertical:'middle' };
+
+                    const name = asgn[code] || '';
+                    const nameCell = ws.getCell(nameRowIdx, col);
+                    nameCell.value = name;
+                    nameCell.font = { name:'微軟正黑體', size:13, bold:true };
+                    nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
+                    nameCell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+                }
+            });
+            curRow += 2;
+        }
     }
 
     exportUnassignedSheet(wb);
