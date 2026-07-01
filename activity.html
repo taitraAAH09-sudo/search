@@ -1526,7 +1526,7 @@ window.doExport = async function() {
     for (let r = 1; r <= maxRow.v; r++) {
         const codeRowIdx = curRow, nameRowIdx = curRow + 1;
         ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 170 : 90;
+        ws.getRow(nameRowIdx).height = useVertical ? 170 : undefined; // 橫書：不設定固定高度，讓 Excel 自動調整
 
         const rowLabelCell = ws.getCell(nameRowIdx, 1);
         rowLabelCell.value = r;
@@ -1557,7 +1557,7 @@ window.doExport = async function() {
                 } else {
                     nameCell.value = fullName;
                     nameCell.font = { name:'微軟正黑體', size:13, bold:true };
-                    nameCell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', wrapText:true };
                 }
             }
         });
