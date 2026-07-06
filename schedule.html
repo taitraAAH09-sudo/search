@@ -77,8 +77,33 @@
   .split-preview{ margin-top:6px; border:1px solid var(--paper-line); border-radius:6px; padding:8px 10px; background:#fbf9f4; font-size:12.5px; display:none; }
   .split-preview .sp-zh{ font-weight:700; }
   .split-preview .sp-en{ color:var(--navy-light); font-family:"Times New Roman",serif; }
+  /* ── 手機版：表格改成卡片式堆疊，避免六欄擠爆 ── */
   @media (max-width:720px){
-    table.agenda th:nth-child(3), table.agenda td:nth-child(3){ display:none; }
+    .wrap{ padding:16px 12px 60px; }
+    h1{ font-size:21px; }
+    .toolbar{ gap:7px; }
+    .toolbar .btn{ font-size:12.5px; padding:8px 11px; }
+    .sync{ width:100%; margin-left:0; }
+    .dayband{ flex-wrap:wrap; gap:4px 12px; padding:10px 12px; }
+    .dayband .d-zh{ font-size:16px; }
+    .dayband .d-n{ margin-left:0; }
+    table.agenda, table.agenda tbody, table.agenda tr, table.agenda td{ display:block; width:100%; }
+    table.agenda tr.hdr{ display:none; }
+    table.agenda tr{ border-bottom:2px solid var(--paper-line); padding:10px 12px; }
+    table.agenda tr:last-child{ border-bottom:none; }
+    table.agenda td{ border:none; padding:3px 0; }
+    table.agenda td:empty{ display:none; }
+    .t-time{ width:auto; color:var(--gold); font-size:15.5px; }
+    td[data-l]::before{
+      content:attr(data-l); display:inline-block; font-size:11px; font-weight:800; color:var(--navy-light);
+      background:#efe9dc; border-radius:4px; padding:1px 7px; margin:0 6px 2px 0; vertical-align:middle;
+    }
+    .rowbtns{ width:auto; text-align:right; padding-top:8px; }
+    .mini{ padding:7px 14px; font-size:13px; }
+    /* iOS 點輸入框不要自動放大 */
+    .f-input, .f-ta{ font-size:16px; }
+    .modal{ padding:18px 16px; }
+    .mask{ padding:16px 8px; }
   }
 </style>
 </head>
@@ -308,18 +333,19 @@ function render(){
     const tb = document.createElement('table');
     tb.className = 'agenda';
     tb.innerHTML = `
-      <tr><th style="width:110px;">時間 Time</th><th>活動 Event</th><th style="width:16%;">主辦 Organizer</th>
+      <tr class="hdr"><th style="width:110px;">時間 Time</th><th>活動 Event</th><th style="width:16%;">主辦 Organizer</th>
           <th style="width:20%;">地點 Venue</th><th style="width:18%;">聯絡人/備註</th><th style="width:96px;"></th></tr>`;
     day.items.forEach(a => {
       const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
       const cell = p => `${p.zh ? `<div class="zh-line">${nl2br(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2br(p.en)}</div>` : ''}`;
       const tr = document.createElement('tr');
+      const c_og = cell(og), c_vn = cell(vn), c_ct = cell(ct);
       tr.innerHTML = `
         <td class="t-time">${esc(a.time || '')}</td>
         <td>${cell(nm)}</td>
-        <td>${cell(og)}</td>
-        <td>${cell(vn)}</td>
-        <td>${cell(ct)}</td>
+        <td${c_og ? ' data-l="主辦"' : ''}>${c_og}</td>
+        <td${c_vn ? ' data-l="地點"' : ''}>${c_vn}</td>
+        <td${c_ct ? ' data-l="聯絡"' : ''}>${c_ct}</td>
         <td class="rowbtns">
           <button class="mini" data-edit="${a.id}">編輯</button>
           <button class="mini mini--del" data-del="${a.id}">刪除</button>
