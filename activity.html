@@ -907,7 +907,7 @@ function attachSeatEvents(el, code) {
     el.addEventListener('dragover',onDO); el.addEventListener('dragleave',onDL); el.addEventListener('drop',onDP);
 }
 
-function onDS(e){const id=this.dataset.id;if(!isAdmin||(!asgn[id]&&!occupied[id])){e.preventDefault();return;}
+function onDS(e){clearLocator();const id=this.dataset.id;if(!isAdmin||(!asgn[id]&&!occupied[id])){e.preventDefault();return;}
   dragGuest=asgn[id]||null;dragFrom=id;this.classList.add('drag-src'); e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragGuest||'');showTip(e,dragGuest||'佔用');}
 function onDE(){this.classList.remove('drag-src');dragGuest=null;dragFrom=null;hideTip();clearDO();}
 function onDO(e){if(!dragFrom)return;e.preventDefault();e.dataTransfer.dropEffect='move';clearDO();this.classList.add('drag-over');moveTip(e);}
@@ -925,11 +925,12 @@ function onDP(e){
 function chipDrag(chip,g){
   if (!isAdmin) return;
   chip.draggable=true;
-  chip.addEventListener('dragstart',e=>{dragGuest=g;dragFrom=null;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',g);showTip(e,g);});
+  chip.addEventListener('dragstart',e=>{clearLocator();dragGuest=g;dragFrom=null;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',g);showTip(e,g);});
   chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');dragGuest=null;dragFrom=null;hideTip();clearDO();});
 }
 
 window.openModal = function(code){
+  clearLocator();
   modalCode=code;
   const g=asgn[code]||'', occ=occupied[code], tag=tags[code]||'';
   document.getElementById('m-code').innerHTML=`<span class="bz ${layoutMode==='round'?'bzb':'bza'}">${layoutMode==='round'?'圓桌':'方陣'}</span> 座位 ${code}`;
@@ -1320,9 +1321,7 @@ function updateStats(){
 // 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
 let locatorTimer=null, locatorRAF=null;
 function locateSeat(code){
-  document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
-  document.querySelectorAll('.seat-pin').forEach(x=>x.remove());
-  cancelAnimationFrame(locatorRAF); clearTimeout(locatorTimer);
+  clearLocator();
   const el0=document.getElementById('s-'+code);
   if(!el0) return;
   // inline:'center' 讓座位圖的「橫向捲動」也自動捲到目標（手機上B區在畫面外時必要）
@@ -1347,12 +1346,14 @@ function locateSeat(code){
     locatorRAF=requestAnimationFrame(tick);
   };
   tick();
-  locatorTimer=setTimeout(()=>{
-    cancelAnimationFrame(locatorRAF);
-    pin.remove();
-    const el=document.getElementById('s-'+code);
-    if(el) el.classList.remove('seat-target');
-  }, 4000);
+  // 不自動消失：持續跳動，直到使用者做下一個動作（搜尋別人、點座位、拖曳）才清除
+}
+
+function clearLocator(){
+  cancelAnimationFrame(locatorRAF);
+  clearTimeout(locatorTimer);
+  document.querySelectorAll('.seat-pin').forEach(x=>x.remove());
+  document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
 }
 
 window.renderChips=function renderChips(){
@@ -1677,6 +1678,10 @@ function moveTip(e){dtt.style.left=(e.clientX+14)+'px';dtt.style.top=(e.clientY-
 function hideTip(){dtt.style.display='none';}
 document.addEventListener('dragover',e=>{if(dragGuest||dragFrom)moveTip(e);});
 function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+cls;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800);}
+
+// 搜尋下一個人（輸入變動）時，收掉上一個定位標
+const _gsEl = document.getElementById('gs');
+if (_gsEl) _gsEl.addEventListener('input', clearLocator);
 
 let _resizeTimer = null;
 window.addEventListener('resize', () => {
