@@ -1318,25 +1318,41 @@ function updateStats(){
 }
 
 // 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
-let locatorTimer=null;
+let locatorTimer=null, locatorRAF=null;
 function locateSeat(code){
-  const el=document.getElementById('s-'+code);
-  if(!el) return;
   document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
   document.querySelectorAll('.seat-pin').forEach(x=>x.remove());
-  el.scrollIntoView({behavior:'smooth',block:'center'});
-  el.classList.add('seat-target');
-  setTimeout(()=>{
-    const r=el.getBoundingClientRect();
-    const pin=document.createElement('div');
-    pin.className='seat-pin';
-    pin.textContent='📍';
-    pin.style.left=(r.left+r.width/2+window.scrollX)+'px';
-    pin.style.top=(r.top+window.scrollY-36)+'px';
-    document.body.appendChild(pin);
-    clearTimeout(locatorTimer);
-    locatorTimer=setTimeout(()=>{pin.remove();el.classList.remove('seat-target');},4000);
-  },450);
+  cancelAnimationFrame(locatorRAF); clearTimeout(locatorTimer);
+  const el0=document.getElementById('s-'+code);
+  if(!el0) return;
+  // inline:'center' 讓座位圖的「橫向捲動」也自動捲到目標（手機上B區在畫面外時必要）
+  el0.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+  const pin=document.createElement('div');
+  pin.className='seat-pin';
+  pin.textContent='📍';
+  pin.style.position='fixed';
+  document.body.appendChild(pin);
+  // 每一影格跟著座位的實際位置走：捲動中、捲動後、甚至座位圖被重蓋都能對準
+  const tick=()=>{
+    const el=document.getElementById('s-'+code);
+    if(el){
+      el.classList.add('seat-target');
+      const r=el.getBoundingClientRect();
+      pin.style.display='block';
+      pin.style.left=(r.left+r.width/2)+'px';
+      pin.style.top=(r.top-38)+'px';
+    } else {
+      pin.style.display='none';
+    }
+    locatorRAF=requestAnimationFrame(tick);
+  };
+  tick();
+  locatorTimer=setTimeout(()=>{
+    cancelAnimationFrame(locatorRAF);
+    pin.remove();
+    const el=document.getElementById('s-'+code);
+    if(el) el.classList.remove('seat-target');
+  }, 4000);
 }
 
 window.renderChips=function renderChips(){
@@ -1666,7 +1682,7 @@ let _resizeTimer = null;
 window.addEventListener('resize', () => {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(() => {
-        if(Object.keys(seatMap).length > 0) buildVenue(Object.keys(seatMap));
+        if(Object.keys(seatMap).length > 0) { buildVenue(Object.keys(seatMap)); refreshAll(); }
     }, 200);
 });
 </script>
