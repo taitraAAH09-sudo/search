@@ -25,6 +25,11 @@
   .btn--danger{ color:var(--danger); }
   .btn--danger:hover{ border-color:var(--danger); }
   .sync{ margin-left:auto; font-size:12.5px; color:var(--ok); font-weight:700; }
+  .titlerow{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .btn--ghost{ background:#fff; color:var(--navy-light); border-color:var(--paper-line); font-size:12.5px; padding:8px 14px; white-space:nowrap; }
+  .btn--ghost:hover{ border-color:var(--gold); color:var(--navy); }
+  .btn--logout{ color:var(--danger); }
+  .btn--logout:hover{ border-color:var(--danger); }
   .card{ background:#fff; border:1px solid var(--paper-line); border-radius:10px; padding:18px 20px; margin-top:14px; }
 
   /* day band */
@@ -109,11 +114,16 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow" id="ui-en">EVENT SCHEDULE</div>
-  <h1 id="ui-zh">活動日程表</h1>
-  <div class="sub">研討會／活動日程一覽 · 依日期與時間自動排序 · 中英文自動拆分 · 團隊即時同步</div>
+  <div class="titlerow">
+    <div>
+      <div class="eyebrow" id="ui-en">EVENT SCHEDULE</div>
+      <h1 id="ui-zh">活動日程表</h1>
+      <div class="sub">研討會／活動日程一覽 · 依日期與時間自動排序 · 中英文自動拆分 · 團隊即時同步</div>
+    </div>
+    <button class="btn btn--ghost" id="btn-hide-toolbar">隱藏選項</button>
+  </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="toolbar">
     <a class="btn" href="gurus.html" style="text-decoration:none;">↩ 返回出席一覽表</a>
     <button class="btn btn--primary" id="btn-add">＋ 新增活動</button>
     <button class="btn" id="btn-settings">⚙ 展名設定(中英)</button>
@@ -121,6 +131,7 @@
     <button class="btn" id="btn-dl-en">📄 下載英文版</button>
     <button class="btn" id="btn-dl-bi">📄 下載雙語版</button>
     <button class="btn btn--danger" id="btn-clear">🗑 清空全部資料</button>
+    <button class="btn btn--ghost btn--logout" id="btn-logout">🔓 登出</button>
     <span class="sync" id="sync-status">● 連線中…</span>
   </div>
 
@@ -230,8 +241,9 @@ const nl2br = s => esc(s).replace(/\n/g, '<br>');
    驗證成功後同一瀏覽器分頁內免重複輸入（關閉分頁後重新驗證） */
 const STAFF_PW = 'taitra2026';
 let pwPending = null;
+const isLoggedIn = () => sessionStorage.getItem('schedPwOk') === '1';
 function requirePw(cb){
-  if (sessionStorage.getItem('schedPwOk') === '1') { cb(); return; }
+  if (isLoggedIn()) { cb(); return; }
   pwPending = cb;
   $('pw-input').value = '';
   $('pw-err').textContent = '';
@@ -243,12 +255,18 @@ function pwSubmit(){
     sessionStorage.setItem('schedPwOk', '1');
     $('mask-pw').classList.remove('show');
     const cb = pwPending; pwPending = null;
+    render(); // 登入成功後，重新畫面以顯示編輯/刪除按鈕
     if (cb) cb();
   } else {
     $('pw-err').textContent = '密碼錯誤，請再試一次';
     $('pw-input').value = '';
     $('pw-input').focus();
   }
+}
+function doLogout(){
+  sessionStorage.removeItem('schedPwOk');
+  render(); // 登出後，隱藏編輯/刪除按鈕
+  toast('已登出');
 }
 
 function toast(msg){
@@ -367,7 +385,7 @@ function render(){
       <span class="d-zh">${esc(dateZh(day.date))}</span>
       <span class="d-en">${esc(dateEn(day.date))}</span>
       <span class="d-n" title="點一下修改這一天的標籤（例如改成展前活動）">${esc(badgeTxt)} ✎</span>`;
-    band.querySelector('.d-n').addEventListener('click', () => editDayLabel(day.date));
+    band.querySelector('.d-n').addEventListener('click', () => requirePw(() => editDayLabel(day.date)));
     list.appendChild(band);
 
     const tb = document.createElement('table');
@@ -380,28 +398,29 @@ function render(){
       const cell = p => `${p.zh ? `<div class="zh-line">${nl2br(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2br(p.en)}</div>` : ''}`;
       const tr = document.createElement('tr');
       const c_og = cell(og), c_vn = cell(vn), c_ct = cell(ct);
+      const rowBtnsHtml = isLoggedIn()
+        ? `<button class="mini" data-edit="${a.id}">編輯</button>
+           <button class="mini mini--del" data-del="${a.id}">刪除</button>`
+        : '';
       tr.innerHTML = `
         <td class="t-time">${esc(a.time || '')}</td>
         <td>${cell(nm)}</td>
         <td${c_og ? ' data-l="主辦"' : ''}>${c_og}</td>
         <td${c_vn ? ' data-l="地點"' : ''}>${c_vn}</td>
         <td${c_ct ? ' data-l="聯絡"' : ''}>${c_ct}</td>
-        <td class="rowbtns">
-          <button class="mini" data-edit="${a.id}">編輯</button>
-          <button class="mini mini--del" data-del="${a.id}">刪除</button>
-        </td>`;
+        <td class="rowbtns">${rowBtnsHtml}</td>`;
       tb.appendChild(tr);
     });
     list.appendChild(tb);
   });
 
-  list.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openAct(b.dataset.edit)));
-  list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+  list.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => requirePw(() => openAct(b.dataset.edit))));
+  list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => requirePw(async () => {
     const a = ACT[b.dataset.del];
     if (!confirm(`確定刪除「${(a && a.name || '').split('\n')[0]}」？`)) return;
     try { await remove(ref(db, 'agendaTool/activities/' + b.dataset.del)); toast('✓ 已刪除'); }
     catch (e) { toast('✗ 刪除失敗：' + e.message); }
-  }));
+  })));
 }
 
 /* ── 新增/編輯 ── */
@@ -437,6 +456,20 @@ $('f-date').addEventListener('input', () => { clampYear($('f-date')); updateDate
 $('s-first').addEventListener('input', () => clampYear($('s-first')));
 $('f-name').addEventListener('input', updateNamePreview);
 $('btn-add').addEventListener('click', () => requirePw(() => openAct(null)));
+$('btn-logout').addEventListener('click', doLogout);
+
+/* ── 隱藏選項：把上方整排工具按鈕收起來，只留這顆按鈕可以再打開 ── */
+function applyToolbarVisibility(){
+  const hidden = localStorage.getItem('schedToolbarHidden') === '1';
+  $('toolbar').style.display = hidden ? 'none' : 'flex';
+  $('btn-hide-toolbar').textContent = hidden ? '顯示選項' : '隱藏選項';
+}
+$('btn-hide-toolbar').addEventListener('click', () => {
+  const hidden = localStorage.getItem('schedToolbarHidden') === '1';
+  localStorage.setItem('schedToolbarHidden', hidden ? '0' : '1');
+  applyToolbarVisibility();
+});
+applyToolbarVisibility();
 $('pw-cancel').addEventListener('click', () => { pwPending = null; $('mask-pw').classList.remove('show'); });
 $('pw-ok').addEventListener('click', pwSubmit);
 $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') pwSubmit(); });
