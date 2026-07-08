@@ -585,11 +585,22 @@ window.confirmEventSelect = async function() {
     if(masterLoaded)refreshAll();
   }));
 
+  activeListeners.push(onValue(guestsRef, snap=>{
+    const d=snap.val();
+    const list = Array.isArray(d) ? d : Object.values(d || {});
+    list.forEach(n=>{ if(n && !guests.includes(n)) guests.push(n); });
+    guests.sort();
+    if(masterLoaded)refreshAll();
+  }));
+
   activeListeners.push(onValue(tableNamesRef, snap => {
     const d = snap.val() || {};
     Object.keys(tableNames).forEach(k => delete tableNames[k]);
     Object.assign(tableNames, d);
-    if(masterLoaded && Object.keys(seatMap).length > 0) buildVenue(Object.keys(seatMap)); 
+    if(masterLoaded && Object.keys(seatMap).length > 0) {
+      buildVenue(Object.keys(seatMap));
+      refreshAll(); // 重蓋座位DOM後必須重新上色，否則初次載入會整片空白
+    }
   }));
 
   toast('✅ 成功進入活動資料庫', 'tok');
@@ -611,13 +622,14 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-let masterRef, assignRef, tagsRef, occRef, tableNamesRef;
+let masterRef, assignRef, tagsRef, occRef, tableNamesRef, guestsRef;
 function updateRefs() {
   masterRef    = ref(db, PROJECT_ID + '/seats_master2026');
   assignRef    = ref(db, PROJECT_ID + '/assignments2026');
   tagsRef      = ref(db, PROJECT_ID + '/tags2026');
   occRef       = ref(db, PROJECT_ID + '/seats2026');
   tableNamesRef = ref(db, PROJECT_ID + '/table_names2026');
+  guestsRef    = ref(db, PROJECT_ID + '/guest_list2026');
 }
 
 let layoutMode = 'grid'; 
@@ -637,8 +649,25 @@ function setSyncStatus(s){
 }
 
 function rebuildGuests(){
-  guests.length=0;
-  guests.push(...[...new Set(Object.values(seatMap))].filter(Boolean).sort());
+  // 合併（不清空）：座位結構裡的名字、已指派的名字、手動新增的名字全部保留
+  [...new Set(Object.values(seatMap))].filter(Boolean).forEach(n=>{ if(!guests.includes(n)) guests.push(n); });
+  guests.sort();
+}
+
+// 舊資料修復：早期匯入把姓名寫進了座位結構(master)，移動賓客後舊座位會殘留姓名，
+// 造成手機查詢一人出現在兩個座位。這裡把 master 裡的姓名搬進 assignments（若該賓客
+// 尚未被指派到別的座位），然後把 master 清成純結構。
+function migrateMasterNames(){
+  const assignedNames = new Set(Object.values(asgn));
+  let changed = false;
+  Object.entries(seatMap).forEach(([c, n]) => {
+    if (n) {
+      if (!asgn[c] && !assignedNames.has(n)) { asgn[c] = n; assignedNames.add(n); }
+      seatMap[c] = '';
+      changed = true;
+    }
+  });
+  return changed;
 }
 
 async function saveAll(){
@@ -647,8 +676,11 @@ async function saveAll(){
     const oo={}; Object.keys(occupied).forEach(k => oo[k] = '佔用');
     await set(occRef, Object.keys(oo).length ? oo : null);
     if (isAdmin) {
+      const masterDirty = migrateMasterNames();
       await set(assignRef, Object.keys(asgn).length ? asgn : null);
       await set(tagsRef, Object.keys(tags).length ? tags : null);
+      await set(guestsRef, guests.length ? [...guests] : null);
+      if (masterDirty) await set(masterRef, { ...seatMap });
     }
     setSyncStatus('ok');
   }catch(e){setSyncStatus('error');toast('儲存失敗','ter');}
@@ -1084,7 +1116,7 @@ async function processExcelFile(file) {
             const code = row[col] || '';
             const name = nameRow[col] || '';
             if (!seatPat.test(code)) continue;
-            newMaster[code] = name;
+            newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
             if (name) newAssign[code] = name;
           }
         });
@@ -1101,7 +1133,7 @@ async function processExcelFile(file) {
         if (!seatPat.test(code)) return; // 跳過標題列、群組標題列（如【Head Table】）
         const name = String(row[1] || '').replace(/\s+/g,' ').trim();
         const tag = String(row[2] || '').trim();
-        newMaster[code] = name;
+        newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
         if (name) newAssign[code] = name;
         if (tag && tag !== 'undefined') newTags[code] = tag;
       });
@@ -1127,7 +1159,7 @@ async function processExcelFile(file) {
             const rowIdx = rowLetter.charCodeAt(0) - 64; // A=1, B=2, C=3...
             const code = `${zoneCode}${rowIdx}-${seatNum}`; // 例：A1-1（左1A）、B3-5（右5C）
             const name = nameRow[col] || '';
-            newMaster[code] = name;
+            newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
             if (name) newAssign[code] = name;
           });
           ci += 2;
@@ -1354,7 +1386,7 @@ window.addGuest=function(){
   const n=inp.value.trim();
   if(!n)return toast('請輸入賓客名稱','ter');
   if(guests.includes(n))return toast('此賓客已在名單中','ter');
-  guests.push(n); guests.sort(); inp.value=''; refreshAll(); toast('已新增','tok');
+  guests.push(n); guests.sort(); inp.value=''; refreshAll(); scheduleSave(); toast('已新增','tok');
 };
 window.doReset = async function() {
   const eventName = document.getElementById('event-name-input').value;
@@ -1551,9 +1583,11 @@ window.doExport = async function() {
                 nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
 
                 if (useVertical) {
-                    const richRuns = toVerticalRichText(fullName, 12);
-                    nameCell.value = richRuns ? { richText: richRuns } : '';
-                    nameCell.alignment = { horizontal:'center', vertical:'top', wrapText:true };
+                    // 使用 Excel 原生「垂直文字」(vertText)，等同工具列的「垂直文字」按鈕，
+                    // 儲存格內容保持完整字串，不再逐字插入換行
+                    nameCell.value = fullName;
+                    nameCell.font = { name:'微軟正黑體', size:12, bold:true };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', textRotation:'vertical' };
                 } else {
                     nameCell.value = fullName;
                     nameCell.font = { name:'微軟正黑體', size:13, bold:true };
