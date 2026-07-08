@@ -41,7 +41,8 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .stage{text-align:center;font-size:11px;color:#9CA3AF;letter-spacing:2px;border:0.5px solid #E5E7EB;border-radius:6px;padding:4px;margin-bottom:.6rem;}
 
 /* ── 方陣專屬樣式 ── */
-.zone-header-row{display:flex;margin-bottom:4px;width:100%;}
+.zone-header-row{display:flex;margin-bottom:4px;width:max-content;min-width:100%;}
+.vrow{width:max-content!important;min-width:100%;}
 .zh{text-align:center;font-size:10px;font-weight:600;padding:2px 0;border-radius:4px;}
 .zh-a{color:#185FA5;background:#DBEAFE;}
 .zh-b{color:#065F46;background:#D1FAE5;}
@@ -72,8 +73,12 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .sh.filled { background: #F59E0B; border-color: #B45309; color: #fff; cursor: grab; }
 
 /* ── 座位共用樣式 ── */
-.seat{height:40px;border-radius:4px;cursor:pointer;font-size:8px;line-height:1.15;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:1px;white-space:normal;word-break:break-all;-webkit-transform:translateZ(0);transform:translateZ(0);}
+.seat{height:40px;border-radius:4px;cursor:pointer;font-size:14px;font-weight:700;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:1px;white-space:normal;word-break:break-all;-webkit-transform:translateZ(0);transform:translateZ(0);}
 .seat:hover{transform:scale(1.15) translateZ(0);z-index:2;position:relative;}
+.seat-target{position:relative;z-index:6;animation:targetpulse 0.9s ease-in-out infinite;}
+@keyframes targetpulse{0%,100%{box-shadow:0 0 0 4px #EF4444,0 0 14px 4px rgba(239,68,68,.55);}50%{box-shadow:0 0 0 8px #EF4444,0 0 28px 10px rgba(239,68,68,.85);}}
+.seat-pin{position:absolute;z-index:99;font-size:32px;pointer-events:none;animation:pinbounce .65s ease-in-out infinite;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));}
+@keyframes pinbounce{0%,100%{transform:translate(-50%,0);}50%{transform:translate(-50%,-14px);}}
 .sa{background:#E6F1FB;border-color:#85B7EB;color:#185FA5;}
 .sb{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
 .sc{background:#FAEEDA;border-color:#EF9F27;color:#854F0B;}
@@ -850,7 +855,7 @@ function buildGridVenue(keys, wrap) {
     let totalCols = 0; zones.forEach(z => totalCols += maxSeatPerZone[z]);
     const rowLabelW = 24, gapW = 12, availW = document.getElementById('venue-wrap').clientWidth - 32;
     const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1)) / totalCols);
-    const seatW = calculatedSeatW > 12 ? calculatedSeatW : 12; 
+    const seatW = Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
 
     const hdr = document.createElement('div'); hdr.className = 'zone-header-row';
     let hdrHTML = `<div style="width:${rowLabelW}px;flex-shrink:0;"></div>`;
@@ -1312,6 +1317,28 @@ function updateStats(){
   document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
 }
 
+// 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
+let locatorTimer=null;
+function locateSeat(code){
+  const el=document.getElementById('s-'+code);
+  if(!el) return;
+  document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
+  document.querySelectorAll('.seat-pin').forEach(x=>x.remove());
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('seat-target');
+  setTimeout(()=>{
+    const r=el.getBoundingClientRect();
+    const pin=document.createElement('div');
+    pin.className='seat-pin';
+    pin.textContent='📍';
+    pin.style.left=(r.left+r.width/2+window.scrollX)+'px';
+    pin.style.top=(r.top+window.scrollY-36)+'px';
+    document.body.appendChild(pin);
+    clearTimeout(locatorTimer);
+    locatorTimer=setTimeout(()=>{pin.remove();el.classList.remove('seat-target');},4000);
+  },450);
+}
+
 window.renderChips=function renderChips(){
   const aset=new Set(Object.values(asgn));
   const kw=(document.getElementById('gs')||{value:''}).value.trim().toLowerCase();
@@ -1338,10 +1365,7 @@ window.renderChips=function renderChips(){
       chip.textContent=name;
       const badge=document.createElement('span'); badge.style.cssText='font-size:9px;background:#FDE047;color:#713F12;padding:1px 5px;border-radius:4px;margin-left:5px;font-weight:700;';
       badge.textContent=code; chip.appendChild(badge);
-      chip.onclick=()=>{
-        const el=document.getElementById('s-'+code);
-        if(el){el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='3px solid #CA8A04';setTimeout(()=>el.style.outline='',1500);}
-      };
+      chip.onclick=()=>locateSeat(code);
       box.appendChild(chip);
     });
     unassignedMatches.forEach(g=>{
