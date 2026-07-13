@@ -35,6 +35,21 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .scan-src{font-size:12px;color:rgba(255,255,255,0.55);word-break:break-all;max-height:3.2em;overflow:hidden;}
+#cam-overlay{position:fixed;inset:0;background:#000;z-index:98;display:none;}
+#cam-overlay.show{display:block;}
+#cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:86%;max-width:540px;aspect-ratio:2.6/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
+.cam-frame::before,.cam-frame::after{content:'';position:absolute;width:26px;height:26px;border:4px solid #4ade80;}
+.cam-frame::before{left:-2px;top:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
+.cam-frame::after{right:-2px;bottom:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
+.scanline{position:absolute;left:5%;right:5%;height:2.5px;background:linear-gradient(90deg,transparent,#4ade80 30%,#4ade80 70%,transparent);box-shadow:0 0 10px #4ade80;animation:scanmove 2s ease-in-out infinite;}
+@keyframes scanmove{0%,100%{top:10%;}50%{top:86%;}}
+.cam-hint{position:absolute;left:0;right:0;top:calc(40% + 14vw);max-width:100%;text-align:center;color:#fff;font-size:14.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8);padding:0 20px;}
+@media (min-width:640px){.cam-hint{top:calc(40% + 120px);}}
+.cam-btns{position:absolute;bottom:36px;left:0;right:0;display:flex;gap:14px;justify-content:center;align-items:center;}
+.cam-shoot{padding:15px 30px;border:none;border-radius:999px;background:#4ade80;color:#0f1c2a;font-weight:800;font-size:16.5px;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(74,222,128,0.45);}
+.cam-shoot:active{transform:scale(0.96);}
+.cam-cancel{padding:14px 22px;border:1.5px solid rgba(255,255,255,0.55);border-radius:999px;background:transparent;color:#fff;font-size:15px;font-family:inherit;cursor:pointer;}
 .s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
 .clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
 .clear-btn.show { display:flex; }
@@ -105,6 +120,16 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 <div id="scan-overlay">
   <div class="spinner"></div>
   <div id="scan-status">準備中…</div>
+</div>
+
+<div id="cam-overlay">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <div class="cam-frame"><div class="scanline"></div></div>
+  <div class="cam-hint">將賓客<b>姓名</b>對準框內，靠近、對正、光線充足</div>
+  <div class="cam-btns">
+    <button class="cam-cancel" onclick="stopCamera()">✕ 取消</button>
+    <button class="cam-shoot" onclick="captureFrame()">📸 辨識框內文字</button>
+  </div>
 </div>
 
 <div class="stats-bar" id="stats-bar" style="display:none">
@@ -452,31 +477,72 @@ function downscaleImage(file,maxSide){
     img.src=URL.createObjectURL(file);
   });
 }
-window.startScan=function(){ document.getElementById('scan-input').click(); };
-window.handleScanFile=async function(file){
-  if(!file) return;
+/* 共用 OCR 流程：輸入 canvas 或圖檔 → 辨識 → 模糊比對結果 */
+async function runOcr(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
   ov.classList.add('show');
   st.innerHTML='準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>';
   try{
     await loadTesseract();
-    const canvas=await downscaleImage(file,1400);
-    const {data}=await Tesseract.recognize(canvas,'chi_tra+eng',{
+    const {data}=await Tesseract.recognize(input,'chi_tra+eng',{
       logger:m=>{
         if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
         else st.textContent='載入辨識資料…';
       }
     });
     ov.classList.remove('show');
-    const text=(data.text||'').replace(/\s+/g,'');
-    renderScanResults(text);
+    renderScanResults((data.text||'').replace(/\s+/g,''));
   }catch(e){
     ov.classList.remove('show');
     alert('掃描失敗：'+(e.message||e));
-  }finally{
-    document.getElementById('scan-input').value='';
   }
+}
+
+/* 頁面內即時相機（QR掃描式取景框）；無法開啟時自動退回拍照模式 */
+let camStream=null;
+window.startScan=async function(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    document.getElementById('cam-video').srcObject=camStream;
+    document.getElementById('cam-overlay').classList.add('show');
+  }catch(e){
+    // 使用者拒絕權限或裝置不支援 → 退回原本的拍照上傳
+    document.getElementById('scan-input').click();
+  }
+};
+window.stopCamera=function(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-overlay').classList.remove('show');
+};
+window.captureFrame=async function(){
+  const v=document.getElementById('cam-video');
+  if(!v.videoWidth) return;
+  // 把畫面上取景框的位置換算回相機原始解析度，只裁切框內區域來辨識（更準）
+  const frame=document.querySelector('.cam-frame');
+  const vw=v.videoWidth, vh=v.videoHeight;
+  const elW=v.clientWidth, elH=v.clientHeight;
+  const scale=Math.max(elW/vw, elH/vh); // object-fit:cover 的縮放比
+  const offX=(vw*scale-elW)/2, offY=(vh*scale-elH)/2;
+  const r=frame.getBoundingClientRect(), vr=v.getBoundingClientRect();
+  const sx=Math.max(0,(r.left-vr.left+offX)/scale);
+  const sy=Math.max(0,(r.top-vr.top+offY)/scale);
+  const sw=Math.min(vw-sx, r.width/scale);
+  const sh=Math.min(vh-sy, r.height/scale);
+  const outScale=Math.min(1, 1400/sw);
+  const c=document.createElement('canvas');
+  c.width=Math.round(sw*outScale); c.height=Math.round(sh*outScale);
+  c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  stopCamera();
+  await runOcr(c);
+};
+
+/* 拍照上傳模式（退路） */
+window.handleScanFile=async function(file){
+  if(!file) return;
+  const canvas=await downscaleImage(file,1400);
+  await runOcr(canvas);
+  document.getElementById('scan-input').value='';
 };
 const _cjk=ch=>/[\u4e00-\u9fff]/.test(ch);
 function fuzzyScore(name,text){
