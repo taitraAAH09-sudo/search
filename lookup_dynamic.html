@@ -28,6 +28,13 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .search-input { width:100%; padding:13px 44px; border-radius:10px; border:none; background:rgba(255,255,255,0.15); color:#fff; font-size:16px; font-family:"Noto Serif TC",serif; outline:none; transition:background .2s; }
 .search-input::placeholder { color:rgba(255,255,255,0.45); }
 .search-input:focus { background:rgba(255,255,255,0.22); }
+.scan-btn2{width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:0.05em;}
+.scan-btn2:active{background:rgba(255,255,255,0.3);}
+#scan-overlay{position:fixed;inset:0;background:rgba(15,28,42,0.88);z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:#fff;font-size:15px;padding:24px;text-align:center;line-height:1.7;}
+#scan-overlay.show{display:flex;}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-src{font-size:12px;color:rgba(255,255,255,0.55);word-break:break-all;max-height:3.2em;overflow:hidden;}
 .s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
 .clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
 .clear-btn.show { display:flex; }
@@ -90,6 +97,14 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
       oninput="doSearch()" autocomplete="off" />
     <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
   </div>
+  <button class="scan-btn2" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
+  <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none"
+    onchange="handleScanFile(this.files[0])">
+</div>
+
+<div id="scan-overlay">
+  <div class="spinner"></div>
+  <div id="scan-status">準備中…</div>
 </div>
 
 <div class="stats-bar" id="stats-bar" style="display:none">
@@ -408,6 +423,114 @@ window.exportCheckinReport=function(){
   const eventLabel=PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,'').substring(0,16);
   XLSX.writeFile(wb, `報到報告_${eventLabel}_${ts}.xlsx`);
 };
+
+/* ── 📷 相機掃描名牌：拍照 → 文字辨識(OCR) → 與座位資料模糊比對 ── */
+let _tessLoading=null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(_tessLoading) return _tessLoading;
+  _tessLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+    s.onload=res;
+    s.onerror=()=>rej(new Error('辨識引擎載入失敗，請確認網路'));
+    document.head.appendChild(s);
+  });
+  return _tessLoading;
+}
+function downscaleImage(file,maxSide){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(img.src);
+      res(c);
+    };
+    img.src=URL.createObjectURL(file);
+  });
+}
+window.startScan=function(){ document.getElementById('scan-input').click(); };
+window.handleScanFile=async function(file){
+  if(!file) return;
+  const ov=document.getElementById('scan-overlay');
+  const st=document.getElementById('scan-status');
+  ov.classList.add('show');
+  st.innerHTML='準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>';
+  try{
+    await loadTesseract();
+    const canvas=await downscaleImage(file,1400);
+    const {data}=await Tesseract.recognize(canvas,'chi_tra+eng',{
+      logger:m=>{
+        if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
+        else st.textContent='載入辨識資料…';
+      }
+    });
+    ov.classList.remove('show');
+    const text=(data.text||'').replace(/\s+/g,'');
+    renderScanResults(text);
+  }catch(e){
+    ov.classList.remove('show');
+    alert('掃描失敗：'+(e.message||e));
+  }finally{
+    document.getElementById('scan-input').value='';
+  }
+};
+const _cjk=ch=>/[\u4e00-\u9fff]/.test(ch);
+function fuzzyScore(name,text){
+  let hit=0,bi=0;
+  const seen=new Set();
+  [...name].forEach(ch=>{
+    if(_cjk(ch)&&!seen.has(ch)&&text.includes(ch)){hit++;seen.add(ch);}
+  });
+  for(let i=0;i<name.length-1;i++){
+    const b=name.substr(i,2);
+    if(_cjk(b[0])&&_cjk(b[1])&&text.includes(b)) bi++;
+  }
+  return hit+bi*2; // 連續兩字相符加重計分
+}
+function renderScanResults(text){
+  const main=document.getElementById('main');
+  const preview=text?text.slice(0,60):'';
+  if(!text){
+    main.innerHTML='<div class="no-result">📷 沒有辨識到文字，請靠近一點、對準名字再拍一次</div>';
+    return;
+  }
+  const scored=Object.entries(DATA)
+    .filter(([c,n])=>n)
+    .map(([code,name])=>({code,name,score:fuzzyScore(name,text)}))
+    .filter(x=>x.score>=2)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,10);
+  if(!scored.length){
+    main.innerHTML=`<div class="no-result">📷 辨識到「${preview}」<br>但找不到相符的賓客，請改用手動搜尋</div>`;
+    return;
+  }
+  let html=`<div class="result-count">📷 掃描比對結果：${scored.length} 筆（辨識文字：${preview}${text.length>60?'…':''}）</div><div class="result-list">`;
+  scored.forEach(({code,name})=>{
+    const p=parseSeatCode(code);
+    const hn=[...name].map(ch=>(_cjk(ch)&&text.includes(ch))?`<mark>${ch}</mark>`:ch).join('');
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
+      <div class="seat-badge badge-${p.color}">
+        <div class="badge-zone">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${hn}</div>
+        <div class="card-seat">座位編號：${code}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+      <button class="checkin-btn ${CHECKINS[code]?'done':''}"
+        onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
+        ${CHECKINS[code]?'✅ 已報到':'報到'}
+      </button>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+}
 
 window.clearSearch=function(){
   document.getElementById('search').value='';
