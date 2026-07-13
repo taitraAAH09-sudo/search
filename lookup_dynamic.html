@@ -531,7 +531,6 @@ function preprocessForOcr(canvas){
 }
 
 /* 共用 OCR 流程：輸入 canvas 或圖檔 → 辨識 → 模糊比對結果 */
-let _ocrWorker=null;
 async function runOcr(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
@@ -540,31 +539,16 @@ async function runOcr(input){
   try{
     await loadTesseract();
     const proc=preprocessForOcr(input);
-    if(!_ocrWorker){
-      const worker=await Tesseract.createWorker('chi_tra+eng',1,{
-        logger:m=>{
-          if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
-          else st.textContent='載入辨識資料…';
-        }
-      });
-      try{
-        // 名牌/名片通常是單一區塊的文字，指定版面分析模式可減少辨識亂序的情況
-        // 這裡直接用數值 '6'（PSM.SINGLE_BLOCK），因為部分建置版本沒有匯出 Tesseract.PSM 列舉物件，用它會是 undefined 導致崩潰
-        await worker.setParameters({
-          tessedit_pageseg_mode:'6',
-          preserve_interword_spaces:'1'
-        });
-      }catch(pe){
-        console.warn('setParameters 失敗，改用預設辨識參數', pe);
+    const {data}=await Tesseract.recognize(proc,'chi_tra+eng',{
+      logger:m=>{
+        if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
+        else st.textContent='載入辨識資料…';
       }
-      _ocrWorker=worker;
-    }
-    const {data}=await _ocrWorker.recognize(proc);
+    });
     ov.classList.remove('show');
     renderScanResults((data.text||'').replace(/\s+/g,''));
   }catch(e){
     ov.classList.remove('show');
-    _ocrWorker=null; // 發生錯誤時重置，避免下次掃描卡在壞掉的worker狀態
     alert('掃描失敗：'+(e.message||e));
   }
 }
