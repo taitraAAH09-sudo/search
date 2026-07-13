@@ -82,6 +82,10 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
 .card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
 .card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+.match-tag{display:inline-block;font-family:"DM Mono",monospace;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:6px;vertical-align:middle;white-space:nowrap;}
+.match-tag.high{background:var(--green-light);color:var(--green);}
+.match-tag.mid{background:var(--accent-light);color:var(--accent);}
+.match-tag.low{background:var(--gold-light);color:var(--gold);}
 
 .checkin-btn { flex-shrink:0; padding:8px 12px; border-radius:8px; border:1.5px solid var(--green); background:var(--green-light); color:var(--green); font-size:12px; font-weight:700; cursor:pointer; font-family:"Noto Serif TC",serif; white-space:nowrap; transition:all .15s; }
 .checkin-btn:hover { background:var(--green); color:#fff; }
@@ -108,8 +112,9 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
   <div class="search-wrap">
     <span class="s-icon">🔍</span>
     <input type="text" class="search-input" id="search"
-      placeholder="搜尋姓名、單位或座位編號…"
-      oninput="doSearch()" autocomplete="off" />
+      placeholder="搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）"
+      oninput="doSearch()" autocomplete="off"
+      autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" />
     <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
   </div>
   <button class="scan-btn2" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
@@ -281,26 +286,26 @@ onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
 
 function parseSeatCode(code){
   // 主桌：H1-3（自訂名稱優先）
-  const mh=code.match(/^(H\\d+)-(\\d+)$/);
+  const mh=code.match(/^(H\d+)-(\d+)$/);
   if(mh){
     const [,tCode,seat]=mh;
-    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\\.+$/,'').trim():null;
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
     const tableLabel=customName?`第 ${customName} 桌`:'主桌';
     const badgeLabel=customName?`第${customName}桌`:'主桌';
     return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
   }
   // 圓桌：R1_T2-5（用自訂桌名顯示）
-  const m=code.match(/^R(\\d+)_T(\\d+)-(\\d+)$/);
+  const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
   if(m){
     const [,row,table,seat]=m;
     const tCode=code.split('-')[0];
-    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\\.+$/,'').trim():null;
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
     const tableLabel=customName?`第 ${customName} 桌`:`第 ${table} 桌`;
     const badgeLabel=customName?`第${customName}桌`:`第${table}桌`;
     return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
   }
   // 方陣：A1-3
-  const m2=code.match(/^([A-Za-z]+)(\\d+)-(\\d+)$/);
+  const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m2){
     const [,zone,row,seat]=m2;
     return { detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:zone, badgeBot:`${row}排${seat}席`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
@@ -320,17 +325,21 @@ window.doSearch=function(){
     return;
   }
 
-  const kwL=kw.toLowerCase();
-  const results=Object.entries(DATA).filter(([code,name])=>
-    code.toLowerCase().includes(kwL)||(name&&name.toLowerCase().includes(kwL))
-  );
+  // 支援空格分隔多個關鍵字（例如「台達 王」），每個字詞都要命中才算符合（AND 邏輯）
+  const terms=kw.toLowerCase().split(/\s+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>{
+    const codeL=code.toLowerCase();
+    const nameL=(name||'').toLowerCase();
+    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
+  });
 
   if(!results.length){
     main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
     return;
   }
 
-  const kwE=kw.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const kwE=terms.map(esc).join('|');
   const re=new RegExp(`(${kwE})`,'gi');
 
   let html=`<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
@@ -477,7 +486,52 @@ function downscaleImage(file,maxSide){
     img.src=URL.createObjectURL(file);
   });
 }
+/* 影像前處理：解析度不足時放大、轉灰階、Otsu自動二值化，讓文字在各種名牌顏色/材質/光線下更容易被辨識 */
+function preprocessForOcr(canvas){
+  let src=canvas;
+  const minW=1000; // 解析度過低是辨識不準最常見的原因，先放大再處理
+  if(src.width<minW){
+    const scale=minW/src.width;
+    const up=document.createElement('canvas');
+    up.width=Math.round(src.width*scale);
+    up.height=Math.round(src.height*scale);
+    const uctx=up.getContext('2d');
+    uctx.imageSmoothingEnabled=true;
+    uctx.imageSmoothingQuality='high';
+    uctx.drawImage(src,0,0,up.width,up.height);
+    src=up;
+  }
+  const ctx=src.getContext('2d');
+  const imgData=ctx.getImageData(0,0,src.width,src.height);
+  const d=imgData.data;
+  const n=src.width*src.height;
+  const gray=new Uint8ClampedArray(n);
+  const hist=new Array(256).fill(0);
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+    const g=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])|0;
+    gray[p]=g; hist[g]++;
+  }
+  // Otsu 自動找出最佳黑白分界閾值（比固定閾值更適應不同光線/名牌底色）
+  let sum=0; for(let t=0;t<256;t++) sum+=t*hist[t];
+  let sumB=0,wB=0,wF=0,maxVar=0,threshold=140;
+  for(let t=0;t<256;t++){
+    wB+=hist[t]; if(wB===0) continue;
+    wF=n-wB; if(wF===0) break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB, mF=(sum-sumB)/wF;
+    const between=wB*wF*(mB-mF)*(mB-mF);
+    if(between>maxVar){ maxVar=between; threshold=t; }
+  }
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+    const v=gray[p]>threshold?255:0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(imgData,0,0);
+  return src;
+}
+
 /* 共用 OCR 流程：輸入 canvas 或圖檔 → 辨識 → 模糊比對結果 */
+let _ocrWorker=null;
 async function runOcr(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
@@ -485,12 +539,21 @@ async function runOcr(input){
   st.innerHTML='準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>';
   try{
     await loadTesseract();
-    const {data}=await Tesseract.recognize(input,'chi_tra+eng',{
-      logger:m=>{
-        if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
-        else st.textContent='載入辨識資料…';
-      }
-    });
+    const proc=preprocessForOcr(input);
+    if(!_ocrWorker){
+      _ocrWorker=await Tesseract.createWorker('chi_tra+eng',1,{
+        logger:m=>{
+          if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
+          else st.textContent='載入辨識資料…';
+        }
+      });
+      // 名牌/名片通常是單一區塊的文字，指定版面分析模式可大幅減少誤判、拼字亂序的情況
+      await _ocrWorker.setParameters({
+        tessedit_pageseg_mode:Tesseract.PSM.SINGLE_BLOCK,
+        preserve_interword_spaces:'1'
+      });
+    }
+    const {data}=await _ocrWorker.recognize(proc);
     ov.classList.remove('show');
     renderScanResults((data.text||'').replace(/\s+/g,''));
   }catch(e){
@@ -567,24 +630,27 @@ function renderScanResults(text){
   const scored=Object.entries(DATA)
     .filter(([c,n])=>n)
     .map(([code,name])=>({code,name,score:fuzzyScore(name,text)}))
-    .filter(x=>x.score>=2)
+    .filter(x=>x.score>=1)   // 放寬門檻：只要沾到一個字就先列出來，依相似度排序讓使用者自己判斷
     .sort((a,b)=>b.score-a.score)
-    .slice(0,10);
+    .slice(0,15);
   if(!scored.length){
     main.innerHTML=`<div class="no-result">📷 辨識到「${preview}」<br>但找不到相符的賓客，請改用手動搜尋</div>`;
     return;
   }
-  let html=`<div class="result-count">📷 掃描比對結果：${scored.length} 筆（辨識文字：${preview}${text.length>60?'…':''}）</div><div class="result-list">`;
-  scored.forEach(({code,name})=>{
+  let html=`<div class="result-count">📷 掃描比對結果：${scored.length} 筆，依相似度排序（辨識文字：${preview}${text.length>60?'…':''}）</div><div class="result-list">`;
+  scored.forEach(({code,name,score})=>{
     const p=parseSeatCode(code);
     const hn=[...name].map(ch=>(_cjk(ch)&&text.includes(ch))?`<mark>${ch}</mark>`:ch).join('');
+    const tag=score>=4?'<span class="match-tag high">高相似</span>'
+      :score>=2?'<span class="match-tag mid">中相似</span>'
+      :'<span class="match-tag low">可能相關</span>';
     html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
       <div class="seat-badge badge-${p.color}">
         <div class="badge-zone">${p.badgeTop}</div>
         <div class="badge-seat">${p.badgeBot}</div>
       </div>
       <div class="card-info">
-        <div class="card-name">${hn}</div>
+        <div class="card-name">${hn}${tag}</div>
         <div class="card-seat">座位編號：${code}</div>
         <div class="card-zone">${p.detail}</div>
       </div>
