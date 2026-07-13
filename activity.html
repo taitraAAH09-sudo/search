@@ -162,9 +162,12 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 .dc-panel h3{margin:0 0 8px;color:#13315C;font-size:15px;text-align:center;}
 .dc-board{position:relative;width:680px;height:640px;max-width:92vw;background:#fff;border:1px dashed #C9D4E4;border-radius:10px;overflow:hidden;touch-action:none;}
 .dc-circle{position:absolute;border:6px solid #1D3A6E;border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgba(29,58,110,.35);font-weight:800;font-size:22px;pointer-events:none;}
-.dc-card{position:absolute;width:150px;background:#fff;border:2px solid #1D3A6E;border-radius:4px;padding:7px 9px;font-weight:700;font-size:13px;line-height:1.35;color:#13315C;text-align:center;cursor:grab;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,.12);transform:translate(-50%,-50%);transition:width .15s,font-size .15s;}
+.dc-card{position:absolute;width:150px;background:#fff;border:2px solid #1D3A6E;border-radius:4px;padding:7px 9px;font-weight:700;font-size:13px;line-height:1.35;color:#13315C;text-align:center;cursor:grab;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,.12);transform:translate(-50%,-50%);transition:font-size .15s;box-sizing:border-box;display:flex;align-items:center;justify-content:center;}
 .dc-card:active{cursor:grabbing;z-index:10;}
 .dc-card.empty{border-style:dashed;border-color:#B9C2D0;color:#B9C2D0;font-weight:500;}
+.dc-resize-handle{position:absolute;right:-6px;bottom:-6px;width:15px;height:15px;border-radius:3px;background:#1D3A6E;border:2px solid #fff;cursor:nwse-resize;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5;touch-action:none;}
+.dc-resize-handle:hover{background:#F5A623;transform:scale(1.15);}
+.dc-card.empty .dc-resize-handle{background:#B9C2D0;}
 .dc-badge{position:absolute;width:26px;height:26px;background:#F5A623;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;z-index:2;cursor:grab;touch-action:none;}
 .dc-badge:active{cursor:grabbing;}
 .dc-tag{position:absolute;background:#FFF200;border:1px solid #D9C900;color:#111;font-weight:800;font-size:15px;padding:2px 12px;white-space:nowrap;z-index:1;cursor:pointer;transition:all .15s;}
@@ -2344,7 +2347,8 @@ function dcBuildCard(card, tCode) {
     // 名牌大小依禮賓序位遞減：主位(rank 0)最大，主賓(1)次之，數字越大越小；加掛名牌固定用中等大小
     const sizeRank = card.role === 'free' ? 4 : (card.rank || 0);
     const sz = dcCardSize(sizeRank);
-    el.style.width = sz.w + 'px';
+    el.style.width = (card.w || sz.w) + 'px';
+    if (card.h) el.style.height = card.h + 'px';
     el.style.fontSize = sz.fs + 'px';
     const txt = document.createElement('span');
     txt.textContent = card.text || '（空）';
@@ -2458,6 +2462,42 @@ function dcBuildCard(card, tCode) {
         dcRefreshBoard(el.parentElement || document.querySelector('.dc-board[data-tcode="' + tCode + '"]'), tCode);
         dcSave();
     });
+    // 調整大小：右下角小方塊，可拖曳自由調整這張名牌的寬／高（雙擊右下角可還原成預設大小）
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'dc-resize-handle';
+    resizeHandle.title = '拖曳調整這張名牌的寬高（雙擊還原預設大小）';
+    resizeHandle.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        resizeHandle.setPointerCapture(e.pointerId);
+        const startX = e.clientX, startY = e.clientY;
+        const baseW = el.offsetWidth, baseH = el.offsetHeight;
+        const move = ev => {
+            const w = Math.max(70, baseW + (ev.clientX - startX));
+            const h = Math.max(24, baseH + (ev.clientY - startY));
+            card.w = Math.round(w);
+            card.h = Math.round(h);
+            el.style.width = card.w + 'px';
+            el.style.height = card.h + 'px';
+            dcDecorate(el, card);
+        };
+        const up = () => {
+            resizeHandle.removeEventListener('pointermove', move);
+            resizeHandle.removeEventListener('pointerup', up);
+            dcSave();
+        };
+        resizeHandle.addEventListener('pointermove', move);
+        resizeHandle.addEventListener('pointerup', up);
+    });
+    resizeHandle.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        card.w = null; card.h = null;
+        el.style.width = sz.w + 'px';
+        el.style.height = '';
+        dcDecorate(el, card);
+        dcSave();
+    });
+    el.appendChild(resizeHandle);
     return el;
 }
 
@@ -2544,15 +2584,21 @@ window.dcExportJPG = function () {
                 Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
             );
             const badge = el.querySelector('.dc-badge');
-            const epx = cx + ux * tEdge, epy = cy + uy * tEdge;
+            let epx, epy;
             if (badge) {
+                // 用畫面上實際的徽章位置（含使用者手動拖曳的偏移量），而不是重新計算預設位置，
+                // 這樣匯出的 JPG 才會跟畫面上看到的一致，數字不會跳回原位。
+                epx = x + parseFloat(badge.style.left) + 13;
+                epy = y + parseFloat(badge.style.top) + 13;
                 ctx.fillStyle = ORANGE;
                 ctx.fillRect(epx - 13, epy - 13, 26, 26);
                 ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 15px ' + FONT;
                 ctx.fillText(badge.textContent, epx, epy + 1);
+            } else {
+                epx = cx + ux * tEdge; epy = cy + uy * tEdge;
             }
             const tag = el.querySelector('.dc-tag');
-            if (tag) {
+            if (tag && !tag.classList.contains('dc-tag-hidden')) {
                 ctx.font = 'bold 15px ' + FONT;
                 const tw = Math.ceil(ctx.measureText(tag.textContent).width) + 24, th = 27;
                 const off = tEdge + 24 + (badge ? 16 : 0);
