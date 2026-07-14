@@ -145,12 +145,20 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
       <button onclick="closeBadgeAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
-      先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05），儲存後掃描時就能直接比對這個編號。
+      先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05 或 0053）。編號綁定「人」：他換座位編號會自動跟著走；他不在座位表上（未到）時，掃描與搜尋都不會顯示。
     </div>
     <input type="text" id="badge-guest-search" placeholder="搜尋姓名／座位…" oninput="badgeAdminSearch()"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:8px;font-family:inherit;font-size:14px;outline:none;">
     <div id="badge-guest-results" style="max-height:180px;overflow-y:auto;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button onclick="document.getElementById('badge-excel-input').click()"
+        style="flex:1;padding:10px;border:1.5px dashed rgba(255,255,255,0.45);border-radius:8px;background:transparent;color:#fff;font-size:13.5px;font-family:inherit;cursor:pointer;">
+        📂 匯入 Excel（編號＋姓名，一次建立多筆）
+      </button>
+      <input type="file" id="badge-excel-input" accept=".xlsx,.xls,.csv" style="display:none"
+        onchange="importBadgeExcel(this.files[0])">
+    </div>
     <div id="badge-selected-guest" style="color:#fff;font-size:13px;margin-bottom:10px;min-height:18px;"></div>
     <input type="text" id="badge-code-input" placeholder="輸入證件編號，例如 P-05"
       autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
@@ -378,11 +386,14 @@ window.doSearch=function(){
     const qd=t.replace(/\D/g,'');
     if(!qd) return;
     const qs=strip0(qd);
-    Object.entries(BADGE_MAP).forEach(([bc,seat])=>{
+    Object.keys(BADGE_MAP).forEach(bc=>{
       const bd=bc.replace(/\D/g,'');
       if(!bd) return;
       const bs=strip0(bd);
-      if(bd.includes(qd)||bs===qs||bs.endsWith(qs)) badgeSeatHits[seat]=bc;
+      if(bd.includes(qd)||bs===qs||bs.endsWith(qs)){
+        const r=resolveBadge(bc);            // 編號→人→目前座位；人未到就略過
+        if(r&&r.seat) badgeSeatHits[r.seat]=bc;
+      }
     });
   });
   // 把編號命中、但姓名/座位沒搜到的座位補進結果（排最前面）
@@ -441,6 +452,86 @@ window.toggleCheckin=async function(code, checkIn){
 function normBadgeCode(s){
   return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 }
+/* 編號跟人走：對照表存的是「賓客姓名」，查詢當下才解析他目前坐哪。
+   人換座位 → 編號自動跟過去；人不在座位表上（未到）→ 回傳 null，掃描/搜尋都不會顯示。
+   相容舊資料：值若是座位編號（舊格式），退回舊行為。 */
+function resolveBadge(bc){
+  const v=BADGE_MAP[bc];
+  if(!v) return null;
+  // 1) 完全相同（介面建檔存的是席次圖全名）
+  let seat=Object.keys(DATA).find(c=>DATA[c]===v);
+  if(seat) return {seat, name:DATA[seat]};
+  // 2) 拆詞比對（忽略空格與大小寫）：「林茂廷 理事長」拆成兩個詞，
+  //    每個詞都出現在座位姓名裡即命中——席次圖寫「林茂廷理事長」(沒空格)也對得上；
+  //    英文名（Sangchai）同樣能對到「…Mr. Sangchai Kittipumivong」
+  const _n=s=>String(s).toLowerCase().replace(/\s+/g,'');
+  const tokens=String(v).toLowerCase().split(/\s+/).filter(Boolean).map(t=>_n(t));
+  const hits=Object.keys(DATA).filter(c=>{
+    const nm=DATA[c]; if(!nm) return false;
+    const nn=_n(nm);
+    return tokens.length>0 && tokens.every(t=>nn.includes(t));
+  });
+  if(hits.length===1) return {seat:hits[0], name:DATA[hits[0]]};
+  if(hits.length>1) return {ambiguous:hits.length}; // 同名對到多人 → 不敢亂配
+  // 3) 舊格式相容：值＝座位編號
+  if(DATA.hasOwnProperty(v)&&DATA[v]) return {seat:v, name:DATA[v]};
+  return null;
+}
+
+/* ── 匯入 Excel：每一列自動辨識「編號」與「姓名」兩欄 ──
+   編號＝含數字、不含中文的欄位（0053 / P-05 / 後三碼 053 都可）；姓名＝含中文的欄位。
+   標題列自動略過。席次圖還沒排也能先匯：查詢當下才解析座位，人排入後編號自動生效。 */
+let _xlsxLoading=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(_xlsxLoading) return _xlsxLoading;
+  _xlsxLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('Excel 元件載入失敗，請確認網路'));
+    document.head.appendChild(s);
+  });
+  return _xlsxLoading;
+}
+window.importBadgeExcel=async function(file){
+  if(!file) return;
+  try{
+    await loadXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const hasCJKs=s=>/[\u4e00-\u9fff]/.test(s);
+    const pairs=[];
+    rows.forEach(row=>{
+      const cells=row.map(c=>String(c).trim()).filter(Boolean);
+      if(cells.length<2) return;
+      const badge=cells.find(c=>/\d/.test(c)&&!hasCJKs(c)&&c.length<=12);
+      let name=null;
+      const cjkCells=cells.filter(c=>hasCJKs(c)).sort((a,b)=>b.length-a.length);
+      if(cjkCells.length){
+        name=cjkCells[0]; // 中文賓客：取最長的中文欄（通常是姓名或全名）
+      }else{
+        // 外國賓客：整列沒中文 → 取「非編號、含英文字母」最長的欄位當姓名
+        const latin=cells.filter(c=>c!==badge&&/[A-Za-z]{2,}/.test(c)).sort((a,b)=>b.length-a.length);
+        if(latin.length) name=latin[0];
+      }
+      if(badge&&name) pairs.push([normBadgeCode(badge), name]);
+    });
+    if(!pairs.length){ alert('沒有解析到任何「編號＋姓名」的資料列，請確認 Excel 內容'); return; }
+    const dup={}; pairs.forEach(([b,n])=>{ dup[b]=n; });
+    const list=Object.entries(dup);
+    const preview=list.slice(0,5).map(([b,n])=>`${b} → ${n}`).join('\n');
+    if(!confirm(`共解析到 ${list.length} 筆對照，例如：\n${preview}${list.length>5?'\n…':''}\n\n確定匯入？（同編號會覆蓋舊資料）`)) return;
+    const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026.json`;
+    await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(dup)});
+    alert(`✅ 已匯入 ${list.length} 筆。席次圖已排的人立即可掃；還沒排的會在排入後自動生效。`);
+  }catch(e){
+    alert('匯入失敗：'+(e.message||e));
+  }finally{
+    document.getElementById('badge-excel-input').value='';
+  }
+};
+
 window.saveBadgeCode=async function(rawBadge, seatCode){
   const badge=normBadgeCode(rawBadge);
   if(!badge||!seatCode) return alert('請輸入編號並選擇賓客');
@@ -486,8 +577,9 @@ window.badgeAdminSearch=function(){
   ).join('');
 };
 window.pickBadgeGuest=function(code){
+  if(!DATA[code]){ alert('這個座位沒有賓客姓名，無法綁定編號（編號是跟「人」走的）'); return; }
   _badgeSelectedCode=code;
-  document.getElementById('badge-selected-guest').innerHTML=`已選擇：<b>${DATA[code]||'(未指定姓名)'}</b>　座位 ${code}`;
+  document.getElementById('badge-selected-guest').innerHTML=`已選擇：<b>${DATA[code]}</b>　（目前座位 ${code}，之後換位編號會自動跟著人走）`;
   document.getElementById('badge-guest-results').innerHTML='';
   document.getElementById('badge-guest-search').value='';
   document.getElementById('badge-code-input').focus();
@@ -496,7 +588,7 @@ window.submitBadgeCode=async function(){
   if(!_badgeSelectedCode) return alert('請先搜尋並選擇賓客');
   const badge=document.getElementById('badge-code-input').value;
   if(!badge.trim()) return alert('請輸入證件編號');
-  await saveBadgeCode(badge,_badgeSelectedCode);
+  await saveBadgeCode(badge, DATA[_badgeSelectedCode]); // ← 存姓名：編號綁人不綁座位
   document.getElementById('badge-code-input').value='';
   document.getElementById('badge-selected-guest').textContent='';
   _badgeSelectedCode=null;
@@ -511,10 +603,15 @@ function renderBadgeAdminList(){
     box.innerHTML='<div style="color:rgba(255,255,255,0.4);font-size:13px;">尚未建立任何對照</div>';
     return;
   }
-  box.innerHTML=entries.map(([badge,seatCode])=>{
-    const name=DATA[seatCode]||'(查無此座位資料)';
+  box.innerHTML=entries.map(([badge,val])=>{
+    const r=resolveBadge(badge);
+    const label=(r&&r.seat)
+      ? `${r.name}（目前座位 ${r.seat}）`
+      : (r&&r.ambiguous)
+        ? `<span style="color:#fbbf24;">${val}（席次圖有 ${r.ambiguous} 位同名，請刪除後改用完整姓名重建）</span>`
+        : `<span style="opacity:.55;">${val}（目前不在座位表 → 掃描/搜尋不會顯示）</span>`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.06);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;">
-      <span><b style="font-family:'DM Mono',monospace;">${badge}</b> → ${name}（${seatCode}）</span>
+      <span><b style="font-family:'DM Mono',monospace;">${badge}</b> → ${label}</span>
       <button onclick="deleteBadgeCode('${badge}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:2px 6px;">✕</button>
     </div>`;
   }).join('');
@@ -718,18 +815,14 @@ async function processCapturedImage(input){
       renderBarcodeHit(code,code);
       return;
     }
-    // 情況二：條碼是流水號（如 0001），需要查「編號對照表」才能找到對應座位
-    if(BADGE_MAP.hasOwnProperty(code)&&DATA.hasOwnProperty(BADGE_MAP[code])){
-      ov.classList.remove('show');
-      renderBarcodeHit(BADGE_MAP[code],code);
-      return;
-    }
+    // 情況二：條碼是流水號（如 0001），查「編號對照表」→ 編號綁人，解析他目前座位
+    let rb=resolveBadge(code);
+    if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
     const norm=normBadgeCode(code);
     const matchKey=Object.keys(BADGE_MAP).find(k=>normBadgeCode(k)===norm);
-    if(matchKey&&DATA.hasOwnProperty(BADGE_MAP[matchKey])){
-      ov.classList.remove('show');
-      renderBarcodeHit(BADGE_MAP[matchKey],code);
-      return;
+    if(matchKey){
+      rb=resolveBadge(matchKey);
+      if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
     }
     // 純數字條碼：去前導零比對（掃到「53」也能對到「0053」）
     const digits=(code.match(/\d+/g)||[]).join('');
@@ -739,10 +832,9 @@ async function processCapturedImage(input){
         const kd=k.replace(/\D/g,'');
         return kd&&((kd.replace(/^0+/,'')||'0')===ds);
       });
-      if(mk2&&DATA.hasOwnProperty(BADGE_MAP[mk2])){
-        ov.classList.remove('show');
-        renderBarcodeHit(BADGE_MAP[mk2],code);
-        return;
+      if(mk2){
+        rb=resolveBadge(mk2);
+        if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
       }
     }
   }
@@ -871,7 +963,10 @@ function matchBadgeCode(text){
       const nc=ocrNormalizeBadge(cand);
       normKeys.forEach(({raw,norm})=>{
         const dist=_editDist(nc,norm);
-        if(dist<=1&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+        if(dist<=1&&(!best||dist<best.dist)){
+          const r=resolveBadge(raw);
+          if(r&&r.seat) best={badge:raw,seatCode:r.seat,dist};
+        }
       });
     });
   }
@@ -888,7 +983,10 @@ function matchBadgeCode(text){
         if(bs===cs||bd===cand) dist=0;                       // 完全相同（含去前導零）
         else if(cs.length>=2&&bs.endsWith(cs)) dist=1;       // 後幾碼相符
         else if(bd.length>=2&&cand.endsWith(bd)) dist=1;     // 辨識多抓了前面的字
-        if(dist!==null&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+        if(dist!==null&&(!best||dist<best.dist)){
+          const r=resolveBadge(raw);
+          if(r&&r.seat) best={badge:raw,seatCode:r.seat,dist};
+        }
       });
     });
   }
