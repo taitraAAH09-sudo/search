@@ -370,6 +370,27 @@ window.doSearch=function(){
     return terms.every(t=>codeL.includes(t)||nameL.includes(t));
   });
 
+  // 證件編號比對：關鍵字含數字時，同時比對編號對照表。
+  // 「53」可對到「0053」：去前導零相等、後幾碼相符、或包含在編號數字中都算命中
+  const strip0=s=>s.replace(/^0+/,'')||'0';
+  const badgeSeatHits={}; // seatCode -> 命中的證件編號
+  terms.forEach(t=>{
+    const qd=t.replace(/\D/g,'');
+    if(!qd) return;
+    const qs=strip0(qd);
+    Object.entries(BADGE_MAP).forEach(([bc,seat])=>{
+      const bd=bc.replace(/\D/g,'');
+      if(!bd) return;
+      const bs=strip0(bd);
+      if(bd.includes(qd)||bs===qs||bs.endsWith(qs)) badgeSeatHits[seat]=bc;
+    });
+  });
+  // 把編號命中、但姓名/座位沒搜到的座位補進結果（排最前面）
+  const already=new Set(results.map(([c])=>c));
+  Object.keys(badgeSeatHits).forEach(seat=>{
+    if(!already.has(seat)&&DATA.hasOwnProperty(seat)) results.unshift([seat,DATA[seat]]);
+  });
+
   if(!results.length){
     main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
     return;
@@ -390,7 +411,7 @@ window.doSearch=function(){
         <div class="badge-seat">${p.badgeBot}</div>
       </div>
       <div class="card-info">
-        <div class="card-name">${hn}</div>
+        <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>
         <div class="card-seat">座位編號：${hc}</div>
         <div class="card-zone">${p.detail}</div>
       </div>
@@ -710,6 +731,20 @@ async function processCapturedImage(input){
       renderBarcodeHit(BADGE_MAP[matchKey],code);
       return;
     }
+    // 純數字條碼：去前導零比對（掃到「53」也能對到「0053」）
+    const digits=(code.match(/\d+/g)||[]).join('');
+    if(digits){
+      const ds=digits.replace(/^0+/,'')||'0';
+      const mk2=Object.keys(BADGE_MAP).find(k=>{
+        const kd=k.replace(/\D/g,'');
+        return kd&&((kd.replace(/^0+/,'')||'0')===ds);
+      });
+      if(mk2&&DATA.hasOwnProperty(BADGE_MAP[mk2])){
+        ov.classList.remove('show');
+        renderBarcodeHit(BADGE_MAP[mk2],code);
+        return;
+      }
+    }
   }
   await runOcr(input); // 沒條碼、或條碼查無資料，退回文字辨識
 }
@@ -826,18 +861,37 @@ function _editDist(a,b){
 function matchBadgeCode(text){
   const badgeKeys=Object.keys(BADGE_MAP);
   if(!badgeKeys.length) return null;
-  // 從辨識文字裡抓出「長得像編號」的片段：英文字母 + 可選破折號 + 1~3位數字
-  const candidates=[...text.matchAll(/[A-Za-z]-?\d{1,3}/g)].map(m=>m[0]);
-  if(!candidates.length) return null;
-  const normKeys=badgeKeys.map(k=>({raw:k,norm:ocrNormalizeBadge(k)}));
+  const strip0=s=>s.replace(/^0+/,'')||'0';
   let best=null;
-  candidates.forEach(cand=>{
-    const nc=ocrNormalizeBadge(cand);
-    normKeys.forEach(({raw,norm})=>{
-      const dist=_editDist(nc,norm);
-      if(dist<=1&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+  // 型一：英文字母+數字（如 P-05）→ 容錯比對（允許1個字元誤判）
+  const alnum=[...text.matchAll(/[A-Za-z]-?\d{1,4}/g)].map(m=>m[0]);
+  if(alnum.length){
+    const normKeys=badgeKeys.map(k=>({raw:k,norm:ocrNormalizeBadge(k)}));
+    alnum.forEach(cand=>{
+      const nc=ocrNormalizeBadge(cand);
+      normKeys.forEach(({raw,norm})=>{
+        const dist=_editDist(nc,norm);
+        if(dist<=1&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+      });
     });
-  });
+  }
+  // 型二：純數字流水號（如 0053）→ 去前導零相等、或後幾碼相符即命中
+  if(!best||best.dist>0){
+    const nums=[...text.matchAll(/\d{2,6}/g)].map(m=>m[0]);
+    nums.forEach(cand=>{
+      const cs=strip0(cand);
+      badgeKeys.forEach(raw=>{
+        const bd=raw.replace(/\D/g,'');
+        if(!bd) return;
+        const bs=strip0(bd);
+        let dist=null;
+        if(bs===cs||bd===cand) dist=0;                       // 完全相同（含去前導零）
+        else if(cs.length>=2&&bs.endsWith(cs)) dist=1;       // 後幾碼相符
+        else if(bd.length>=2&&cand.endsWith(bd)) dist=1;     // 辨識多抓了前面的字
+        if(dist!==null&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+      });
+    });
+  }
   return best;
 }
 function fuzzyScore(name,text){
