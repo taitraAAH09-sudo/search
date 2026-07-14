@@ -38,7 +38,7 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 #cam-overlay{position:fixed;inset:0;background:#000;z-index:98;display:none;}
 #cam-overlay.show{display:block;}
 #cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:86%;max-width:540px;aspect-ratio:2.6/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
+.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:78%;max-width:460px;aspect-ratio:4.2/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
 .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:26px;height:26px;border:4px solid #4ade80;}
 .cam-frame::before{left:-2px;top:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
 .cam-frame::after{right:-2px;bottom:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
@@ -118,6 +118,7 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
     <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
   </div>
   <button class="scan-btn2" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
+  <button class="scan-btn2" style="margin-top:8px;opacity:.85;" onclick="openBadgeAdmin()">🏷️ 建立證件編號對照表</button>
   <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none"
     onchange="handleScanFile(this.files[0])">
 </div>
@@ -130,10 +131,39 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 <div id="cam-overlay">
   <video id="cam-video" autoplay playsinline muted></video>
   <div class="cam-frame"><div class="scanline"></div></div>
-  <div class="cam-hint">將賓客<b>姓名</b>對準框內，靠近、對正、光線充足</div>
+  <div class="cam-hint">只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光</div>
   <div class="cam-btns">
     <button class="cam-cancel" onclick="stopCamera()">✕ 取消</button>
     <button class="cam-shoot" onclick="captureFrame()">📸 辨識框內文字</button>
+  </div>
+</div>
+
+<div id="badge-admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,28,42,0.94);z-index:100;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 20px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">🏷️ 建立證件編號對照</h3>
+      <button onclick="closeBadgeAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
+      先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05），儲存後掃描時就能直接比對這個編號。
+    </div>
+    <input type="text" id="badge-guest-search" placeholder="搜尋姓名／座位…" oninput="badgeAdminSearch()"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:8px;font-family:inherit;font-size:14px;outline:none;">
+    <div id="badge-guest-results" style="max-height:180px;overflow-y:auto;margin-bottom:10px;"></div>
+    <div id="badge-selected-guest" style="color:#fff;font-size:13px;margin-bottom:10px;min-height:18px;"></div>
+    <input type="text" id="badge-code-input" placeholder="輸入證件編號，例如 P-05"
+      autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+      style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:10px;font-family:'DM Mono',monospace;font-size:14px;outline:none;">
+    <button onclick="submitBadgeCode()"
+      style="width:100%;padding:11px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Noto Serif TC',serif;">
+      儲存對照
+    </button>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:22px 0 14px;">
+    <div style="color:rgba(255,255,255,0.7);font-size:12.5px;margin-bottom:8px;">
+      目前已建立（<span id="badge-count">0</span> 筆）
+    </div>
+    <div id="badge-admin-list"></div>
   </div>
 </div>
 
@@ -207,7 +237,7 @@ if(!PROJECT_ID){
 document.getElementById('event-title').textContent = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ');
 document.title = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ') + ' · 座位查詢';
 
-let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={};
+let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
 let loaded=false;
 
 function setConn(ok){
@@ -282,6 +312,13 @@ onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
 },()=>{
   loaded=true;
   setConn(false);
+});
+
+onValue(ref(db,PROJECT_ID+'/badge_codes2026'),snap=>{
+  BADGE_MAP={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([bc,seatCode])=>{ BADGE_MAP[bc]=seatCode; });
+  if(loaded) renderBadgeAdminList();
 });
 
 function parseSeatCode(code){
@@ -379,6 +416,89 @@ window.toggleCheckin=async function(code, checkIn){
   }
 };
 
+/* 證件編號（如 P-05）→ 座位代碼 的對照表，手動建檔用 */
+function normBadgeCode(s){
+  return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+window.saveBadgeCode=async function(rawBadge, seatCode){
+  const badge=normBadgeCode(rawBadge);
+  if(!badge||!seatCode) return alert('請輸入編號並選擇賓客');
+  const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026/${encodeURIComponent(badge)}.json`;
+  await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(seatCode)});
+};
+window.deleteBadgeCode=async function(badge){
+  const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026/${encodeURIComponent(badge)}.json`;
+  await fetch(url,{method:'DELETE'});
+};
+
+let _badgeSelectedCode=null;
+window.openBadgeAdmin=function(){
+  document.getElementById('badge-admin-overlay').style.display='block';
+  document.getElementById('badge-guest-search').value='';
+  document.getElementById('badge-guest-results').innerHTML='';
+  document.getElementById('badge-selected-guest').textContent='';
+  document.getElementById('badge-code-input').value='';
+  _badgeSelectedCode=null;
+  renderBadgeAdminList();
+};
+window.closeBadgeAdmin=function(){
+  document.getElementById('badge-admin-overlay').style.display='none';
+};
+window.badgeAdminSearch=function(){
+  const kw=(document.getElementById('badge-guest-search').value||'').trim().toLowerCase();
+  const box=document.getElementById('badge-guest-results');
+  if(!kw){ box.innerHTML=''; return; }
+  const terms=kw.split(/\s+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>{
+    const codeL=code.toLowerCase(), nameL=(name||'').toLowerCase();
+    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
+  }).slice(0,20);
+  if(!results.length){
+    box.innerHTML='<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">找不到符合的賓客</div>';
+    return;
+  }
+  box.innerHTML=results.map(([code,name])=>
+    `<div onclick="pickBadgeGuest('${code}')" style="padding:9px 10px;background:rgba(255,255,255,0.08);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;">
+      <span>${name||'(未指定姓名)'}</span>
+      <span style="opacity:.55;font-family:'DM Mono',monospace;">${code}</span>
+    </div>`
+  ).join('');
+};
+window.pickBadgeGuest=function(code){
+  _badgeSelectedCode=code;
+  document.getElementById('badge-selected-guest').innerHTML=`已選擇：<b>${DATA[code]||'(未指定姓名)'}</b>　座位 ${code}`;
+  document.getElementById('badge-guest-results').innerHTML='';
+  document.getElementById('badge-guest-search').value='';
+  document.getElementById('badge-code-input').focus();
+};
+window.submitBadgeCode=async function(){
+  if(!_badgeSelectedCode) return alert('請先搜尋並選擇賓客');
+  const badge=document.getElementById('badge-code-input').value;
+  if(!badge.trim()) return alert('請輸入證件編號');
+  await saveBadgeCode(badge,_badgeSelectedCode);
+  document.getElementById('badge-code-input').value='';
+  document.getElementById('badge-selected-guest').textContent='';
+  _badgeSelectedCode=null;
+};
+function renderBadgeAdminList(){
+  const box=document.getElementById('badge-admin-list');
+  const cnt=document.getElementById('badge-count');
+  if(!box||!cnt) return;
+  const entries=Object.entries(BADGE_MAP);
+  cnt.textContent=entries.length;
+  if(!entries.length){
+    box.innerHTML='<div style="color:rgba(255,255,255,0.4);font-size:13px;">尚未建立任何對照</div>';
+    return;
+  }
+  box.innerHTML=entries.map(([badge,seatCode])=>{
+    const name=DATA[seatCode]||'(查無此座位資料)';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.06);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;">
+      <span><b style="font-family:'DM Mono',monospace;">${badge}</b> → ${name}（${seatCode}）</span>
+      <button onclick="deleteBadgeCode('${badge}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:2px 6px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
 function parseSeatLabel(code){
   const mh=code.match(/^(H\d+)-(\d+)$/);
   if(mh){
@@ -472,6 +592,38 @@ function loadTesseract(){
   });
   return _tessLoading;
 }
+
+/* 條碼掃描（優先於OCR）：如果證件上貼有我們自己產生的Code128條碼，直接解碼比對座位代碼，準確率遠高於文字辨識 */
+let _zxingLoading=null;
+function loadZXing(){
+  if(window.ZXing) return Promise.resolve();
+  if(_zxingLoading) return _zxingLoading;
+  _zxingLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+    s.onload=res;
+    s.onerror=()=>rej(new Error('條碼函式庫載入失敗'));
+    document.head.appendChild(s);
+  });
+  return _zxingLoading;
+}
+// 嘗試解碼條碼；失敗（沒貼條碼、讀不到）一律回傳null，不影響後續OCR流程
+async function tryDecodeBarcode(canvas){
+  try{
+    await loadZXing();
+    if(!window.ZXing) return null;
+    const hints=new Map();
+    if(ZXing.DecodeHintType&&ZXing.BarcodeFormat){
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_128]);
+    }
+    const reader=new ZXing.BrowserMultiFormatReader(hints);
+    const dataUrl=canvas.toDataURL('image/png');
+    const result=await reader.decodeFromImageUrl(dataUrl);
+    return result&&result.getText?result.getText():null;
+  }catch(e){
+    return null; // 讀不到條碼是正常情況（例如證件沒貼），安靜地退回OCR即可
+  }
+}
 function downscaleImage(file,maxSide){
   return new Promise(res=>{
     const img=new Image();
@@ -531,6 +683,60 @@ function preprocessForOcr(canvas){
 }
 
 /* 共用 OCR 流程：輸入 canvas 或圖檔 → 辨識 → 模糊比對結果 */
+/* 掃描總入口：先試條碼（快、準），讀不到才退回OCR文字辨識 */
+async function processCapturedImage(input){
+  const ov=document.getElementById('scan-overlay');
+  const st=document.getElementById('scan-status');
+  ov.classList.add('show');
+  st.textContent='掃描中…';
+  const code=await tryDecodeBarcode(input);
+  if(code){
+    // 情況一：條碼內容本身就是座位代碼（直接命中）
+    if(DATA.hasOwnProperty(code)){
+      ov.classList.remove('show');
+      renderBarcodeHit(code,code);
+      return;
+    }
+    // 情況二：條碼是流水號（如 0001），需要查「編號對照表」才能找到對應座位
+    if(BADGE_MAP.hasOwnProperty(code)&&DATA.hasOwnProperty(BADGE_MAP[code])){
+      ov.classList.remove('show');
+      renderBarcodeHit(BADGE_MAP[code],code);
+      return;
+    }
+    const norm=normBadgeCode(code);
+    const matchKey=Object.keys(BADGE_MAP).find(k=>normBadgeCode(k)===norm);
+    if(matchKey&&DATA.hasOwnProperty(BADGE_MAP[matchKey])){
+      ov.classList.remove('show');
+      renderBarcodeHit(BADGE_MAP[matchKey],code);
+      return;
+    }
+  }
+  await runOcr(input); // 沒條碼、或條碼查無資料，退回文字辨識
+}
+function renderBarcodeHit(seatCode,scannedCode){
+  const main=document.getElementById('main');
+  const p=parseSeatCode(seatCode);
+  const name=DATA[seatCode]||'(查無姓名資料)';
+  const sub=scannedCode&&scannedCode!==seatCode?`　條碼編號：${scannedCode}`:'';
+  main.innerHTML=`<div class="result-count" style="color:#4ade80;">🏷️ 條碼直接命中${sub}</div>
+    <div class="result-list">
+      <div class="result-card ${CHECKINS[seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
+        <div class="seat-badge badge-${p.color}">
+          <div class="badge-zone">${p.badgeTop}</div>
+          <div class="badge-seat">${p.badgeBot}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">${name}<span class="match-tag high">條碼命中</span></div>
+          <div class="card-seat">座位編號：${seatCode}</div>
+          <div class="card-zone">${p.detail}</div>
+        </div>
+        <button class="checkin-btn ${CHECKINS[seatCode]?'done':''}"
+          onclick="toggleCheckin('${seatCode}',${!CHECKINS[seatCode]})">
+          ${CHECKINS[seatCode]?'✅ 已報到':'報到'}
+        </button>
+      </div>
+    </div>`;
+}
 async function runOcr(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
@@ -557,7 +763,10 @@ async function runOcr(input){
 let camStream=null;
 window.startScan=async function(){
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    camStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment', width:{ideal:3840}, height:{ideal:2160}},
+      audio:false
+    });
     document.getElementById('cam-video').srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('show');
   }catch(e){
@@ -588,17 +797,49 @@ window.captureFrame=async function(){
   c.width=Math.round(sw*outScale); c.height=Math.round(sh*outScale);
   c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
   stopCamera();
-  await runOcr(c);
+  await processCapturedImage(c);
 };
 
 /* 拍照上傳模式（退路） */
 window.handleScanFile=async function(file){
   if(!file) return;
   const canvas=await downscaleImage(file,1400);
-  await runOcr(canvas);
+  await processCapturedImage(canvas);
   document.getElementById('scan-input').value='';
 };
 const _cjk=ch=>/[\u4e00-\u9fff]/.test(ch);
+/* 證件編號比對：把OCR常見的易混淆字元（O/0、I|L/1、S/5、B/8、Z/2）先校正，再用容錯比對(編輯距離<=1) */
+function ocrNormalizeBadge(s){
+  return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')
+    .replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
+}
+function _editDist(a,b){
+  const m=a.length,n=b.length;
+  const dp=[];
+  for(let i=0;i<=m;i++){ dp[i]=[i]; }
+  for(let j=0;j<=n;j++){ dp[0][j]=j; }
+  for(let i=1;i<=m;i++)
+    for(let j=1;j<=n;j++)
+      dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j-1],dp[i-1][j],dp[i][j-1]);
+  return dp[m][n];
+}
+function matchBadgeCode(text){
+  const badgeKeys=Object.keys(BADGE_MAP);
+  if(!badgeKeys.length) return null;
+  // 從辨識文字裡抓出「長得像編號」的片段：英文字母 + 可選破折號 + 1~3位數字
+  const candidates=[...text.matchAll(/[A-Za-z]-?\d{1,3}/g)].map(m=>m[0]);
+  if(!candidates.length) return null;
+  const normKeys=badgeKeys.map(k=>({raw:k,norm:ocrNormalizeBadge(k)}));
+  let best=null;
+  candidates.forEach(cand=>{
+    const nc=ocrNormalizeBadge(cand);
+    normKeys.forEach(({raw,norm})=>{
+      const dist=_editDist(nc,norm);
+      if(dist<=1&&(!best||dist<best.dist)) best={badge:raw,seatCode:BADGE_MAP[raw],dist};
+    });
+  });
+  return best;
+}
 function fuzzyScore(name,text){
   let hit=0,bi=0;
   const seen=new Set();
@@ -618,17 +859,50 @@ function renderScanResults(text){
     main.innerHTML='<div class="no-result">📷 沒有辨識到文字，請靠近一點、對準名字再拍一次</div>';
     return;
   }
+
+  const badgeHit=matchBadgeCode(text);
+  let badgeHtml='';
+  if(badgeHit){
+    const p=parseSeatCode(badgeHit.seatCode);
+    const name=DATA[badgeHit.seatCode]||'(查無姓名資料)';
+    const confLabel=badgeHit.dist===0?'🏷️ 證件編號完全比對':'🏷️ 證件編號比對（有1個字元可能誤判，請確認）';
+    badgeHtml=`<div class="result-count" style="color:#4ade80;">${confLabel}：${badgeHit.badge}</div>
+    <div class="result-list">
+      <div class="result-card ${CHECKINS[badgeHit.seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
+        <div class="seat-badge badge-${p.color}">
+          <div class="badge-zone">${p.badgeTop}</div>
+          <div class="badge-seat">${p.badgeBot}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">${name}<span class="match-tag high">編號命中</span></div>
+          <div class="card-seat">座位編號：${badgeHit.seatCode}</div>
+          <div class="card-zone">${p.detail}</div>
+        </div>
+        <button class="checkin-btn ${CHECKINS[badgeHit.seatCode]?'done':''}"
+          onclick="toggleCheckin('${badgeHit.seatCode}',${!CHECKINS[badgeHit.seatCode]})">
+          ${CHECKINS[badgeHit.seatCode]?'✅ 已報到':'報到'}
+        </button>
+      </div>
+    </div>`;
+  }
+
   const scored=Object.entries(DATA)
     .filter(([c,n])=>n)
     .map(([code,name])=>({code,name,score:fuzzyScore(name,text)}))
     .filter(x=>x.score>=1)   // 放寬門檻：只要沾到一個字就先列出來，依相似度排序讓使用者自己判斷
     .sort((a,b)=>b.score-a.score)
     .slice(0,15);
-  if(!scored.length){
+
+  if(!scored.length&&!badgeHit){
     main.innerHTML=`<div class="no-result">📷 辨識到「${preview}」<br>但找不到相符的賓客，請改用手動搜尋</div>`;
     return;
   }
-  let html=`<div class="result-count">📷 掃描比對結果：${scored.length} 筆，依相似度排序（辨識文字：${preview}${text.length>60?'…':''}）</div><div class="result-list">`;
+  if(!scored.length){
+    main.innerHTML=badgeHtml;
+    return;
+  }
+
+  let html=badgeHtml+(badgeHit?`<div class="result-count" style="margin-top:14px;">其他可能相關（姓名比對，依相似度排序）</div>`:`<div class="result-count">📷 掃描比對結果：${scored.length} 筆，依相似度排序（辨識文字：${preview}${text.length>60?'…':''}）</div>`)+'<div class="result-list">';
   scored.forEach(({code,name,score})=>{
     const p=parseSeatCode(code);
     const hn=[...name].map(ch=>(_cjk(ch)&&text.includes(ch))?`<mark>${ch}</mark>`:ch).join('');
