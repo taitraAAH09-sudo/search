@@ -48,6 +48,7 @@ h1{font-size:25.5px;font-weight:700;letter-spacing:-.3px;}
 .hdr-btns{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
 .theme-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all .15s;}
 .theme-btn:hover{border-color:var(--ac);color:var(--ac);}
+.btn.room2-on{background:#b98a2f;border-color:#b98a2f;color:#fff;}
 
 .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx2);font-size:18px;cursor:pointer;transition:all .15s;font-family:'Noto Sans TC',sans-serif;white-space:nowrap;}
@@ -228,6 +229,7 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
       <div class="sub" id="sub">連線中…</div>
     </div>
     <div class="hdr-btns">
+      <button class="btn" id="btn-room" onclick="toggleRoom()" title="切換 Room 1 / Room 2（兩個展同時進行用，資料互相獨立）"><span>🏠</span><span class="btn-label"> Room 1</span></button>
       <a class="btn" href="schedule.html" target="_blank" rel="noopener" style="text-decoration:none;"><span>📅</span><span class="btn-label"> 活動一覽表</span></a>
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="切換白天/黑夜模式">🌙</button>
       <button class="btn" id="btn-toggle-filters" onclick="toggleFilters()"><span id="tf-icon">⏶</span><span class="btn-label" id="tf-label"> 隱藏篩選</span></button>
@@ -424,13 +426,17 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const ACT_REF = ref(db, 'activities');
-const SETTINGS_REF = ref(db, 'settings');
+/* ── Room 1 / Room 2：兩個獨立房間，資料互不干涉（兩個展同時進行用） ──
+   Room1 = 原本的 activities/settings 節點（既有資料不動）；Room2 = room2/ 底下 */
+let ROOM = localStorage.getItem('gurusRoom') || '1';
+const GP = p => ROOM === '1' ? p : 'room2/' + p;
+let ACT_REF, SETTINGS_REF;
+let _roomUnsubs = [];
 
 /* 拖曳標籤放到格子後，寫入 Firebase */
 async function applyTag(aid, pid, val){
   try{
-    await update(ref(db,'activities/'+aid), { [pid]: val, updatedAt: Date.now() });
+    await update(ref(db,GP('activities/')+aid), { [pid]: val, updatedAt: Date.now() });
     const name = P_LABELS[pid] || pid;
     toast(val ? ('✓ 已指派：'+name+' → '+val) : ('✓ 已清除：'+name), 'ok');
   }catch(e){ toast('✗ 指派失敗：'+e.message,'err'); }
@@ -472,7 +478,8 @@ function buildPersonChips(){
     `<div class="chip${activeP===p?' on':''}" data-p="${p}" onclick="toggleP(this)">${esc(P_LABELS[p])}</div>`
   ).join('');
 }
-onValue(SETTINGS_REF, snap=>{
+function attachSettings(){
+_roomUnsubs.push(onValue(SETTINGS_REF, snap=>{
   const s = snap.val();
   if(s){
     if(s.eyebrow) EVENT_EYEBROW = s.eyebrow;
@@ -495,7 +502,8 @@ onValue(SETTINGS_REF, snap=>{
   settingsLoaded = true;
   applySettingsToUI();
   document.getElementById('btn-settings').disabled = false;
-});
+}));
+}
 let data_loaded_once = false;
 
 window.openSettings = ()=>requirePw(_openSettings);
@@ -583,7 +591,8 @@ window.toggleTheme = ()=>{
 };
 
 /* ── FIREBASE ── */
-onValue(ACT_REF, snap=>{
+function attachAct(){
+_roomUnsubs.push(onValue(ACT_REF, snap=>{
   const data = snap.val();
   ACT = data ? Object.values(data).sort((a,b)=>{
     const da=dk(a.date), db2=dk(b.date);
@@ -598,7 +607,34 @@ onValue(ACT_REF, snap=>{
 }, err=>{
   setDot('err','連線失敗');
   toast('連線失敗：'+err.message,'err');
-});
+}));
+}
+
+function bindRoom(){
+  _roomUnsubs.forEach(u => { try{ u(); }catch(e){} });
+  _roomUnsubs = [];
+  ACT = []; data_loaded_once = false;
+  ACT_REF = ref(db, GP('activities'));
+  SETTINGS_REF = ref(db, GP('settings'));
+  setDot('load','Room '+ROOM+' 連線中…');
+  attachSettings();
+  attachAct();
+  updateRoomBtn();
+}
+function updateRoomBtn(){
+  const b = document.getElementById('btn-room');
+  if(!b) return;
+  b.querySelector('.btn-label').textContent = ' Room ' + ROOM;
+  b.classList.toggle('room2-on', ROOM === '2');
+}
+window.toggleRoom = function(){
+  const next = ROOM === '1' ? '2' : '1';
+  if(!confirm('切換到 Room ' + next + '？\n兩個房間的資料完全獨立、互不影響（適合兩個展同時進行）。')) return;
+  ROOM = next;
+  localStorage.setItem('gurusRoom', ROOM);
+  bindRoom();
+};
+bindRoom();
 
 function setDot(s,m){
   document.getElementById('fb-dot').className='fb-dot '+s;
@@ -839,7 +875,7 @@ window.saveE = async()=>{
   PEOPLE.forEach(id=>{ entry[id] = pr(id); });
   const btn=g('btn-save'); btn.disabled=true; btn.textContent='儲存中…';
   try{
-    if(editId){ entry.id=editId; await update(ref(db,'activities/'+editId),entry); toast('✓ 已更新：'+ev,'ok'); }
+    if(editId){ entry.id=editId; await update(ref(db,GP('activities/')+editId),entry); toast('✓ 已更新：'+ev,'ok'); }
     else{ const nr=push(ACT_REF); entry.id=nr.key; await set(nr,entry); toast('✓ 已新增：'+ev,'ok'); }
     window.closeM();
   }catch(e){ toast('✗ 儲存失敗：'+e.message,'err'); }
@@ -849,7 +885,7 @@ window.delE=id=>requirePw(()=>_delE(id));
 async function _delE(id){
   const a=ACT.find(x=>x.id===id);
   if(!confirm('確定刪除「'+(a?a.event:id)+'」？')) return;
-  try{ await remove(ref(db,'activities/'+id)); toast('已刪除','ok'); }
+  try{ await remove(ref(db,GP('activities/')+id)); toast('已刪除','ok'); }
   catch(e){ toast('✗ '+e.message,'err'); }
 };
 
