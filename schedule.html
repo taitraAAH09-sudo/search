@@ -124,8 +124,11 @@
   </div>
 
   <div class="toolbar" id="toolbar">
+    <button class="btn" id="btn-room" style="font-weight:800;">🏠 Room 1</button>
     <a class="btn" href="gurus.html" style="text-decoration:none;">↩ 返回出席一覽表</a>
     <button class="btn btn--primary" id="btn-add">＋ 新增活動</button>
+    <button class="btn" id="btn-import">📂 匯入 Excel</button>
+    <input type="file" id="import-input" accept=".xlsx,.xls,.csv" style="display:none">
     <button class="btn" id="btn-settings">⚙ 展名設定(中英)</button>
     <button class="btn" id="btn-dl-zh">📄 下載中文版</button>
     <button class="btn" id="btn-dl-en">📄 下載英文版</button>
@@ -223,8 +226,12 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const ACT_REF = ref(db, 'agendaTool/activities');
-const SET_REF = ref(db, 'agendaTool/settings');
+/* ── Room 1 / Room 2：兩個獨立房間，資料互不干涉（怕兩個展同時進行） ──
+   Room1 = 原本的 agendaTool 節點（既有資料不動）；Room2 = agendaTool_room2 */
+let ROOM = localStorage.getItem('agendaRoom') || '1';
+const AGBASE = () => ROOM === '1' ? 'agendaTool' : 'agendaTool_room2';
+let ACT_REF, SET_REF;
+let _roomUnsubs = [];
 
 let ACT = {};           // id -> {date, time, name, org, venue, contact}
 let TITLE_ZH = '活動日程表';
@@ -418,7 +425,7 @@ function render(){
   list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => requirePw(async () => {
     const a = ACT[b.dataset.del];
     if (!confirm(`確定刪除「${(a && a.name || '').split('\n')[0]}」？`)) return;
-    try { await remove(ref(db, 'agendaTool/activities/' + b.dataset.del)); toast('✓ 已刪除'); }
+    try { await remove(ref(db, AGBASE() + '/activities/' + b.dataset.del)); toast('✓ 已刪除'); }
     catch (e) { toast('✗ 刪除失敗：' + e.message); }
   })));
 }
@@ -487,7 +494,7 @@ $('act-save').addEventListener('click', async () => {
   if (!data.date) { alert('請選日期'); return; }
   if (!data.name) { alert('請填活動名稱'); return; }
   try {
-    if (editId) await update(ref(db, 'agendaTool/activities/' + editId), data);
+    if (editId) await update(ref(db, AGBASE() + '/activities/' + editId), data);
     else await push(ACT_REF, data);
     $('mask-act').classList.remove('show');
     toast('✓ 已儲存並同步');
@@ -607,7 +614,7 @@ $('set-save').addEventListener('click', async () => {
 $('btn-clear').addEventListener('click', () => requirePw(async () => {
   if (!confirm('確定清空「活動日程表」全部資料？（展名與所有活動都會從 Firebase 刪除）')) return;
   if (!confirm('再確認一次：這個動作無法復原，所有同事看到的資料也會一起消失。')) return;
-  try { await remove(ref(db, 'agendaTool')); toast('✓ 已清空，容量已釋放'); }
+  try { await remove(ref(db, AGBASE())); toast('✓ 已清空，容量已釋放'); }
   catch (e) { toast('✗ 清空失敗：' + e.message); }
 }));
 
@@ -690,32 +697,182 @@ function buildWord(mode){
   a.click();
   URL.revokeObjectURL(a.href);
 }
+/* ── 📂 匯入 Excel：模糊抓欄位 ──
+   模式A（有標題列）：掃前12列找含「時間/活動/主辦/地點/聯絡/日期」等關鍵字的標題列，欄位順序隨意。
+   模式B（沒標題列）：逐格用特徵猜——像時間的、像日期的、含館/樓/室的當地點、含協會/公會/公司的當主辦。
+   「整列只有一個日期」視為日期區段列，之後的活動都掛在那一天。 */
+let _xlsxLoading=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(_xlsxLoading) return _xlsxLoading;
+  _xlsxLoading=new Promise((res,rej)=>{
+    const el=document.createElement('script');
+    el.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    el.onload=res; el.onerror=()=>rej(new Error('Excel 元件載入失敗，請確認網路'));
+    document.head.appendChild(el);
+  });
+  return _xlsxLoading;
+}
+const _pad2=n=>String(n).padStart(2,'0');
+function parseDateCell(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number'&&v>20000&&v<80000){
+    const d=new Date(Math.round((v-25569)*86400000));
+    if(!isNaN(d)) return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+  }
+  let s=String(v).trim().replace(/（[^）]*）|\([^)]*\)/g,'').trim(); // 去掉(星期二)
+  let m=s.match(/(\d{4})[\/\-年.](\d{1,2})[\/\-月.](\d{1,2})/);
+  if(m) return `${m[1]}-${_pad2(m[2])}-${_pad2(m[3])}`;
+  m=s.match(/^(\d{1,2})[\/\-月.](\d{1,2})日?$/);
+  if(m){
+    const y=FIRST_DAY?FIRST_DAY.slice(0,4):String(new Date().getFullYear());
+    return `${y}-${_pad2(m[1])}-${_pad2(m[2])}`;
+  }
+  return null;
+}
+const _looksTime=s=>/\d{1,2}[:：]?\d{2}\s*[-~－〜至]\s*\d{1,2}[:：]?\d{2}/.test(s)||/^\d{1,2}[:：]\d{2}$/.test(String(s).trim());
+const IMPORT_KEYS={
+  date:['日期','date'],
+  time:['時間','time'],
+  name:['活動','event','名稱','議程','主題','研討','課程','內容'],
+  org:['主辦','organizer','單位'],
+  venue:['地點','venue','場地','location','會議室'],
+  contact:['聯絡','contact','備註','窗口','remark']
+};
+function detectHeader(rows){
+  for(let i=0;i<Math.min(rows.length,12);i++){
+    const map={};
+    rows[i].forEach((c,ci)=>{
+      const t=String(c??'').toLowerCase().replace(/\s|\/|／/g,'');
+      if(!t) return;
+      for(const k in IMPORT_KEYS){
+        if(map[k]===undefined && IMPORT_KEYS[k].some(w=>t.includes(w))){ map[k]=ci; break; }
+      }
+    });
+    if(map.name!==undefined&&(map.time!==undefined||map.date!==undefined)) return {row:i,map};
+  }
+  return null;
+}
+function guessRow(cells){
+  // 模式B：無標題列時逐格猜
+  const used=new Set();
+  const pick=fn=>{ for(let i=0;i<cells.length;i++){ if(!used.has(i)&&cells[i]&&fn(cells[i])){ used.add(i); return cells[i]; } } return ''; };
+  const time=pick(_looksTime);
+  const dateRaw=pick(c=>parseDateCell(c)!==null&&!_looksTime(c));
+  const venue=pick(c=>/[館樓室廳]|hall|room|stage|世貿|南港/i.test(c));
+  const org=pick(c=>/協會|公會|同業|公司|商會|署|局|處|部|taitra|tami|assoc/i.test(c)&&c.length<=40);
+  const contact=pick(c=>/[#＃]|\d{2,4}-\d{3,4}|09\d{2}|先生|小姐|ms\.|mr\./i.test(c));
+  // 活動名稱＝剩下最長的一格
+  let name='',ni=-1;
+  cells.forEach((c,i)=>{ if(!used.has(i)&&c&&c.length>name.length){ name=c; ni=i; } });
+  if(ni>=0) used.add(ni);
+  return {date:dateRaw?parseDateCell(dateRaw):null, time, name, org, venue, contact};
+}
+$('btn-import').addEventListener('click', () => requirePw(() => $('import-input').click()));
+$('import-input').addEventListener('change', async function(){
+  const file=this.files[0];
+  this.value='';
+  if(!file) return;
+  try{
+    await loadXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const hdr=detectHeader(rows);
+    const items=[];
+    let curDate=null;
+    const startRow=hdr?hdr.row+1:0;
+    for(let i=startRow;i<rows.length;i++){
+      const raw=rows[i];
+      const cells=raw.map(c=>String(c??'').trim());
+      const nonEmpty=cells.filter(Boolean);
+      if(!nonEmpty.length) continue;
+      // 日期區段列：整列只有一個有效值且是日期
+      if(nonEmpty.length===1){
+        const d=parseDateCell(raw[cells.findIndex(Boolean)]);
+        if(d){ curDate=d; continue; }
+      }
+      let it;
+      if(hdr){
+        const g=k=>hdr.map[k]!==undefined?cells[hdr.map[k]]:'';
+        const rowDate=hdr.map.date!==undefined?parseDateCell(raw[hdr.map.date]):null;
+        it={date:rowDate||curDate, time:g('time'), name:g('name'), org:g('org'), venue:g('venue'), contact:g('contact')};
+        if(rowDate) curDate=rowDate;
+      }else{
+        it=guessRow(cells);
+        if(it.date) curDate=it.date; else it.date=curDate;
+      }
+      if(!it.name||_looksTime(it.name)) continue; // 沒有活動名稱的列跳過
+      items.push(it);
+    }
+    if(!items.length){ alert('沒有解析到任何活動列。\n提示：至少要有「活動名稱」，加上時間或日期任一。'); return; }
+    // 缺日期的統一補
+    const noDate=items.filter(x=>!x.date);
+    if(noDate.length){
+      const def=prompt(`有 ${noDate.length} 筆活動沒有日期，請輸入要套用的日期（YYYY-MM-DD）：`, FIRST_DAY||'');
+      if(def===null) return;
+      const d=parseDateCell(def);
+      if(!d){ alert('日期格式看不懂，已取消匯入'); return; }
+      noDate.forEach(x=>x.date=d);
+    }
+    const preview=items.slice(0,4).map(x=>`${x.date} ${x.time||''}｜${x.name.slice(0,18)}`).join('\n');
+    if(!confirm(`解析模式：${hdr?'標題列比對':'逐格特徵猜測'}\n共解析到 ${items.length} 筆活動，例如：\n${preview}${items.length>4?'\n…':''}\n\n確定全部匯入到 Room ${ROOM}？`)) return;
+    for(const it of items){
+      await push(ACT_REF,{date:it.date,time:it.time||'',name:it.name,org:it.org||'',venue:it.venue||'',contact:it.contact||'',updatedAt:Date.now()});
+    }
+    toast(`✓ 已匯入 ${items.length} 筆活動`);
+  }catch(e){ alert('匯入失敗：'+(e.message||e)); }
+});
+
 renderChips();
 $('btn-dl-zh').addEventListener('click', () => buildWord('zh'));
 $('btn-dl-en').addEventListener('click', () => buildWord('en'));
 $('btn-dl-bi').addEventListener('click', () => buildWord('bi'));
 
-/* ── 即時同步 ── */
-onValue(ACT_REF, snap => {
-  ACT = snap.val() || {};
-  $('sync-status').textContent = '● 即時同步 · ' + Object.keys(ACT).length + ' 筆';
-  render();
-}, err => { $('sync-status').textContent = '✗ 連線失敗'; console.error(err); });
-onValue(SET_REF, snap => {
-  const s = snap.val() || {};
-  TITLE_ZH = s.titleZh || '活動日程表';
-  TITLE_EN = s.titleEn || 'EVENT SCHEDULE';
-  FIRST_DAY = s.firstDay || '';
-  DAY_LABELS = s.dayLabels || {};
-  const toArr = v => v == null ? null : (Array.isArray(v) ? v : Object.values(v));
-  ORG_CHIPS = toArr(s.orgChips);
-  VENUE_CHIPS = toArr(s.venueChips);
-  // 相容舊版 customOrgs/customVenues：尚未有新結構時，接在預設後面
-  if (!ORG_CHIPS && s.customOrgs) ORG_CHIPS = [...DEFAULT_ORG_CHIPS, ...(toArr(s.customOrgs) || [])];
-  if (!VENUE_CHIPS && s.customVenues) VENUE_CHIPS = [...DEFAULT_VENUE_CHIPS, ...(toArr(s.customVenues) || [])];
-  renderChips();
-  render();
+/* ── 即時同步（依 Room 綁定，可切換重綁） ── */
+function bindRoom(){
+  _roomUnsubs.forEach(u => { try{ u(); }catch(e){} });
+  _roomUnsubs = [];
+  ACT = {}; TITLE_ZH = '活動日程表'; TITLE_EN = 'EVENT SCHEDULE';
+  FIRST_DAY = ''; DAY_LABELS = {}; ORG_CHIPS = null; VENUE_CHIPS = null; editId = null;
+  ACT_REF = ref(db, AGBASE() + '/activities');
+  SET_REF = ref(db, AGBASE() + '/settings');
+  _roomUnsubs.push(onValue(ACT_REF, snap => {
+    ACT = snap.val() || {};
+    $('sync-status').textContent = `● Room ${ROOM} 即時同步 · ` + Object.keys(ACT).length + ' 筆';
+    render();
+  }, err => { $('sync-status').textContent = '✗ 連線失敗'; console.error(err); }));
+  _roomUnsubs.push(onValue(SET_REF, snap => {
+    const s = snap.val() || {};
+    TITLE_ZH = s.titleZh || '活動日程表';
+    TITLE_EN = s.titleEn || 'EVENT SCHEDULE';
+    FIRST_DAY = s.firstDay || '';
+    DAY_LABELS = s.dayLabels || {};
+    const toArr = v => v == null ? null : (Array.isArray(v) ? v : Object.values(v));
+    ORG_CHIPS = toArr(s.orgChips);
+    VENUE_CHIPS = toArr(s.venueChips);
+    if (!ORG_CHIPS && s.customOrgs) ORG_CHIPS = [...DEFAULT_ORG_CHIPS, ...(toArr(s.customOrgs) || [])];
+    if (!VENUE_CHIPS && s.customVenues) VENUE_CHIPS = [...DEFAULT_VENUE_CHIPS, ...(toArr(s.customVenues) || [])];
+    renderChips();
+    render();
+  }));
+  updateRoomBtn();
+}
+function updateRoomBtn(){
+  const b = $('btn-room');
+  if(!b) return;
+  b.textContent = `🏠 Room ${ROOM}`;
+  if (ROOM === '2') { b.style.background = 'var(--gold)'; b.style.borderColor = 'var(--gold)'; b.style.color = '#fff'; }
+  else { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; }
+}
+$('btn-room').addEventListener('click', () => {
+  const next = ROOM === '1' ? '2' : '1';
+  if (!confirm(`切換到 Room ${next}？\n兩個房間的資料完全獨立、互不影響（適合兩個展同時進行）。`)) return;
+  ROOM = next;
+  localStorage.setItem('agendaRoom', ROOM);
+  bindRoom();
 });
+bindRoom();
 </script>
 </body>
 </html>
