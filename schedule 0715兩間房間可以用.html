@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活動日程表</title>
+<style>
+  :root{
+    --paper:#f7f4ee; --paper-line:#ddd5c5; --ink:#22303c;
+    --navy:#1c2b3a; --navy-light:#3c5570; --gold:#b98a2f; --gold-light:#d8b25f;
+    --ok:#2e7d4f; --warn:#b3541e; --danger:#a63232;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif; background:var(--paper); color:var(--ink); }
+  .wrap{ max-width:1180px; margin:0 auto; padding:26px 20px 80px; }
+  .eyebrow{ font-size:13px; font-weight:700; letter-spacing:0.14em; color:var(--gold); }
+  h1{ margin:4px 0 2px; font-size:26px; color:var(--navy); letter-spacing:0.04em; }
+  .sub{ font-size:13px; color:var(--navy-light); }
+  .toolbar{ display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 6px; align-items:center; }
+  .btn{ font-family:inherit; font-size:13.5px; font-weight:700; padding:10px 16px; border-radius:6px;
+        border:1.5px solid var(--paper-line); background:#fff; color:var(--navy); cursor:pointer; }
+  .btn:hover{ border-color:var(--gold); }
+  .btn--primary{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  .btn--primary:hover{ background:var(--navy-light); }
+  .btn--danger{ color:var(--danger); }
+  .btn--danger:hover{ border-color:var(--danger); }
+  .sync{ margin-left:auto; font-size:12.5px; color:var(--ok); font-weight:700; }
+  .titlerow{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .btn--ghost{ background:#fff; color:var(--navy-light); border-color:var(--paper-line); font-size:12.5px; padding:8px 14px; white-space:nowrap; }
+  .btn--ghost:hover{ border-color:var(--gold); color:var(--navy); }
+  .btn--logout{ color:var(--danger); }
+  .btn--logout:hover{ border-color:var(--danger); }
+  .card{ background:#fff; border:1px solid var(--paper-line); border-radius:10px; padding:18px 20px; margin-top:14px; }
+
+  /* day band */
+  .dayband{ display:flex; align-items:baseline; gap:14px; background:var(--navy); color:#fff;
+            border-radius:8px 8px 0 0; padding:10px 16px; margin-top:22px; }
+  .dayband .d-zh{ font-size:18px; font-weight:800; letter-spacing:0.05em; }
+  .dayband .d-en{ font-size:13px; color:var(--gold-light); font-weight:600; }
+  .dayband .d-n{ margin-left:auto; font-size:12.5px; background:var(--gold); color:#fff; border-radius:999px; padding:3px 12px; font-weight:800; }
+  table.agenda{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--paper-line); border-top:none; }
+  table.agenda th{ background:#efe9dc; font-size:12.5px; letter-spacing:0.06em; color:var(--navy);
+                   padding:8px 10px; border-bottom:1px solid var(--paper-line); text-align:left; }
+  table.agenda td{ padding:10px; border-bottom:1px solid #eee6d6; font-size:13.5px; vertical-align:top; }
+  table.agenda tr:last-child td{ border-bottom:none; }
+  .t-time{ white-space:nowrap; font-weight:800; color:var(--navy); width:110px; }
+  .zh-line{ font-weight:700; }
+  .en-line{ color:var(--navy-light); font-size:12.5px; font-family:"Times New Roman","Segoe UI",serif; }
+  .rowbtns{ white-space:nowrap; width:96px; text-align:right; }
+  .mini{ font-size:12px; padding:5px 9px; border-radius:5px; border:1px solid var(--paper-line); background:#fff; cursor:pointer; font-weight:700; color:var(--navy); }
+  .mini:hover{ border-color:var(--gold); }
+  .mini--del{ color:var(--danger); }
+  .empty{ padding:36px 10px; text-align:center; color:var(--navy-light); font-size:14px; }
+
+  /* modal */
+  .mask{ position:fixed; inset:0; background:rgba(28,43,58,0.45); display:none; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; z-index:50; }
+  .mask.show{ display:flex; }
+  .modal{ background:#fff; border-radius:12px; width:640px; max-width:100%; padding:22px 24px; box-shadow:0 12px 40px rgba(0,0,0,0.25); }
+  .modal h2{ margin:0 0 14px; font-size:18px; color:var(--navy); }
+  .f-label{ font-size:12.5px; font-weight:800; color:var(--navy-light); margin:12px 0 4px; }
+  .f-input, .f-ta{ width:100%; font-family:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--paper-line);
+                   border-radius:6px; background:var(--paper); color:var(--ink); outline:none; }
+  .f-input:focus, .f-ta:focus{ border-color:var(--gold); background:#fff; }
+  .f-ta{ resize:vertical; min-height:56px; }
+  .hint{ font-size:12px; color:var(--navy-light); margin-top:3px; }
+  .datepreview{ font-size:13px; font-weight:800; color:var(--gold); margin-top:4px; min-height:18px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .chip{ font-size:12px; padding:5px 10px; border-radius:999px; border:1px dashed var(--gold); color:var(--gold);
+         background:#fff; cursor:pointer; font-weight:700; }
+  .chip:hover{ background:#fbf4e4; }
+  .chip--add{ border-style:solid; background:var(--navy); border-color:var(--navy); color:#fff; }
+  .chip--add:hover{ background:var(--navy-light); }
+  .chip--del{ border-style:solid; border-color:var(--danger); color:var(--danger); background:#fff; }
+  .chip--del:hover{ background:#fbecec; }
+  .chip--delmode{ border-color:var(--danger); color:var(--danger); background:#fff5f5; }
+  .d-n{ cursor:pointer; }
+  .d-n:hover{ background:var(--gold-light); }
+  .m-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff;
+          padding:11px 22px; border-radius:8px; font-size:13.5px; font-weight:700; display:none; z-index:99;
+          box-shadow:0 6px 24px rgba(0,0,0,0.3); }
+  .split-preview{ margin-top:6px; border:1px solid var(--paper-line); border-radius:6px; padding:8px 10px; background:#fbf9f4; font-size:12.5px; display:none; }
+  .split-preview .sp-zh{ font-weight:700; }
+  .split-preview .sp-en{ color:var(--navy-light); font-family:"Times New Roman",serif; }
+  /* ── 手機版：表格改成卡片式堆疊，避免六欄擠爆 ── */
+  @media (max-width:720px){
+    .wrap{ padding:16px 12px 60px; }
+    h1{ font-size:21px; }
+    .toolbar{ gap:7px; }
+    .toolbar .btn{ font-size:12.5px; padding:8px 11px; }
+    .sync{ width:100%; margin-left:0; }
+    .dayband{ flex-wrap:wrap; gap:4px 12px; padding:10px 12px; }
+    .dayband .d-zh{ font-size:16px; }
+    .dayband .d-n{ margin-left:0; }
+    table.agenda, table.agenda tbody, table.agenda tr, table.agenda td{ display:block; width:100%; }
+    table.agenda tr.hdr{ display:none; }
+    table.agenda tr{ border-bottom:2px solid var(--paper-line); padding:10px 12px; }
+    table.agenda tr:last-child{ border-bottom:none; }
+    table.agenda td{ border:none; padding:3px 0; }
+    table.agenda td:empty{ display:none; }
+    .t-time{ width:auto; color:var(--gold); font-size:15.5px; }
+    td[data-l]::before{
+      content:attr(data-l); display:inline-block; font-size:11px; font-weight:800; color:var(--navy-light);
+      background:#efe9dc; border-radius:4px; padding:1px 7px; margin:0 6px 2px 0; vertical-align:middle;
+    }
+    .rowbtns{ width:auto; text-align:right; padding-top:8px; }
+    .mini{ padding:7px 14px; font-size:13px; }
+    /* iOS 點輸入框不要自動放大 */
+    .f-input, .f-ta{ font-size:16px; }
+    .modal{ padding:18px 16px; }
+    .mask{ padding:16px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="titlerow">
+    <div>
+      <div class="eyebrow" id="ui-en">EVENT SCHEDULE</div>
+      <h1 id="ui-zh">活動日程表</h1>
+      <div class="sub">研討會／活動日程一覽 · 依日期與時間自動排序 · 中英文自動拆分 · 團隊即時同步</div>
+    </div>
+    <button class="btn btn--ghost" id="btn-hide-toolbar">隱藏選項</button>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <button class="btn" id="btn-room" style="font-weight:800;">🏠 Room 1</button>
+    <a class="btn" href="gurus.html" style="text-decoration:none;">↩ 返回出席一覽表</a>
+    <button class="btn btn--primary" id="btn-add">＋ 新增活動</button>
+    <button class="btn" id="btn-import">📂 匯入 Excel</button>
+    <input type="file" id="import-input" accept=".xlsx,.xls,.csv" style="display:none">
+    <button class="btn" id="btn-settings">⚙ 展名設定(中英)</button>
+    <button class="btn" id="btn-dl-zh">📄 下載中文版</button>
+    <button class="btn" id="btn-dl-en">📄 下載英文版</button>
+    <button class="btn" id="btn-dl-bi">📄 下載雙語版</button>
+    <button class="btn btn--danger" id="btn-clear">🗑 清空全部資料</button>
+    <button class="btn btn--ghost btn--logout" id="btn-logout">🔓 登出</button>
+    <span class="sync" id="sync-status">● 連線中…</span>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<!-- 新增/編輯活動 -->
+<div class="mask" id="mask-act">
+  <div class="modal">
+    <h2 id="act-modal-title">新增活動</h2>
+
+    <div class="f-label">日期</div>
+    <input type="date" class="f-input" id="f-date" min="2020-01-01" max="2099-12-31">
+    <div class="datepreview" id="f-date-preview"></div>
+
+    <div class="f-label">時間（只要打時間，左邊時間序會自動由早排到晚）</div>
+    <input type="text" class="f-input" id="f-time" placeholder="例如 10:00-16:00、10:30-11:30，全天可留白">
+
+    <div class="f-label">活動名稱（中英打在一起，我會自動幫你分開）</div>
+    <textarea class="f-ta" id="f-name" placeholder="例如：2026年全球機械採購大會 Sourcing Taiwan 2026 - Machinery&#10;（也可以中文一行、英文一行）"></textarea>
+    <div class="split-preview" id="f-name-preview"></div>
+
+    <div class="f-label">主辦單位（可超過一個：點快速鍵會往下疊加，或自己一行打一個）</div>
+    <textarea class="f-ta" id="f-org" rows="2" placeholder="例如：外貿協會 TAITRA"></textarea>
+    <div class="chips" id="chips-org"></div>
+
+    <div class="f-label">地點</div>
+    <textarea class="f-ta" id="f-venue" rows="2" placeholder="例如：台北南港展覽館1館4樓402會議室 Meeting Room 402, 4F, TaiNEX 1"></textarea>
+    <div class="chips" id="chips-venue"></div>
+
+    <div class="f-label">聯絡人／備註（電話、分機這種中英通用的行，兩個語言版本都會保留）</div>
+    <textarea class="f-ta" id="f-contact" rows="3" placeholder="例如：&#10;王小明先生 Mr. Kevin Wang&#10;+886-2-2725-5200 #1234&#10;By Invitation Only"></textarea>
+
+    <div class="m-actions">
+      <button class="btn" id="act-cancel">取消</button>
+      <button class="btn btn--primary" id="act-save">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 展名設定 -->
+<div class="mask" id="mask-set">
+  <div class="modal">
+    <h2>展名設定（中英先備份，會存進 Firebase）</h2>
+    <div class="f-label">展覽中文名稱</div>
+    <input type="text" class="f-input" id="s-zh" placeholder="例如：2026年台北國際塑橡膠工業展">
+    <div class="f-label">展覽英文名稱</div>
+    <input type="text" class="f-input" id="s-en" placeholder="例如：TaipeiPLAS 2026">
+    <div class="f-label">展覽首日（用來自動判斷「展覽第幾天」；首日前的日期會標成「展前」。不填則依日期順序自動編第1、2、3天）</div>
+    <input type="date" class="f-input" id="s-first" min="2020-01-01" max="2099-12-31">
+    <div class="m-actions">
+      <button class="btn" id="set-cancel">取消</button>
+      <button class="btn btn--primary" id="set-save">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 密碼驗證 -->
+<div class="mask" id="mask-pw">
+  <div class="modal" style="width:400px; text-align:center;">
+    <h2 style="justify-content:center;">🔒 需要驗證</h2>
+    <div class="sub" style="margin-bottom:14px;">此操作需要工作人員密碼</div>
+    <input type="password" class="f-input" id="pw-input" autocomplete="off"
+           style="text-align:center; letter-spacing:6px; font-size:18px;">
+    <div class="hint" id="pw-err" style="color:var(--danger); font-weight:700; min-height:16px; margin-top:6px;"></div>
+    <div class="m-actions" style="justify-content:center;">
+      <button class="btn" id="pw-cancel">取消</button>
+      <button class="btn btn--primary" id="pw-ok">確認</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, update, remove, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* ── Firebase：與 Gurus 同一個專案，資料鎖在獨立節點 agendaTool，
+      下次要用可按「清空全部資料」整節點刪除，不佔容量 ── */
+const firebaseConfig = {
+  apiKey: "AIzaSyDM9gqNxouPzNvj1EPtzVL1QMeH2wfEv6s",
+  authDomain: "gurus-cfa66.firebaseapp.com",
+  databaseURL: "https://gurus-cfa66-default-rtdb.firebaseio.com",
+  projectId: "gurus-cfa66",
+  storageBucket: "gurus-cfa66.firebasestorage.app",
+  messagingSenderId: "584897610628",
+  appId: "1:584897610628:web:d5d7331c022c3b1a3493d1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+/* ── Room 1 / Room 2：兩個獨立房間，資料互不干涉（怕兩個展同時進行） ──
+   Room1 = 原本的 agendaTool 節點（既有資料不動）；Room2 = agendaTool_room2 */
+let ROOM = localStorage.getItem('agendaRoom') || '1';
+const AGBASE = () => ROOM === '1' ? 'agendaTool' : 'agendaTool_room2';
+let ACT_REF, SET_REF;
+let _roomUnsubs = [];
+
+let ACT = {};           // id -> {date, time, name, org, venue, contact}
+let TITLE_ZH = '活動日程表';
+let TITLE_EN = 'EVENT SCHEDULE';
+let FIRST_DAY = '';     // 展覽首日（自動判斷第幾天／展前）
+let DAY_LABELS = {};    // 各日期的自訂標籤，覆蓋自動判斷
+let editId = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+const nl2br = s => esc(s).replace(/\n/g, '<br>');
+
+/* ── 工作人員密碼驗證：新增活動／展名設定／清空全部資料 ──
+   驗證成功後同一瀏覽器分頁內免重複輸入（關閉分頁後重新驗證） */
+const STAFF_PW = 'taitra2026';
+let pwPending = null;
+const isLoggedIn = () => sessionStorage.getItem('schedPwOk') === '1';
+function requirePw(cb){
+  if (isLoggedIn()) { cb(); return; }
+  pwPending = cb;
+  $('pw-input').value = '';
+  $('pw-err').textContent = '';
+  $('mask-pw').classList.add('show');
+  setTimeout(() => $('pw-input').focus(), 50);
+}
+function pwSubmit(){
+  if ($('pw-input').value === STAFF_PW) {
+    sessionStorage.setItem('schedPwOk', '1');
+    $('mask-pw').classList.remove('show');
+    const cb = pwPending; pwPending = null;
+    render(); // 登入成功後，重新畫面以顯示編輯/刪除按鈕
+    if (cb) cb();
+  } else {
+    $('pw-err').textContent = '密碼錯誤，請再試一次';
+    $('pw-input').value = '';
+    $('pw-input').focus();
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem('schedPwOk');
+  render(); // 登出後，隱藏編輯/刪除按鈕
+  toast('已登出');
+}
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 2200);
+}
+
+/* ── 中英自動拆分 ──
+   逐行判斷：有中文字→中文版；有英文字母且無中文→英文版；
+   只有數字/符號（電話、分機、#…）→ 兩版都保留。
+   單行混打（中文接英文）→ 從最後一個中文字切開。 */
+const hasCJK = t => /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/.test(t);
+const hasLatin = t => /[A-Za-z]/.test(t);
+function splitOneLine(t){
+  let lastCJK = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff，、。：；！？（）「」『』【】]/.test(t[i])) lastCJK = i;
+  }
+  const zh = t.slice(0, lastCJK + 1).trim();
+  const en = t.slice(lastCJK + 1).replace(/^[\s\/\-–—:：,，·]+/, '').trim();
+  return { zh, en };
+}
+function splitZhEn(raw){
+  const lines = (raw || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const zh = [], en = [];
+  lines.forEach(l => {
+    if (hasCJK(l) && hasLatin(l)) {
+      const p = splitOneLine(l);
+      if (p.zh) zh.push(p.zh);
+      if (p.en) en.push(p.en);
+    } else if (hasCJK(l)) {
+      zh.push(l);
+    } else if (hasLatin(l)) {
+      en.push(l);
+    } else {
+      zh.push(l); en.push(l); // 電話/分機等中英通用
+    }
+  });
+  return { zh: zh.join('\n'), en: en.join('\n') };
+}
+
+/* ── 日期文字 ── */
+const WD_ZH = '日一二三四五六';
+const WD_EN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MO_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function dateZh(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return `${d.getMonth() + 1}月${d.getDate()}日(星期${WD_ZH[d.getDay()]})`;
+}
+function dateEn(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return `${MO_EN[d.getMonth()]} ${d.getDate()} (${WD_EN[d.getDay()]})`;
+}
+/* 「展覽第幾天」判斷：自訂標籤 > 展覽首日推算（含展前） > 依日期順序編號 */
+function dayDescriptor(dateIso, fallbackIndex){
+  if (DAY_LABELS[dateIso]) return { custom: DAY_LABELS[dateIso] };
+  if (FIRST_DAY) {
+    const n = Math.round((new Date(dateIso + 'T00:00:00') - new Date(FIRST_DAY + 'T00:00:00')) / 86400000) + 1;
+    if (n >= 1) return { zh: `展覽第${n}天`, en: `Show Day ${n}` };
+    const m = 1 - n;
+    return { zh: `展前第${m}天`, en: `${m} Day${m > 1 ? 's' : ''} Before Show` };
+  }
+  return { zh: `展覽第${fallbackIndex}天`, en: `Show Day ${fallbackIndex}` };
+}
+async function editDayLabel(dateIso){
+  const cur = DAY_LABELS[dateIso] || '';
+  const v = prompt(`自訂「${dateZh(dateIso)}」這一天的標籤（例如：展前佈展日 · Move-in Day）
+留空＝恢復自動判斷`, cur);
+  if (v === null) return;
+  if (v.trim()) DAY_LABELS[dateIso] = v.trim();
+  else delete DAY_LABELS[dateIso];
+  try {
+    await update(SET_REF, { dayLabels: DAY_LABELS, updatedAt: Date.now() });
+    toast('✓ 日期標籤已更新');
+  } catch (e) { toast('✗ 更新失敗：' + e.message); }
+}
+function timeSortKey(t){
+  const m = (t || '').match(/(\d{1,2})[:：]?(\d{2})/);
+  if (!m) return 24 * 60 + 1; // 沒填時間排在該日最後
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/* ── 分組排序：日期由早到晚、同日內依時間 ── */
+function groupedDays(){
+  const byDate = {};
+  Object.entries(ACT).forEach(([id, a]) => {
+    if (!a || !a.date) return;
+    (byDate[a.date] ||= []).push({ id, ...a });
+  });
+  const dates = Object.keys(byDate).sort();
+  dates.forEach(dt => byDate[dt].sort((x, y) => timeSortKey(x.time) - timeSortKey(y.time)));
+  return dates.map((dt, i) => ({ date: dt, dayNo: i + 1, items: byDate[dt] }));
+}
+
+/* ── 畫面 ── */
+function render(){
+  $('ui-zh').textContent = `${TITLE_ZH} 活動日程表`.trim();
+  $('ui-en').textContent = (TITLE_EN || 'EVENT SCHEDULE').toUpperCase();
+  document.title = `${TITLE_ZH} 活動日程表`;
+
+  const list = $('list');
+  const days = groupedDays();
+  if (days.length === 0) {
+    list.innerHTML = `<div class="card"><div class="empty">還沒有活動。點上方「＋ 新增活動」開始建立，資料會即時同步給所有開啟這頁的同事。</div></div>`;
+    return;
+  }
+  list.innerHTML = '';
+  days.forEach(day => {
+    const band = document.createElement('div');
+    band.className = 'dayband';
+    const dd = dayDescriptor(day.date, day.dayNo);
+    const badgeTxt = dd.custom ? dd.custom : `${dd.zh} · ${dd.en}`;
+    band.innerHTML = `
+      <span class="d-zh">${esc(dateZh(day.date))}</span>
+      <span class="d-en">${esc(dateEn(day.date))}</span>
+      <span class="d-n" title="點一下修改這一天的標籤（例如改成展前活動）">${esc(badgeTxt)} ✎</span>`;
+    band.querySelector('.d-n').addEventListener('click', () => requirePw(() => editDayLabel(day.date)));
+    list.appendChild(band);
+
+    const tb = document.createElement('table');
+    tb.className = 'agenda';
+    tb.innerHTML = `
+      <tr class="hdr"><th style="width:110px;">時間 Time</th><th>活動 Event</th><th style="width:16%;">主辦 Organizer</th>
+          <th style="width:20%;">地點 Venue</th><th style="width:18%;">聯絡人/備註</th><th style="width:96px;"></th></tr>`;
+    day.items.forEach(a => {
+      const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
+      const cell = p => `${p.zh ? `<div class="zh-line">${nl2br(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2br(p.en)}</div>` : ''}`;
+      const tr = document.createElement('tr');
+      const c_og = cell(og), c_vn = cell(vn), c_ct = cell(ct);
+      const rowBtnsHtml = isLoggedIn()
+        ? `<button class="mini" data-edit="${a.id}">編輯</button>
+           <button class="mini mini--del" data-del="${a.id}">刪除</button>`
+        : '';
+      tr.innerHTML = `
+        <td class="t-time">${esc(a.time || '')}</td>
+        <td>${cell(nm)}</td>
+        <td${c_og ? ' data-l="主辦"' : ''}>${c_og}</td>
+        <td${c_vn ? ' data-l="地點"' : ''}>${c_vn}</td>
+        <td${c_ct ? ' data-l="聯絡"' : ''}>${c_ct}</td>
+        <td class="rowbtns">${rowBtnsHtml}</td>`;
+      tb.appendChild(tr);
+    });
+    list.appendChild(tb);
+  });
+
+  list.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => requirePw(() => openAct(b.dataset.edit))));
+  list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => requirePw(async () => {
+    const a = ACT[b.dataset.del];
+    if (!confirm(`確定刪除「${(a && a.name || '').split('\n')[0]}」？`)) return;
+    try { await remove(ref(db, AGBASE() + '/activities/' + b.dataset.del)); toast('✓ 已刪除'); }
+    catch (e) { toast('✗ 刪除失敗：' + e.message); }
+  })));
+}
+
+/* ── 新增/編輯 ── */
+function openAct(id){
+  editId = id || null;
+  $('act-modal-title').textContent = editId ? '編輯活動' : '新增活動';
+  const a = editId ? ACT[editId] : {};
+  $('f-date').value = a.date || '';
+  $('f-time').value = a.time || '';
+  $('f-name').value = a.name || '';
+  $('f-org').value = a.org || '';
+  $('f-venue').value = a.venue || '';
+  $('f-contact').value = a.contact || '';
+  updateDatePreview(); updateNamePreview();
+  $('mask-act').classList.add('show');
+}
+function updateDatePreview(){
+  const v = $('f-date').value;
+  $('f-date-preview').textContent = v ? `${dateZh(v)}　${dateEn(v)}` : '';
+}
+function updateNamePreview(){
+  const p = splitZhEn($('f-name').value);
+  const box = $('f-name-preview');
+  if (!p.zh && !p.en) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div class="sp-zh">中：${nl2br(p.zh) || '—'}</div><div class="sp-en">英：${nl2br(p.en) || '—'}</div>`;
+}
+function clampYear(el){
+  const m = el.value.match(/^(\d{5,6})-(\d{2})-(\d{2})$/);
+  if (m) el.value = m[1].slice(0, 4) + '-' + m[2] + '-' + m[3];
+}
+$('f-date').addEventListener('input', () => { clampYear($('f-date')); updateDatePreview(); });
+$('s-first').addEventListener('input', () => clampYear($('s-first')));
+$('f-name').addEventListener('input', updateNamePreview);
+$('btn-add').addEventListener('click', () => requirePw(() => openAct(null)));
+$('btn-logout').addEventListener('click', doLogout);
+
+/* ── 隱藏選項：把上方整排工具按鈕收起來，只留這顆按鈕可以再打開 ── */
+function applyToolbarVisibility(){
+  const hidden = localStorage.getItem('schedToolbarHidden') === '1';
+  $('toolbar').style.display = hidden ? 'none' : 'flex';
+  $('btn-hide-toolbar').textContent = hidden ? '顯示選項' : '隱藏選項';
+}
+$('btn-hide-toolbar').addEventListener('click', () => {
+  const hidden = localStorage.getItem('schedToolbarHidden') === '1';
+  localStorage.setItem('schedToolbarHidden', hidden ? '0' : '1');
+  applyToolbarVisibility();
+});
+applyToolbarVisibility();
+$('pw-cancel').addEventListener('click', () => { pwPending = null; $('mask-pw').classList.remove('show'); });
+$('pw-ok').addEventListener('click', pwSubmit);
+$('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') pwSubmit(); });
+$('act-cancel').addEventListener('click', () => $('mask-act').classList.remove('show'));
+$('act-save').addEventListener('click', async () => {
+  const data = {
+    date: $('f-date').value,
+    time: $('f-time').value.trim(),
+    name: $('f-name').value.trim(),
+    org: $('f-org').value.trim(),
+    venue: $('f-venue').value.trim(),
+    contact: $('f-contact').value.trim(),
+    updatedAt: Date.now()
+  };
+  if (!data.date) { alert('請選日期'); return; }
+  if (!data.name) { alert('請填活動名稱'); return; }
+  try {
+    if (editId) await update(ref(db, AGBASE() + '/activities/' + editId), data);
+    else await push(ACT_REF, data);
+    $('mask-act').classList.remove('show');
+    toast('✓ 已儲存並同步');
+  } catch (e) { toast('✗ 儲存失敗：' + e.message); }
+});
+
+/* ── 快速鍵（主辦單位/地點）：可新增、可刪除，存 Firebase 全隊共用 ── */
+const DEFAULT_ORG_CHIPS = [
+  { label: '外貿協會/TAITRA', val: '外貿協會\nTAITRA' },
+  { label: 'TAITRA / TAMI', val: '外貿協會、機械公會\nTAITRA / TAMI' }
+];
+const DEFAULT_VENUE_CHIPS = [
+  { label: '南港1館 402會議室', val: '台北南港展覽館1館4樓402會議室\nMeeting Room 402, 4F, TaiNEX 1' },
+  { label: '南港1館 4F大會舞台', val: '台北南港展覽館1館4樓大會舞台\nMain Stage, 4F, TaiNEX 1' },
+  { label: '南港1館', val: '台北南港展覽館1館\nTaiNEX 1' },
+  { label: '世貿1館', val: '台北世貿1館\nTWTC Hall 1' }
+];
+let ORG_CHIPS = null, VENUE_CHIPS = null; // null = 尚未自訂 → 用內建預設
+let delModeOrg = false, delModeVenue = false;
+const effOrg = () => ORG_CHIPS || DEFAULT_ORG_CHIPS;
+const effVenue = () => VENUE_CHIPS || DEFAULT_VENUE_CHIPS;
+function materialize(kind){
+  if (kind === 'org' && !ORG_CHIPS) ORG_CHIPS = effOrg().map(c => ({ ...c }));
+  if (kind === 'venue' && !VENUE_CHIPS) VENUE_CHIPS = effVenue().map(c => ({ ...c }));
+}
+async function saveChips(){
+  try {
+    await update(SET_REF, { orgChips: ORG_CHIPS || effOrg(), venueChips: VENUE_CHIPS || effVenue(), updatedAt: Date.now() });
+    toast('✓ 快速鍵已同步給所有人');
+  } catch (e) { toast('✗ 同步失敗：' + e.message); }
+}
+function fillFrom(targetId, val){
+  const el = $(targetId);
+  el.value = val;
+  el.dispatchEvent(new Event('input'));
+}
+function renderChipGroup(containerId, kind){
+  const box = $(containerId); box.innerHTML = '';
+  const list = kind === 'org' ? effOrg() : effVenue();
+  const delMode = kind === 'org' ? delModeOrg : delModeVenue;
+  const targetId = kind === 'org' ? 'f-org' : 'f-venue';
+  list.forEach((item, idx) => {
+    const sp = document.createElement('span');
+    sp.className = 'chip' + (delMode ? ' chip--delmode' : '');
+    sp.textContent = delMode ? `✕ ${item.label}` : item.label;
+    sp.title = delMode ? '點一下刪除這個快速鍵' : item.val.replace(/\n/g, ' / ');
+    sp.addEventListener('click', async () => {
+      if (delMode) {
+        if (!confirm(`刪除快速鍵「${item.label}」？（所有同事都會同步移除）`)) return;
+        materialize(kind);
+        (kind === 'org' ? ORG_CHIPS : VENUE_CHIPS).splice(idx, 1);
+        await saveChips();
+        renderChips();
+      } else if (kind === 'org') {
+        // 主辦單位可多個：點快速鍵是「疊加」，不會蓋掉已填的
+        const el = $(targetId);
+        const cur = el.value.trim();
+        el.value = cur ? cur + '\n' + item.val : item.val;
+        el.dispatchEvent(new Event('input'));
+      } else {
+        fillFrom(targetId, item.val);
+      }
+    });
+    box.appendChild(sp);
+  });
+  const add = document.createElement('span');
+  add.className = 'chip chip--add';
+  add.textContent = '＋新增';
+  add.addEventListener('click', () => addChip(kind));
+  box.appendChild(add);
+  const del = document.createElement('span');
+  del.className = 'chip chip--del';
+  del.textContent = delMode ? '✓ 完成' : '－刪除';
+  del.title = '進入刪除模式後，點任一快速鍵即可刪除';
+  del.addEventListener('click', () => {
+    if (kind === 'org') delModeOrg = !delModeOrg; else delModeVenue = !delModeVenue;
+    renderChips();
+  });
+  box.appendChild(del);
+}
+function renderChips(){
+  renderChipGroup('chips-org', 'org');
+  renderChipGroup('chips-venue', 'venue');
+}
+function addChip(kind){
+  const what = kind === 'org' ? '主辦單位' : '地點';
+  const val = prompt(`輸入新的${what}內容（中英可打在一起，或用「/」分隔中英）：\n例如：台北南港展覽館2館7樓701會議室 Meeting Room 701, 7F, TaiNEX 2`);
+  if (!val || !val.trim()) return;
+  const cleaned = val.trim().replace(/\s*\/\s*/g, '\n');
+  const p = splitZhEn(cleaned);
+  const stored = (p.zh && p.en) ? `${p.zh}\n${p.en}` : cleaned;
+  const label = (p.zh || p.en || cleaned).split('\n')[0].slice(0, 14);
+  materialize(kind);
+  (kind === 'org' ? ORG_CHIPS : VENUE_CHIPS).push({ label, val: stored });
+  saveChips();
+  renderChips();
+  fillFrom(kind === 'org' ? 'f-org' : 'f-venue', stored);
+}
+
+/* ── 展名設定 ── */
+$('btn-settings').addEventListener('click', () => requirePw(() => {
+  $('s-zh').value = TITLE_ZH === '活動日程表' ? '' : TITLE_ZH;
+  $('s-en').value = TITLE_EN === 'EVENT SCHEDULE' ? '' : TITLE_EN;
+  $('s-first').value = FIRST_DAY || '';
+  $('mask-set').classList.add('show');
+}));
+$('set-cancel').addEventListener('click', () => $('mask-set').classList.remove('show'));
+$('set-save').addEventListener('click', async () => {
+  try {
+    await update(SET_REF, { titleZh: $('s-zh').value.trim(), titleEn: $('s-en').value.trim(), firstDay: $('s-first').value || '', updatedAt: Date.now() });
+    $('mask-set').classList.remove('show');
+    toast('✓ 展名已備份到 Firebase');
+  } catch (e) { toast('✗ 儲存失敗：' + e.message); }
+});
+
+/* ── 清空全部資料（釋放容量，下次要用重新建） ── */
+$('btn-clear').addEventListener('click', () => requirePw(async () => {
+  if (!confirm('確定清空「活動日程表」全部資料？（展名與所有活動都會從 Firebase 刪除）')) return;
+  if (!confirm('再確認一次：這個動作無法復原，所有同事看到的資料也會一起消失。')) return;
+  try { await remove(ref(db, AGBASE())); toast('✓ 已清空，容量已釋放'); }
+  catch (e) { toast('✗ 清空失敗：' + e.message); }
+}));
+
+/* ── Word 下載（中文版 / 英文版 / 雙語版） ── */
+const KAI = "'DFKai-SB','標楷體','BiauKai',serif";
+const TNR = "'Times New Roman',serif";
+function langCell(pair, mode){
+  // 該語言沒有內容時，退回另一語言，避免整格空白
+  if (mode === 'zh') return nl2br(pair.zh || pair.en);
+  if (mode === 'en') return `<span style="font-family:${TNR};">${nl2br(pair.en || pair.zh)}</span>`;
+  return `${pair.zh ? `<div>${nl2br(pair.zh)}</div>` : ''}${pair.en ? `<div style="font-family:${TNR};">${nl2br(pair.en)}</div>` : ''}`;
+}
+function buildWord(mode){
+  const days = groupedDays();
+  if (days.length === 0) { alert('還沒有活動可以下載'); return; }
+  const heads = {
+    zh: ['時間', '活動', '主辦單位', '地點', '聯絡人/備註'],
+    en: ['Time', 'Event', 'Organizer', 'Venue', 'Contact Person/Remarks'],
+    bi: ['時間\nTime', '活動\nEvent', '主辦單位\nOrganizer', '地點\nVenue', '聯絡人/備註\nContact Person/Remarks']
+  }[mode];
+  const dayHead = d => {
+    const dd = dayDescriptor(d.date, d.dayNo);
+    if (dd.custom) {
+      if (mode === 'zh') return `${dateZh(d.date)}　${dd.custom}`;
+      if (mode === 'en') return `${dateEn(d.date)} – ${dd.custom}`;
+      return `${dateEn(d.date)}\n${dateZh(d.date)}　${dd.custom}`;
+    }
+    if (mode === 'zh') return `${dateZh(d.date)}　${dd.zh}`;
+    if (mode === 'en') return `${dateEn(d.date)} – ${dd.en}`;
+    return `${dateEn(d.date)} – ${dd.en}\n${dateZh(d.date)} ${dd.zh}`;
+  };
+  const titleLines = [];
+  if (mode !== 'en' && TITLE_ZH && TITLE_ZH !== '活動日程表') titleLines.push(TITLE_ZH);
+  if (mode !== 'zh' && TITLE_EN && TITLE_EN !== 'EVENT SCHEDULE') titleLines.push(TITLE_EN);
+  if (mode === 'zh') titleLines.push('研討會/活動日程表');
+  else if (mode === 'en') titleLines.push('Event Schedule');
+  else titleLines.push('研討會/活動日程表 Event Schedule');
+
+  const td = `border:1px solid #000; padding:6px 8px; vertical-align:top; font-size:11pt; font-family:${KAI};`;
+  let rows = `<tr>${heads.map((h, i) =>
+    `<td style="${td} background:#cccccc; text-align:center; font-weight:bold; font-size:12pt; width:${['2.6cm','6.2cm','3.2cm','3.8cm','3.4cm'][i]};">${nl2br(h)}</td>`
+  ).join('')}</tr>`;
+
+  days.forEach(day => {
+    rows += `<tr><td colspan="5" style="${td} background:#e8e0cf; font-weight:bold; text-align:center; font-size:12pt;">${nl2br(dayHead(day))}</td></tr>`;
+    day.items.forEach(a => {
+      const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
+      rows += `<tr>
+        <td style="${td} text-align:center; white-space:nowrap;">${esc(a.time || '')}</td>
+        <td style="${td}">${langCell(nm, mode)}</td>
+        <td style="${td} text-align:center;">${langCell(og, mode)}</td>
+        <td style="${td}">${langCell(vn, mode)}</td>
+        <td style="${td}">${langCell(ct, mode)}</td>
+      </tr>`;
+    });
+  });
+
+  const now = new Date();
+  const gen = `更新時間：${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"><title>活動日程表</title>
+    <style>@page WordSection1{ size:21cm 29.7cm; margin:1.5cm 1.0cm 1.5cm 1.0cm; } div.WordSection1{ page:WordSection1; }</style>
+    </head>
+    <body style="font-family:${KAI};"><div class="WordSection1">
+    ${titleLines.map(l => `<p style="text-align:center; font-size:18pt; font-weight:bold; margin:2px 0; font-family:${hasCJK(l) ? KAI : TNR};">${esc(l)}</p>`).join('')}
+    <p style="text-align:right; font-size:10.5pt; margin:4px 0 6px; font-family:${KAI};">${esc(gen)}</p>
+    <table style="width:19.2cm; table-layout:fixed; border-collapse:collapse;" align="center" cellpadding="0" cellspacing="0">
+      <colgroup><col style="width:2.6cm;"><col style="width:6.2cm;"><col style="width:3.2cm;"><col style="width:3.8cm;"><col style="width:3.4cm;"></colgroup>
+      ${rows}
+    </table>
+    </div></body></html>`;
+
+  const suffix = { zh: '中文版', en: '英文版', bi: '雙語版' }[mode];
+  const ts = `${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `活動日程表_${suffix}_${ts}.doc`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+/* ── 📂 匯入 Excel：模糊抓欄位 ──
+   模式A（有標題列）：掃前12列找含「時間/活動/主辦/地點/聯絡/日期」等關鍵字的標題列，欄位順序隨意。
+   模式B（沒標題列）：逐格用特徵猜——像時間的、像日期的、含館/樓/室的當地點、含協會/公會/公司的當主辦。
+   「整列只有一個日期」視為日期區段列，之後的活動都掛在那一天。 */
+let _xlsxLoading=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(_xlsxLoading) return _xlsxLoading;
+  _xlsxLoading=new Promise((res,rej)=>{
+    const el=document.createElement('script');
+    el.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    el.onload=res; el.onerror=()=>rej(new Error('Excel 元件載入失敗，請確認網路'));
+    document.head.appendChild(el);
+  });
+  return _xlsxLoading;
+}
+const _pad2=n=>String(n).padStart(2,'0');
+function parseDateCell(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number'&&v>20000&&v<80000){
+    const d=new Date(Math.round((v-25569)*86400000));
+    if(!isNaN(d)) return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+  }
+  let s=String(v).trim().replace(/（[^）]*）|\([^)]*\)/g,'').trim(); // 去掉(星期二)
+  let m=s.match(/(\d{4})[\/\-年.](\d{1,2})[\/\-月.](\d{1,2})/);
+  if(m) return `${m[1]}-${_pad2(m[2])}-${_pad2(m[3])}`;
+  m=s.match(/^(\d{1,2})[\/\-月.](\d{1,2})日?$/);
+  if(m){
+    const y=FIRST_DAY?FIRST_DAY.slice(0,4):String(new Date().getFullYear());
+    return `${y}-${_pad2(m[1])}-${_pad2(m[2])}`;
+  }
+  return null;
+}
+const _looksTime=s=>/\d{1,2}[:：]?\d{2}\s*[-~－〜至]\s*\d{1,2}[:：]?\d{2}/.test(s)||/^\d{1,2}[:：]\d{2}$/.test(String(s).trim());
+const IMPORT_KEYS={
+  date:['日期','date'],
+  time:['時間','time'],
+  name:['活動','event','名稱','議程','主題','研討','課程','內容'],
+  org:['主辦','organizer','單位'],
+  venue:['地點','venue','場地','location','會議室'],
+  contact:['聯絡','contact','備註','窗口','remark']
+};
+function detectHeader(rows){
+  for(let i=0;i<Math.min(rows.length,12);i++){
+    const map={};
+    rows[i].forEach((c,ci)=>{
+      const t=String(c??'').toLowerCase().replace(/\s|\/|／/g,'');
+      if(!t) return;
+      for(const k in IMPORT_KEYS){
+        if(map[k]===undefined && IMPORT_KEYS[k].some(w=>t.includes(w))){ map[k]=ci; break; }
+      }
+    });
+    if(map.name!==undefined&&(map.time!==undefined||map.date!==undefined)) return {row:i,map};
+  }
+  return null;
+}
+function guessRow(cells){
+  // 模式B：無標題列時逐格猜
+  const used=new Set();
+  const pick=fn=>{ for(let i=0;i<cells.length;i++){ if(!used.has(i)&&cells[i]&&fn(cells[i])){ used.add(i); return cells[i]; } } return ''; };
+  const time=pick(_looksTime);
+  const dateRaw=pick(c=>parseDateCell(c)!==null&&!_looksTime(c));
+  const venue=pick(c=>/[館樓室廳]|hall|room|stage|世貿|南港/i.test(c));
+  const org=pick(c=>/協會|公會|同業|公司|商會|署|局|處|部|taitra|tami|assoc/i.test(c)&&c.length<=40);
+  const contact=pick(c=>/[#＃]|\d{2,4}-\d{3,4}|09\d{2}|先生|小姐|ms\.|mr\./i.test(c));
+  // 活動名稱＝剩下最長的一格
+  let name='',ni=-1;
+  cells.forEach((c,i)=>{ if(!used.has(i)&&c&&c.length>name.length){ name=c; ni=i; } });
+  if(ni>=0) used.add(ni);
+  return {date:dateRaw?parseDateCell(dateRaw):null, time, name, org, venue, contact};
+}
+$('btn-import').addEventListener('click', () => requirePw(() => $('import-input').click()));
+$('import-input').addEventListener('change', async function(){
+  const file=this.files[0];
+  this.value='';
+  if(!file) return;
+  try{
+    await loadXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const hdr=detectHeader(rows);
+    const items=[];
+    let curDate=null;
+    const startRow=hdr?hdr.row+1:0;
+    for(let i=startRow;i<rows.length;i++){
+      const raw=rows[i];
+      const cells=raw.map(c=>String(c??'').trim());
+      const nonEmpty=cells.filter(Boolean);
+      if(!nonEmpty.length) continue;
+      // 日期區段列：整列只有一個有效值且是日期
+      if(nonEmpty.length===1){
+        const d=parseDateCell(raw[cells.findIndex(Boolean)]);
+        if(d){ curDate=d; continue; }
+      }
+      let it;
+      if(hdr){
+        const g=k=>hdr.map[k]!==undefined?cells[hdr.map[k]]:'';
+        const rowDate=hdr.map.date!==undefined?parseDateCell(raw[hdr.map.date]):null;
+        it={date:rowDate||curDate, time:g('time'), name:g('name'), org:g('org'), venue:g('venue'), contact:g('contact')};
+        if(rowDate) curDate=rowDate;
+      }else{
+        it=guessRow(cells);
+        if(it.date) curDate=it.date; else it.date=curDate;
+      }
+      if(!it.name||_looksTime(it.name)) continue; // 沒有活動名稱的列跳過
+      items.push(it);
+    }
+    if(!items.length){ alert('沒有解析到任何活動列。\n提示：至少要有「活動名稱」，加上時間或日期任一。'); return; }
+    // 缺日期的統一補
+    const noDate=items.filter(x=>!x.date);
+    if(noDate.length){
+      const def=prompt(`有 ${noDate.length} 筆活動沒有日期，請輸入要套用的日期（YYYY-MM-DD）：`, FIRST_DAY||'');
+      if(def===null) return;
+      const d=parseDateCell(def);
+      if(!d){ alert('日期格式看不懂，已取消匯入'); return; }
+      noDate.forEach(x=>x.date=d);
+    }
+    const preview=items.slice(0,4).map(x=>`${x.date} ${x.time||''}｜${x.name.slice(0,18)}`).join('\n');
+    if(!confirm(`解析模式：${hdr?'標題列比對':'逐格特徵猜測'}\n共解析到 ${items.length} 筆活動，例如：\n${preview}${items.length>4?'\n…':''}\n\n確定全部匯入到 Room ${ROOM}？`)) return;
+    for(const it of items){
+      await push(ACT_REF,{date:it.date,time:it.time||'',name:it.name,org:it.org||'',venue:it.venue||'',contact:it.contact||'',updatedAt:Date.now()});
+    }
+    toast(`✓ 已匯入 ${items.length} 筆活動`);
+  }catch(e){ alert('匯入失敗：'+(e.message||e)); }
+});
+
+renderChips();
+$('btn-dl-zh').addEventListener('click', () => buildWord('zh'));
+$('btn-dl-en').addEventListener('click', () => buildWord('en'));
+$('btn-dl-bi').addEventListener('click', () => buildWord('bi'));
+
+/* ── 即時同步（依 Room 綁定，可切換重綁） ── */
+function bindRoom(){
+  _roomUnsubs.forEach(u => { try{ u(); }catch(e){} });
+  _roomUnsubs = [];
+  ACT = {}; TITLE_ZH = '活動日程表'; TITLE_EN = 'EVENT SCHEDULE';
+  FIRST_DAY = ''; DAY_LABELS = {}; ORG_CHIPS = null; VENUE_CHIPS = null; editId = null;
+  ACT_REF = ref(db, AGBASE() + '/activities');
+  SET_REF = ref(db, AGBASE() + '/settings');
+  _roomUnsubs.push(onValue(ACT_REF, snap => {
+    ACT = snap.val() || {};
+    $('sync-status').textContent = `● Room ${ROOM} 即時同步 · ` + Object.keys(ACT).length + ' 筆';
+    render();
+  }, err => { $('sync-status').textContent = '✗ 連線失敗'; console.error(err); }));
+  _roomUnsubs.push(onValue(SET_REF, snap => {
+    const s = snap.val() || {};
+    TITLE_ZH = s.titleZh || '活動日程表';
+    TITLE_EN = s.titleEn || 'EVENT SCHEDULE';
+    FIRST_DAY = s.firstDay || '';
+    DAY_LABELS = s.dayLabels || {};
+    const toArr = v => v == null ? null : (Array.isArray(v) ? v : Object.values(v));
+    ORG_CHIPS = toArr(s.orgChips);
+    VENUE_CHIPS = toArr(s.venueChips);
+    if (!ORG_CHIPS && s.customOrgs) ORG_CHIPS = [...DEFAULT_ORG_CHIPS, ...(toArr(s.customOrgs) || [])];
+    if (!VENUE_CHIPS && s.customVenues) VENUE_CHIPS = [...DEFAULT_VENUE_CHIPS, ...(toArr(s.customVenues) || [])];
+    renderChips();
+    render();
+  }));
+  updateRoomBtn();
+}
+function updateRoomBtn(){
+  const b = $('btn-room');
+  if(!b) return;
+  b.textContent = `🏠 Room ${ROOM}`;
+  if (ROOM === '2') { b.style.background = 'var(--gold)'; b.style.borderColor = 'var(--gold)'; b.style.color = '#fff'; }
+  else { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; }
+}
+$('btn-room').addEventListener('click', () => {
+  const next = ROOM === '1' ? '2' : '1';
+  if (!confirm(`切換到 Room ${next}？\n兩個房間的資料完全獨立、互不影響（適合兩個展同時進行）。`)) return;
+  ROOM = next;
+  localStorage.setItem('agendaRoom', ROOM);
+  bindRoom();
+});
+bindRoom();
+</script>
+</body>
+</html>
