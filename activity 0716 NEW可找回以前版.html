@@ -1,0 +1,2771 @@
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活動座位管理系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#F0F4F8;padding:16px;}
+h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:flex;align-items:center;gap:10px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;}
+.sync-dot.off{background:#FCA5A5;}
+.sync-dot.saving{background:#FCD34D;animation:pulse .8s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-lbl{font-size:11px;color:#9CA3AF;font-weight:400;}
+.top{background:#fff;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;border:0.5px solid #E5E7EB;}
+.stats{display:flex;gap:1.5rem;flex-wrap:wrap;flex:1;}
+.stat{display:flex;flex-direction:column;}
+.sv{font-size:20px;font-weight:500;color:#111;}.sl{font-size:11px;color:#9CA3AF;}
+.btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{font-size:12px;padding:7px 13px;border-radius:8px;border:0.5px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;white-space:nowrap;transition:all .2s;}
+.btn:hover{background:#F9FAFB;}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5;}
+.btn-primary:hover{background:#0C447C;color:#fff;}
+.btn-ex{background:#185FA5;color:#fff;border-color:#185FA5;font-size:13px;padding:8px 16px;}
+.btn-ex:hover{background:#0C447C;}
+.btn-map{background:#0F6E56;color:#fff;border-color:#0F6E56;font-size:13px;padding:8px 16px;}
+.btn-map:hover{background:#085041;}
+.btn-rst{border-color:#FCA5A5;color:#B91C1C;}
+.btn-setting{border-color:#93C5FD;color:#1D4ED8;background:#EFF6FF;font-weight:600;}
+.btn-setting:hover{background:#DBEAFE;}
+.pbar{height:4px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-bottom:3px;}
+.pfill{height:100%;background:linear-gradient(90deg,#185FA5,#1D9E75);border-radius:99px;transition:width .3s;}
+.toast{border-radius:8px;padding:9px 16px;font-size:13px;margin-bottom:.75rem;display:none;font-weight:500;position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.tok{background:#D1FAE5;color:#065F46;border:0.5px solid #6EE7B7;}
+.ter{background:#FEE2E2;color:#991B1B;border:0.5px solid #FCA5A5;}
+.tin{background:#DBEAFE;color:#1D4ED8;border:0.5px solid #93C5FD;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.75rem;align-items:center;font-size:11px;color:#6B7280;}
+.leg{display:flex;align-items:center;gap:4px;}
+.ld{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+.venue{background:#fff;border:0.5px solid #E5E7EB;border-radius:12px;padding:1rem;overflow-x:auto;margin-bottom:1rem;width:100%;min-height:200px;}
+.stage{text-align:center;font-size:11px;color:#9CA3AF;letter-spacing:2px;border:0.5px solid #E5E7EB;border-radius:6px;padding:4px;margin-bottom:.6rem;}
+
+/* ── 方陣專屬樣式 ── */
+.zone-header-row{display:flex;margin-bottom:4px;width:max-content;min-width:100%;}
+.vrow{width:max-content!important;min-width:100%;}
+.zh{text-align:center;font-size:10px;font-weight:600;padding:2px 0;border-radius:4px;}
+.zh-a{color:#185FA5;background:#DBEAFE;}
+.zh-b{color:#065F46;background:#D1FAE5;}
+.zh-c{color:#92400E;background:#FEF3C7;}
+.zh-d{color:#5B21B6;background:#EDE9FE;}
+.zh-e{color:#9D174D;background:#FCE7F3;}
+.vrow{display:flex;align-items:center;gap:0;margin-bottom:2px;width:100%;}
+.rl{font-size:10px;color:#9CA3AF;width:24px;text-align:right;flex-shrink:0;padding-right:4px;}
+.vzone{display:flex;}
+
+/* ── 圓桌專屬樣式 ── */
+.round-row-wrap { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.round-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; padding: 10px 0; }
+.round-table-wrap { position: relative; width: 150px; height: 150px; }
+.round-table-center { position: absolute; inset: 24px; background: #E5E7EB; border: 2px solid #D1D5DB; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #4B5563; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.round-seat { position: absolute; width: 30px; height: 30px; border-radius: 50%; font-size: 10px; }
+.table-center-hover { cursor: pointer; transition: all .2s; z-index: 10; pointer-events: auto; }
+.table-center-hover:hover { background: #DBEAFE !important; border-color: #93C5FD !important; box-shadow: 0 0 0 4px rgba(147,197,253,0.3) !important; color: #1D4ED8 !important; }
+
+/* ── 主桌專屬樣式 ── */
+.head-table-section { width: 100%; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px dashed #FCD34D; }
+.head-table-label { text-align: center; font-size: 11px; font-weight: 700; color: #92400E; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; background: #FEF3C7; padding: 5px; border-radius: 6px; }
+.round-table-wrap.head-table .round-table-center { background: linear-gradient(135deg, #FEF3C7, #FDE68A); border: 2px solid #F59E0B; color: #92400E; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+.round-table-wrap.head-table { width: 170px; height: 170px; }
+.round-table-wrap.head-table .round-table-center { inset: 28px; }
+.round-table-wrap.head-table .table-center-hover:hover { background: linear-gradient(135deg, #FEF3C7, #FDE68A) !important; border-color: #F59E0B !important; box-shadow: 0 0 0 4px rgba(245,158,11,0.5) !important; color: #92400E !important; }
+.sh { background: #FEF9C3; border: 1.5px solid #F59E0B; color: #92400E; }
+.sh.filled { background: #F59E0B; border-color: #B45309; color: #fff; cursor: grab; }
+
+/* ── 座位共用樣式 ── */
+.seat{height:40px;border-radius:4px;cursor:pointer;font-size:14px;font-weight:700;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:1px;white-space:normal;word-break:break-all;-webkit-transform:translateZ(0);transform:translateZ(0);}
+.seat:hover{transform:scale(1.15) translateZ(0);z-index:2;position:relative;}
+.seat-target{position:relative;z-index:6;animation:targetpulse 0.9s ease-in-out infinite;}
+@keyframes targetpulse{0%,100%{box-shadow:0 0 0 4px #EF4444,0 0 14px 4px rgba(239,68,68,.55);}50%{box-shadow:0 0 0 8px #EF4444,0 0 28px 10px rgba(239,68,68,.85);}}
+.seat-pin{position:absolute;z-index:99;font-size:32px;pointer-events:none;animation:pinbounce .65s ease-in-out infinite;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));}
+@keyframes pinbounce{0%,100%{transform:translate(-50%,0);}50%{transform:translate(-50%,-14px);}}
+.sa{background:#E6F1FB;border-color:#85B7EB;color:#185FA5;}
+.sb{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
+.sc{background:#FAEEDA;border-color:#EF9F27;color:#854F0B;}
+.sd{background:#F3E8FF;border-color:#C084FC;color:#7E22CE;}
+.se{background:#FCE7F3;border-color:#F472B6;color:#BE185D;}
+
+.sa.filled{background:#378ADD;border-color:#185FA5;color:#fff;cursor:grab;}
+.sb.filled{background:#1D9E75;border-color:#0F6E56;color:#fff;cursor:grab;}
+.sc.filled{background:#BA7517;border-color:#854F0B;color:#fff;cursor:grab;}
+.sd.filled{background:#9333EA;border-color:#6B21A8;color:#fff;cursor:grab;}
+.se.filled{background:#DB2777;border-color:#9D174D;color:#fff;cursor:grab;}
+
+.seat.filled:active{cursor:grabbing;}
+.seat.drag-over{transform:scale(1.2);box-shadow:0 0 0 3px #F59E0B;z-index:5;}
+.seat.drag-src{opacity:.35;}
+.seat.ceremony{background:#E11D48!important;border-color:#9F1239!important;color:#fff!important;}
+.seat.photo{background:#F59E0B!important;border-color:#B45309!important;color:#fff!important;}
+.seat.occupied{background:#6366F1!important;border-color:#4338CA!important;color:#fff!important;transform:none!important;}
+.seat.found{background:#FEF08A!important;border-color:#CA8A04!important;color:#713F12!important;box-shadow:0 0 0 3px #FDE047;animation:findpulse 1s ease-in-out 2;}
+@keyframes findpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2);box-shadow:0 0 0 5px #FDE047;}}
+
+.panel{background:#fff;border:0.5px solid #E5E7EB;border-radius:12px;padding:12px;margin-bottom:1rem;}
+.panel-hdr{font-size:12px;font-weight:600;color:#111;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.count{font-size:10px;background:#F3F4F6;color:#6B7280;padding:1px 7px;border-radius:99px;font-weight:400;}
+.sr{display:flex;gap:6px;margin-bottom:8px;}
+.sr input{font-size:12px;flex:1;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;outline:none;}
+.sr input:focus{border-color:#93C5FD;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;padding:2px;}
+.chip{font-size:11px;padding:4px 22px 4px 10px;border-radius:99px;background:#F3F4F6;color:#6B7280;border:0.5px solid #E5E7EB;cursor:grab;white-space:nowrap;user-select:none;position:relative;}
+.chip:hover{border-color:#185FA5;color:#185FA5;}
+.chip.dragging{opacity:.4;}
+.chip-x{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
+.chip-x:hover{background:#EF4444;}
+select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;margin-bottom:6px;outline:none;}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:20px 16px 28px;}
+.modal-handle{width:32px;height:3px;background:#E5E7EB;border-radius:2px;margin:0 auto 14px;}
+.modal-code{font-size:16px;font-weight:600;color:#111;margin-bottom:4px;}
+.modal-name{font-size:12px;color:#6B7280;margin-bottom:14px;background:#F9FAFB;padding:8px 10px;border-radius:8px;min-height:32px;}
+.modal-section{font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:6px;letter-spacing:.5px;}
+.tag-row{display:flex;gap:8px;margin-bottom:10px;}
+.tag-btn{flex:1;padding:9px;border-radius:10px;border:1.5px solid;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
+.tag-btn.ceremony-btn{border-color:#E11D48;background:#FFF1F2;color:#9F1239;}
+.tag-btn.ceremony-btn.active{background:#E11D48;color:#fff;}
+.tag-btn.photo-btn{border-color:#F59E0B;background:#FFFBEB;color:#B45309;}
+.tag-btn.photo-btn.active{background:#F59E0B;color:#fff;}
+.tag-btn.occ-btn{border-color:#6366F1;background:#EEF2FF;color:#4338CA;}
+.tag-btn.occ-btn.active{background:#6366F1;color:#fff;}
+.modal-close{width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;cursor:pointer;margin-top:4px;}
+.seat.checked-in{background:#D1D5DB!important;border-color:#9CA3AF!important;color:#6B7280!important;cursor:default!important;position:relative;}
+.seat.checked-in::after{content:"✓";position:absolute;top:1px;right:2px;font-size:8px;color:#6B7280;}
+.round-seat.checked-in{background:#D1D5DB!important;border-color:#9CA3AF!important;color:#6B7280!important;position:absolute!important;}
+.round-seat.checked-in::after{display:none;}
+.checkin-modal-btn{width:100%;padding:11px;border-radius:10px;border:1.5px solid #16A34A;background:#F0FDF4;color:#15803D;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:6px;transition:all .15s;}
+.checkin-modal-btn:hover{background:#16A34A;color:#fff;}
+.checkin-modal-btn.done{background:#D1FAE5;border-color:#6EE7B7;color:#065F46;cursor:default;}
+#dtt{position:fixed;pointer-events:none;z-index:9999;background:#1e293b;color:#fff;font-size:12px;padding:5px 10px;border-radius:6px;white-space:nowrap;display:none;max-width:220px;overflow:hidden;}
+
+/* ── 架構設定 Modal 專屬樣式 ── */
+.layout-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; text-align: left; }
+.layout-form label { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 4px; display: block; }
+.layout-form input, .layout-form select { font-size: 14px; padding: 10px; border-radius: 8px; border: 1px solid #D1D5DB; background: #F9FAFB; width: 100%; outline: none; }
+.layout-form input:focus, .layout-form select:focus { border-color: #3B82F6; }
+.hint-text { font-size: 10px; color: #9CA3AF; margin-top: 4px; }
+.btn-circle { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid #D1D5DB; background:#fff; cursor:pointer; font-weight:bold; color:#374151; transition:all .2s; }
+.btn-circle:hover { background:#F3F4F6; border-color:#9CA3AF; }
+
+/* ═══ 圓桌細節圖 ═══ */
+.detail-overlay{position:fixed;inset:0;background:#F0F4F8;z-index:300;display:none;overflow:auto;}
+.detail-overlay.show{display:block;}
+.dc-head{position:sticky;top:0;background:#132742;color:#fff;padding:10px 18px;display:flex;align-items:center;gap:12px;z-index:5;flex-wrap:wrap;}
+.dc-head b{font-size:16px;margin-right:auto;}
+.dc-btn{border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px;}
+.dc-btn.jpg{background:#F5A623;color:#fff;}
+.dc-btn.close{background:#E5E7EB;color:#111;}
+.dc-status{font-size:12px;color:#A7F3D0;}
+.dc-body{display:flex;flex-wrap:wrap;gap:24px;padding:20px;justify-content:center;align-items:flex-start;}
+.dc-panel{background:#fff;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.08);padding:14px;}
+.dc-panel h3{margin:0 0 8px;color:#13315C;font-size:15px;text-align:center;}
+.dc-board{position:relative;width:680px;height:640px;max-width:92vw;background:#fff;border:1px dashed #C9D4E4;border-radius:10px;overflow:hidden;touch-action:none;}
+.dc-circle{position:absolute;border:6px solid #1D3A6E;border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgba(29,58,110,.35);font-weight:800;font-size:22px;pointer-events:none;}
+.dc-card{position:absolute;width:150px;background:#fff;border:2px solid #1D3A6E;border-radius:4px;padding:7px 9px;font-weight:700;font-size:13px;line-height:1.35;color:#13315C;text-align:center;cursor:grab;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,.12);transform:translate(-50%,-50%);transition:font-size .15s;box-sizing:border-box;display:flex;align-items:center;justify-content:center;}
+.dc-card:active{cursor:grabbing;z-index:10;}
+.dc-card.empty{border-style:dashed;border-color:#B9C2D0;color:#B9C2D0;font-weight:500;}
+.dc-resize-handle{position:absolute;right:-6px;bottom:-6px;width:15px;height:15px;border-radius:3px;background:#1D3A6E;border:2px solid #fff;cursor:nwse-resize;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5;touch-action:none;}
+.dc-resize-handle:hover{background:#F5A623;transform:scale(1.15);}
+.dc-card.empty .dc-resize-handle{background:#B9C2D0;}
+.dc-badge{position:absolute;width:26px;height:26px;background:#F5A623;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;z-index:2;cursor:grab;touch-action:none;}
+.dc-badge:active{cursor:grabbing;}
+.dc-tag{position:absolute;background:#FFF200;border:1px solid #D9C900;color:#111;font-weight:800;font-size:15px;padding:2px 12px;white-space:nowrap;z-index:1;cursor:pointer;transition:all .15s;}
+.dc-tag.dc-tag-hidden{background:transparent;border:1.5px dashed #D9C900;color:transparent;padding:0;width:14px;height:14px;min-width:0;border-radius:50%;}
+.dc-swap-btn{position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;background:#fff;border:1.5px solid #185FA5;color:#185FA5;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);z-index:4;user-select:none;}
+.dc-swap-btn:hover{background:#185FA5;color:#fff;transform:scale(1.15);}
+.dc-card.dc-swap-selected{outline:3px solid #F59E0B;outline-offset:2px;}
+.dc-side{width:680px;max-width:92vw;margin-top:10px;}
+.dc-side textarea{width:100%;height:150px;border:1.5px solid #C9D4E4;border-radius:8px;padding:8px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;}
+.dc-hint{font-size:12px;color:#6B7280;margin:4px 0;line-height:1.5;}
+.dc-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.dc-actions button{flex:none;border:1.5px solid #1D3A6E;background:#EAF0FA;color:#1D3A6E;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:13px;}
+.dc-actions button.active{background:#F5A623;border-color:#F5A623;color:#fff;}
+.dc-board.picking{cursor:crosshair;background:#FFFBEB;}
+.dc-board.picking .dc-card{outline:2px dashed #F5A623;outline-offset:2px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="dtt"></div>
+
+<div class="modal-bg" id="event-select-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:18px;font-weight:700;color:#111;margin-bottom:6px;">選擇或建立活動</div>
+    <div style="font-size:12px;color:#6B7280;margin-bottom:20px;">選擇後可隨時從右上角切換</div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">活動名稱 (將自動產生專屬資料庫)</label>
+      <input type="text" id="event-name-input" placeholder="例如：2026 台灣國際醫療展" maxlength="30"
+        style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:14px;outline:none;">
+      <div style="font-size:11px;color:#1B4F8A;margin-top:6px;font-weight:500;">💡 提示：輸入相同名稱會載入舊有資料，輸入新名稱則建立全新且乾淨的資料庫。</div>
+      <div id="recent-events-box" style="margin-top:10px;display:none;">
+        <div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px;">🕘 最近使用（點一下帶入，避免打錯字又生一個新資料庫）</div>
+        <div id="recent-events-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+          <button id="all-events-toggle" type="button" onclick="toggleAllEvents()"
+            style="background:none;border:none;color:#1B4F8A;font-size:11.5px;cursor:pointer;padding:0;text-decoration:underline;display:none;">顯示全部活動 ▾</button>
+          <span id="event-total-count" style="font-size:11px;color:#9CA3AF;"></span>
+        </div>
+        <div id="all-events-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div id="manage-events-hint" style="display:none;font-size:10.5px;color:#9CA3AF;margin-top:6px;">💡 點活動名稱右上角的 × 可刪除該活動的所有資料（無法復原）</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:8px;">座位格局 (建立新活動的預設模式)</label>
+      <div style="display:flex;gap:8px;">
+        <button id="layout-grid-btn" onclick="selectLayout('grid')"
+          style="flex:1;padding:12px;border-radius:10px;border:2px solid #1B4F8A;background:#EBF1F9;color:#1B4F8A;font-size:13px;font-weight:700;cursor:pointer;">
+          ⬜ 方陣<br><span style="font-size:10px;font-weight:400;">A/B/C 區</span>
+        </button>
+        <button id="layout-round-btn" onclick="selectLayout('round')"
+          style="flex:1;padding:12px;border-radius:10px;border:2px solid #E5E7EB;background:#F9FAFB;color:#6B7280;font-size:13px;font-weight:700;cursor:pointer;">
+          ⭕ 圓桌<br><span style="font-size:10px;font-weight:400;">晚宴桌次</span>
+        </button>
+      </div>
+    </div>
+
+    <button onclick="confirmEventSelect()" style="width:100%;padding:13px;background:#1B4F8A;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">
+      確認進入
+    </button>
+    <div id="event-select-err" style="font-size:12px;color:#E11D48;margin-top:8px;text-align:center;display:none;"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="closeBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code" id="m-code"></div>
+    <div class="modal-name" id="m-name"></div>
+    <div id="m-assign-sec">
+      <div class="modal-section">指派賓客</div>
+      <select class="gs" id="m-select" onchange="doAssignModal(this.value)"></select>
+      <button class="btn" id="m-clear-btn" style="width:100%;margin-bottom:12px;" onclick="clearSeat()">✕ 清除此座位</button>
+    </div>
+    <div id="m-tag-sec" style="display:none;">
+      <div class="modal-section" style="margin-bottom:8px;">活動標記</div>
+      <div class="tag-row">
+        <button class="tag-btn ceremony-btn" id="btn-ceremony" onclick="toggleTag('ceremony')">🎖 揭幕</button>
+        <button class="tag-btn photo-btn" id="btn-photo" onclick="toggleTag('photo')">📸 合影</button>
+        <button class="tag-btn occ-btn" id="btn-occ" onclick="toggleOccupied()">🪑 佔用</button>
+      </div>
+    </div>
+    <button id="m-checkin-btn" class="checkin-modal-btn" onclick="toggleModalCheckin()" style="display:none;"></button>
+    <button class="modal-close" onclick="closeModal()">關閉</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="table-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code" id="tm-title" style="margin-bottom:12px;">桌次設定</div>
+    <div style="margin-bottom:16px;">
+      <div class="modal-section">自訂桌名</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="tm-name" placeholder="例如：貴賓 A 桌 (留白顯示預設)" style="flex:1;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid #D1D5DB;outline:none;" />
+        <button class="btn btn-primary" onclick="saveTableName()">儲存名稱</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="modal-section">座位數量調整</div>
+      <div style="display:flex;align-items:center;gap:12px;background:#F9FAFB;padding:12px;border-radius:8px;border:1px solid #E5E7EB;">
+        <button class="btn-circle" onclick="adjustTableSeat(-1)">➖</button>
+        <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:#111;" id="tm-seat-count">共 10 席</div>
+        <button class="btn-circle" onclick="adjustTableSeat(1)">➕</button>
+      </div>
+    </div>
+    <button class="modal-close" onclick="document.getElementById('table-modal-bg').classList.remove('show')">完成並關閉</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code">🔒 管理員登入</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
+      <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
+      <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:11px;font-size:14px;" onclick="doLogin()">解鎖</button>
+    <button class="modal-close" onclick="document.getElementById('login-modal-bg').classList.remove('show')">取消</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="layout-modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code">⚙️ 建立座位庫架構</div>
+    <div class="modal-name" style="background:#FFFBEB; color:#B45309;">覆寫並套用新的座位結構到當前活動資料庫。</div>
+
+    <!-- 分頁切換 -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;background:#F3F4F6;border-radius:10px;padding:4px;">
+      <button id="tab-manual-btn" onclick="switchLayoutTab('manual')"
+        style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#1B4F8A;color:#fff;">
+        ✏️ 手動設定
+      </button>
+      <button id="tab-excel-btn" onclick="switchLayoutTab('excel')"
+        style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#6B7280;">
+        📂 上傳 Excel
+      </button>
+    </div>
+
+    <!-- 手動設定面板 -->
+    <div id="layout-tab-manual">
+      <div class="layout-form">
+        <div>
+          <label>排版模式</label>
+          <select id="l-mode" onchange="(function(v){document.getElementById('l-grid-settings').style.display=v==='grid'?'block':'none';document.getElementById('l-round-settings').style.display=v==='round'?'block':'none';})(this.value)">
+            <option value="grid">方陣排排坐</option>
+            <option value="round">圓桌晚宴</option>
+          </select>
+        </div>
+
+        <div id="l-grid-settings">
+          <div style="margin-bottom: 12px;">
+            <label>總排數</label>
+            <input type="number" id="l-rows" value="10" min="1">
+          </div>
+          <div>
+            <label>各區座位數 (由左至右)</label>
+            <input type="text" id="l-zones" value="6,9,6" placeholder="例如: 6,9,6">
+          </div>
+        </div>
+
+        <div id="l-round-settings" style="display: none;">
+          <div style="margin-bottom: 12px;">
+            <label>一般桌各排桌數 (由前至後)</label>
+            <input type="text" id="l-round-rows" value="10,9,11" placeholder="例如: 10,9,11">
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label>一般桌每桌人數 (椅數)</label>
+            <input type="number" id="l-seats" value="10" min="1">
+          </div>
+          <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:12px;margin-top:4px;">
+            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:10px;">👑 主桌設定（選填）</div>
+            <div style="margin-bottom: 10px;">
+              <label>主桌桌數（0 = 不設主桌）</label>
+              <input type="number" id="l-head-tables" value="0" min="0">
+            </div>
+            <div>
+              <label>主桌每桌人數</label>
+              <input type="number" id="l-head-seats" value="12" min="1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-layout-apply" onclick="applyLayout()" style="width:100%; padding:12px; font-size:14px; margin-top:14px;">套用並寫入資料庫</button>
+    </div>
+
+    <!-- Excel 上傳面板 -->
+    <div id="layout-tab-excel" style="display:none;">
+      <div style="background:#EBF1F9;border:1px solid #BDD0EA;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#1B4F8A;line-height:1.7;">
+        💡 上傳已排好的座位表 Excel，系統會自動辨識「座位碼列＋賓客名列」的格式，<strong>同時建立座位架構並匯入賓客名單</strong>，不需要再手動設定排數。
+      </div>
+
+      <div onclick="document.getElementById('excel-upload-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#1B4F8A';this.style.background='#EBF1F9';"
+        ondragleave="this.style.borderColor='#E5E7EB';this.style.background='#F9FAFB';"
+        ondrop="handleExcelDrop(event)"
+        style="border:2px dashed #E5E7EB;border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;background:#F9FAFB;transition:all .2s;margin-bottom:14px;">
+        <div style="font-size:32px;margin-bottom:8px;">📋</div>
+        <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">點擊或拖曳上傳 Excel</div>
+        <div style="font-size:11px;color:#9CA3AF;">支援 .xlsx 格式</div>
+      </div>
+      <input type="file" id="excel-upload-input" accept=".xlsx,.xls" style="display:none">
+
+      <div id="excel-upload-status" style="display:none;font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:10px;"></div>
+    </div>
+
+    <button class="modal-close" id="btn-layout-close" onclick="document.getElementById('layout-modal-bg').classList.remove('show')" style="margin-top:10px;">取消</button>
+  </div>
+</div>
+
+<h1 id="main-title">🎟 TAITRA 活動座位管理系統
+  <div class="sync-dot off" id="sync-dot"></div>
+  <span class="sync-lbl" id="sync-lbl">連線中...</span>
+</h1>
+  <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
+
+<div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
+  <div style="font-size:56px;margin-bottom:20px;">🎟</div>
+  <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
+  <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
+  <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
+    🔐 登入開始製作新活動
+  </button>
+  <div style="font-size:11px;color:#9CA3AF;margin-top:14px;">密碼由系統管理員提供</div>
+</div>
+
+<div id="main-content" style="display:none;">
+<div class="top">
+  <div class="stats">
+    <div class="stat"><span class="sv" id="st-total">0</span><span class="sl">總席數</span></div>
+    <div class="stat"><span class="sv" id="sa">0</span><span class="sl">已分配</span></div>
+    <div class="stat"><span class="sv" id="se">0</span><span class="sl">空位</span></div>
+    <div class="stat"><span class="sv" id="sg">0</span><span class="sl">賓客</span></div>
+  </div>
+  <div class="btns">
+    <button class="btn" onclick="showEventSelect()" id="btn-switch-event" style="border-color:#7C3AED;color:#7C3AED;background:#F0EAF9;display:none;">🔄 切換/建立活動</button>
+    <button class="btn" id="btn-login" onclick="handleAuth()" style="border-color:#FCA5A5;color:#B91C1C;background:#FEF2F2;">🔒 登入</button>
+    <button class="btn btn-setting admin-only" id="btn-setting" style="display:none;" onclick="document.getElementById('layout-modal-bg').classList.add('show')">⚙️ 架構設定</button>
+    <button class="btn btn-ex" id="exbtn" onclick="doExport()">⬇ 匯出 XLSX</button>
+    <button class="btn" id="dcbtn" onclick="openDetailChart()" style="border-color:#1D3A6E;color:#1D3A6E;background:#EAF0FA;display:none;">🪑 圓桌細節圖</button>
+    <button class="btn" id="btn-lookup" onclick="openLookup()"
+      style="border-color:#1A6B4A;color:#1A6B4A;background:#E8F5EE;display:none;">🔍 手機查詢</button>
+    <button class="btn btn-rst admin-only" style="display:none;" onclick="doReset()">⚠️ 徹底重置</button>
+  </div>
+</div>
+<div class="pbar"><div class="pfill" id="pf" style="width:0%"></div></div>
+<div style="font-size:11px;color:#9CA3AF;margin:3px 0 .75rem;text-align:right;" id="ptxt">載入中...</div>
+<div class="toast" id="toast"></div>
+
+<div class="legend">
+  <div class="leg"><div class="ld" style="background:#F59E0B;border:0.5px solid #B45309;"></div>主桌</div>
+  <div class="leg"><div class="ld" style="background:#378ADD;border:0.5px solid #185FA5;"></div>已分配</div>
+  <div class="leg"><div class="ld" style="background:#E11D48;border:0.5px solid #9F1239;"></div>揭幕</div>
+  <div class="leg"><div class="ld" style="background:#F59E0B;border:0.5px solid #B45309;"></div>合影</div>
+  <div class="leg"><div class="ld" style="background:#6366F1;border:0.5px solid #4338CA;"></div>佔用</div>
+</div>
+
+<div class="venue" id="venue-wrap">
+  <div class="stage">請登入後選擇活動開始使用</div>
+  <div id="vr"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">賓客名單 <span class="count" id="uc-count">0 未分配</span></div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+    <div class="sr" style="margin-bottom:0;">
+      <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">🔍 搜尋</span>
+      <input type="text" id="gs" placeholder="搜尋賓客姓名或公司..." oninput="renderChips()" />
+    </div>
+    <div class="sr admin-only" style="margin-bottom:0;display:none;">
+      <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">➕ 新增</span>
+      <input type="text" id="gi" placeholder="輸入新賓客名字，按 Enter" onkeydown="if(event.key==='Enter')addGuest()" />
+      <button class="btn" onclick="addGuest()">新增</button>
+    </div>
+
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+
+<div class="detail-overlay" id="detail-overlay">
+  <div class="dc-head">
+    <b id="dc-title">🪑 圓桌細節圖</b>
+    <span class="dc-status" id="dc-status"></span>
+    <button class="dc-btn jpg" onclick="dcExportJPG()">⬇ 匯出 JPG</button>
+    <button class="dc-btn close" onclick="closeDetailChart()">✕ 關閉</button>
+  </div>
+  <div class="dc-body" id="dc-body"></div>
+</div>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,onValue,set,remove}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const fb=initializeApp({
+    apiKey: "AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
+    authDomain: "taitra-table.firebaseapp.com",
+    databaseURL: "https://taitra-table-default-rtdb.firebaseio.com",
+    projectId: "taitra-table",
+    storageBucket: "taitra-table.firebasestorage.app",
+    messagingSenderId: "802855818617",
+    appId: "1:802855818617:web:b7cf3b45e13b70ae660ba8"
+});
+const db = getDatabase(fb);
+let PROJECT_ID = "EVENT_DEFAULT"; 
+const ADMIN_PWD = "taitra2026";
+let isAdmin = false;
+let activeListeners = [];
+
+function updateAuthUI() {
+  const btn = document.getElementById('btn-login');
+  const adminBtns = document.querySelectorAll('.admin-only');
+  if (isAdmin) {
+    btn.textContent = '🔓 登出';
+    btn.style.borderColor = '#6EE7B7';
+    btn.style.color = '#065F46';
+    btn.style.background = '#D1FAE5';
+    adminBtns.forEach(el => el.style.display = '');
+  } else {
+    btn.textContent = '🔒 登入';
+    btn.style.borderColor = '#FCA5A5';
+    btn.style.color = '#B91C1C';
+    btn.style.background = '#FEF2F2';
+    adminBtns.forEach(el => el.style.display = 'none');
+  }
+  if(masterLoaded) { buildVenue(Object.keys(seatMap)); refreshAll(); }
+}
+
+window.handleAuth = function() {
+  if (isAdmin) {
+    isAdmin = false;
+    updateAuthUI();
+    toast('已登出', 'tin');
+  } else {
+    document.getElementById('login-modal-bg').classList.add('show');
+    setTimeout(()=>document.getElementById('login-pw').focus(), 100);
+  }
+};
+
+window.doLogin = function() {
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-err');
+  if (pw === ADMIN_PWD) {
+    isAdmin = true;
+    sessionStorage.setItem('taitra_auth', '1');
+    document.getElementById('login-modal-bg').classList.remove('show');
+    document.getElementById('login-pw').value = '';
+    errEl.textContent = '';
+    updateAuthUI();
+    showEventSelect(); 
+    toast('✅ 請選擇或建立活動', 'tok');
+  } else {
+    errEl.textContent = '密碼錯誤';
+  }
+};
+
+let selectedLayout = 'grid';
+
+window.showEventSelect = function() {
+  const bg = document.getElementById('event-select-bg');
+  bg.style.display = 'flex';
+  const savedName = sessionStorage.getItem('taitra_event_name') || '';
+  const lastLayout = sessionStorage.getItem('taitra_layout') || 'grid';
+  window.selectLayout(lastLayout, false);
+  document.getElementById('event-name-input').value = savedName;
+}
+
+window.selectLayout = function(layout) {
+  selectedLayout = layout;
+  const gridBtn = document.getElementById('layout-grid-btn');
+  const roundBtn = document.getElementById('layout-round-btn');
+  if (layout === 'grid') {
+    gridBtn.style.borderColor = '#1B4F8A'; gridBtn.style.background = '#EBF1F9'; gridBtn.style.color = '#1B4F8A';
+    roundBtn.style.borderColor = '#E5E7EB'; roundBtn.style.background = '#F9FAFB'; roundBtn.style.color = '#6B7280';
+  } else {
+    roundBtn.style.borderColor = '#1A6B4A'; roundBtn.style.background = '#E8F5EE'; roundBtn.style.color = '#1A6B4A';
+    gridBtn.style.borderColor = '#E5E7EB'; gridBtn.style.background = '#F9FAFB'; gridBtn.style.color = '#6B7280';
+  }
+}
+
+// 清除所有的本地緩存陣列
+function clearLocalData() {
+  Object.keys(seatMap).forEach(k=>delete seatMap[k]);
+  Object.keys(asgn).forEach(k=>delete asgn[k]);
+  Object.keys(tags).forEach(k=>delete tags[k]);
+  Object.keys(occupied).forEach(k=>delete occupied[k]);
+  Object.keys(tableNames).forEach(k=>delete tableNames[k]);
+  if (window.checkins) Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
+  guests.length = 0;
+}
+
+/* ── 最近使用的活動：event_registry 節點記每個活動的最後進入時間 ──
+   另用 REST shallow 撈出資料庫根層所有 EVENT_ 節點（含還沒進過 registry 的舊活動） */
+const DB_ROOT_URL = 'https://taitra-table-default-rtdb.firebaseio.com';
+function eventChip(name, isRecent){
+  const wrap=document.createElement('span');
+  wrap.style.cssText='position:relative;display:inline-flex;';
+  const b=document.createElement('button');
+  b.type='button';
+  b.textContent=name;
+  b.style.cssText=`padding:6px 22px 6px 12px;border-radius:999px;border:1.5px solid ${isRecent?'#1B4F8A':'#E5E7EB'};background:${isRecent?'#EBF1F9':'#F9FAFB'};color:${isRecent?'#1B4F8A':'#374151'};font-size:12.5px;font-weight:700;cursor:pointer;`;
+  b.onclick=()=>{
+    document.getElementById('event-name-input').value=name;
+    document.getElementById('event-name-input').focus();
+  };
+  const x=document.createElement('button');
+  x.type='button';
+  x.textContent='×';
+  x.title='刪除此活動的所有資料';
+  x.style.cssText='position:absolute;right:3px;top:50%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:10px;line-height:1;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+  x.onmouseenter=()=>{x.style.background='#EF4444';};
+  x.onmouseleave=()=>{x.style.background='#CBD5E1';};
+  x.onclick=(e)=>{ e.stopPropagation(); deleteEventNode(name); };
+  wrap.appendChild(b); wrap.appendChild(x);
+  return wrap;
+}
+window.deleteEventNode=async function(name){
+  if(!confirm(`【第 1 次確認】確定要刪除「${name}」嗎？\n這會清空該活動的所有座位資料。`)) return;
+  if(!confirm(`【第 2 次確認】真的要刪除「${name}」嗎？\n刪除後無法復原。`)) return;
+  if(!confirm(`【第 3 次確認】最後確認：刪除「${name}」\n請再次確認您已經不需要這筆資料了。`)) return;
+  const safeNodeId='EVENT_'+name.replace(/[.#$\[\]]/g,'_').replace(/\s+/g,'_');
+  const regKey=name.replace(/[.#$\[\]\/]/g,'_');
+  try{
+    await remove(ref(db, safeNodeId));
+    await remove(ref(db, 'event_registry/'+regKey));
+    await loadRecentEvents();
+    const errEl=document.getElementById('event-select-err');
+    errEl.style.color='#059669';
+    errEl.textContent=`已刪除「${name}」`;
+    errEl.style.display='block';
+    setTimeout(()=>{errEl.style.display='none';errEl.style.color='#E11D48';},2000);
+  }catch(e){
+    alert('刪除失敗：'+e.message);
+  }
+};
+window.toggleAllEvents=function(){
+  const box=document.getElementById('all-events-chips');
+  const btn=document.getElementById('all-events-toggle');
+  const open=box.style.display==='none';
+  box.style.display=open?'flex':'none';
+  const total=btn.dataset.total||'';
+  btn.textContent=open?'收合 ▴':`顯示全部活動（共 ${total} 個）▾`;
+};
+async function loadRecentEvents(){
+  try{
+    const [regRes, rootRes]=await Promise.all([
+      fetch(DB_ROOT_URL+'/event_registry.json').then(r=>r.json()).catch(()=>null),
+      fetch(DB_ROOT_URL+'/.json?shallow=true').then(r=>r.json()).catch(()=>null)
+    ]);
+    const reg=regRes||{};
+    const allNames=Object.keys(rootRes||{})
+      .filter(k=>k.startsWith('EVENT_')&&k!=='EVENT_DEFAULT')
+      .map(k=>k.replace(/^EVENT_/,'').replace(/_/g,' '));
+    // 最近三個：依 registry 時間排序；registry 沒有的活動排在「全部」清單
+    const recent=Object.entries(reg).sort((a,b)=>b[1]-a[1]).map(([n])=>n).slice(0,3);
+    const box=document.getElementById('recent-events-box');
+    const rc=document.getElementById('recent-events-chips');
+    const ac=document.getElementById('all-events-chips');
+    const tg=document.getElementById('all-events-toggle');
+    const cnt=document.getElementById('event-total-count');
+    const hint=document.getElementById('manage-events-hint');
+    rc.innerHTML=''; ac.innerHTML='';
+    recent.forEach(n=>rc.appendChild(eventChip(n,true)));
+    const others=allNames.filter(n=>!recent.includes(n)).sort();
+    others.forEach(n=>ac.appendChild(eventChip(n,false)));
+    const total=new Set([...recent,...allNames]).size;
+    tg.dataset.total=total;
+    tg.textContent=(ac.style.display==='flex'?'收合 ▴':`顯示全部活動（共 ${total} 個）▾`);
+    tg.style.display=others.length?'inline':'none';
+    cnt.textContent=(!others.length&&total)?`共 ${total} 個活動`:'';
+    hint.style.display=total?'block':'none';
+    box.style.display=(recent.length||others.length)?'block':'none';
+  }catch(e){ /* 清單載不到不影響主功能 */ }
+}
+loadRecentEvents();
+
+window.confirmEventSelect = async function() {
+  const eventName = document.getElementById('event-name-input').value.trim();
+  const errEl = document.getElementById('event-select-err');
+  if (!eventName) {
+    errEl.textContent = '請輸入活動名稱';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  // 自動依據使用者輸入的名稱建立 Firebase 專屬節點（過濾違規字元）
+  const safeNodeId = 'EVENT_' + eventName.replace(/[.#$\[\]]/g, '_').replace(/\s+/g, '_');
+  PROJECT_ID = safeNodeId;
+  layoutMode = selectedLayout;
+
+  sessionStorage.setItem('taitra_event_id', PROJECT_ID);
+  sessionStorage.setItem('taitra_event_name', eventName);
+  sessionStorage.setItem('taitra_layout', selectedLayout);
+
+  // 記錄最後使用時間 → 下次開頁「最近使用」會列出來
+  try{
+    await set(ref(db, 'event_registry/' + eventName.replace(/[.#$\[\]\/]/g, '_')), Date.now());
+  }catch(e){ /* registry 寫不進不影響進入 */ }
+
+  document.getElementById('main-title').textContent = '🎟 ' + eventName;
+  document.title = eventName + ' · 座位系統';
+  const sub = document.getElementById('header-sub');
+  if (sub) sub.textContent = '資料庫節點: ' + PROJECT_ID + ' · ' + (selectedLayout === 'round' ? '圓桌模式' : '方陣模式');
+
+  document.getElementById('event-select-bg').style.display = 'none';
+  document.getElementById('btn-switch-event').style.display = '';
+  document.getElementById('btn-lookup').style.display = '';
+  document.getElementById('landing-page').style.display = 'none';
+  document.getElementById('main-content').style.display = '';
+
+  updateRefs();
+  clearLocalData(); 
+
+  activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
+  activeListeners = [];
+
+  document.getElementById('vr').innerHTML = '<div style="text-align:center;padding:40px;color:#9CA3AF;">載入中…</div>';
+
+  activeListeners.push(onValue(masterRef, snap=>{
+    const d=snap.val()||{};
+    Object.keys(seatMap).forEach(k=>delete seatMap[k]);
+    const keys=Object.keys(d);
+    if(keys.length>0){
+      Object.entries(d).forEach(([c,n])=>seatMap[c]=n);
+      layoutMode = keys.some(k => k.includes('_T') || k.startsWith('T') || k.startsWith('H')) ? 'round' : 'grid';
+      rebuildGuests();
+      if(layoutMode==='round'){ buildRoundVenue(keys, document.getElementById('vr')); }
+      else { buildGridVenue(keys, document.getElementById('vr')); }
+    } else {
+      document.getElementById('vr').innerHTML='<div style="text-align:center;padding:40px;color:#9CA3AF;">目前資料庫中沒有座位結構。<br>請點擊右上角「⚙️ 架構設定」建立座位地圖。</div>';
+    }
+    masterLoaded=true; setSyncStatus('ok'); refreshAll();
+  },()=>setSyncStatus('error')));
+
+  activeListeners.push(onValue(assignRef, snap=>{
+    const d=snap.val()||{};
+    Object.keys(asgn).forEach(k=>delete asgn[k]);
+    Object.entries(d).forEach(([c,n])=>{asgn[c]=n;});
+    Object.values(asgn).forEach(n=>{if(n&&!guests.includes(n))guests.push(n);});
+    guests.sort();
+    if(masterLoaded)refreshAll();
+  }));
+
+  activeListeners.push(onValue(tagsRef, snap=>{
+    const d=snap.val()||{};
+    Object.keys(tags).forEach(k=>delete tags[k]);
+    Object.entries(d).forEach(([c,t])=>{tags[c]=t;});
+    if(masterLoaded)refreshAll();
+  }));
+
+  activeListeners.push(onValue(occRef, snap=>{
+    const d=snap.val()||{};
+    Object.keys(occupied).forEach(k=>delete occupied[k]);
+    Object.entries(d).forEach(([c,v])=>{if(v==='佔用')occupied[c]=true;});
+    if(masterLoaded)refreshAll();
+  }));
+
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/checkins2026'), snap=>{
+    const d=snap.val()||{};
+    if(!window.checkins)window.checkins={};
+    Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
+    Object.entries(d).forEach(([c,v])=>{window.checkins[c]=v;});
+    if(masterLoaded)refreshAll();
+  }));
+
+  activeListeners.push(onValue(guestsRef, snap=>{
+    const d=snap.val();
+    const list = Array.isArray(d) ? d : Object.values(d || {});
+    list.forEach(n=>{ if(n && !guests.includes(n)) guests.push(n); });
+    guests.sort();
+    if(masterLoaded)refreshAll();
+  }));
+
+  activeListeners.push(onValue(tableNamesRef, snap => {
+    const d = snap.val() || {};
+    Object.keys(tableNames).forEach(k => delete tableNames[k]);
+    Object.assign(tableNames, d);
+    if(masterLoaded && Object.keys(seatMap).length > 0) {
+      buildVenue(Object.keys(seatMap));
+      refreshAll(); // 重蓋座位DOM後必須重新上色，否則初次載入會整片空白
+    }
+  }));
+
+  toast('✅ 成功進入活動資料庫', 'tok');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('taitra_auth') === '1') {
+    isAdmin = true;
+    updateAuthUI();
+    const savedId = sessionStorage.getItem('taitra_event_id');
+    if (savedId) {
+      document.getElementById('event-name-input').value = sessionStorage.getItem('taitra_event_name') || '';
+      window.selectLayout(sessionStorage.getItem('taitra_layout') || 'grid');
+      document.getElementById('landing-page').style.display = 'none';
+      window.confirmEventSelect();
+    } else {
+      window.showEventSelect();
+    }
+  }
+});
+
+let masterRef, assignRef, tagsRef, occRef, tableNamesRef, guestsRef;
+function updateRefs() {
+  masterRef    = ref(db, PROJECT_ID + '/seats_master2026');
+  assignRef    = ref(db, PROJECT_ID + '/assignments2026');
+  tagsRef      = ref(db, PROJECT_ID + '/tags2026');
+  occRef       = ref(db, PROJECT_ID + '/seats2026');
+  tableNamesRef = ref(db, PROJECT_ID + '/table_names2026');
+  guestsRef    = ref(db, PROJECT_ID + '/guest_list2026');
+}
+
+let layoutMode = 'grid'; 
+const seatMap={}, asgn={}, tags={}, occupied={}, tableNames={};
+const guests=[];
+let dragGuest=null, dragFrom=null, masterLoaded=false, saveTimer=null;
+let modalCode=null; 
+let currentTableCode=null;
+const dtt=document.getElementById('dtt');
+
+function setSyncStatus(s){
+  const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-lbl');
+  if(!dot||!lbl) return; // 防呆：元素不存在時不執行，避免整個流程中斷
+  if(s==='ok'){dot.className='sync-dot';lbl.textContent='已同步';}
+  else if(s==='saving'){dot.className='sync-dot saving';lbl.textContent='儲存中...';}
+  else{dot.className='sync-dot off';lbl.textContent='連線失敗';}
+}
+
+function rebuildGuests(){
+  // 合併（不清空）：座位結構裡的名字、已指派的名字、手動新增的名字全部保留
+  [...new Set(Object.values(seatMap))].filter(Boolean).forEach(n=>{ if(!guests.includes(n)) guests.push(n); });
+  guests.sort();
+}
+
+// 舊資料修復：早期匯入把姓名寫進了座位結構(master)，移動賓客後舊座位會殘留姓名，
+// 造成手機查詢一人出現在兩個座位。這裡把 master 裡的姓名搬進 assignments（若該賓客
+// 尚未被指派到別的座位），然後把 master 清成純結構。
+function migrateMasterNames(){
+  const assignedNames = new Set(Object.values(asgn));
+  let changed = false;
+  Object.entries(seatMap).forEach(([c, n]) => {
+    if (n) {
+      if (!asgn[c] && !assignedNames.has(n)) { asgn[c] = n; assignedNames.add(n); }
+      seatMap[c] = '';
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+async function saveAll(){
+  setSyncStatus('saving');
+  try{
+    const oo={}; Object.keys(occupied).forEach(k => oo[k] = '佔用');
+    await set(occRef, Object.keys(oo).length ? oo : null);
+    if (isAdmin) {
+      const masterDirty = migrateMasterNames();
+      await set(assignRef, Object.keys(asgn).length ? asgn : null);
+      await set(tagsRef, Object.keys(tags).length ? tags : null);
+      await set(guestsRef, guests.length ? [...guests] : null);
+      if (masterDirty) await set(masterRef, { ...seatMap });
+    }
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('error');toast('儲存失敗','ter');}
+}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveAll,800);}
+
+function buildVenue(keys){
+  const wrap = document.getElementById('vr');
+  wrap.innerHTML = '';
+  document.getElementById('st-total').textContent = keys.length;
+  const exBtn = document.getElementById('exbtn');
+  if (exBtn) exBtn.innerHTML = layoutMode === 'round' ? '⬇ 匯出 JPG' : '⬇ 匯出 XLSX';
+  const dcBtn = document.getElementById('dcbtn');
+  if (dcBtn) dcBtn.style.display = layoutMode === 'round' ? 'inline-flex' : 'none';
+  if (layoutMode === 'round') buildRoundVenue(keys, wrap);
+  else buildGridVenue(keys, wrap);
+}
+
+window.openTableModal = function(tCode) {
+    currentTableCode = tCode;
+    document.getElementById('tm-title').textContent = `桌次設定：${tCode}`;
+    document.getElementById('tm-name').value = tableNames[tCode] || '';
+    updateTableModalSeatCount();
+    document.getElementById('table-modal-bg').classList.add('show');
+}
+
+function updateTableModalSeatCount() {
+    if(!currentTableCode) return;
+    const tableSeats = Object.keys(seatMap).filter(k => k.startsWith(currentTableCode + '-'));
+    document.getElementById('tm-seat-count').textContent = `共 ${tableSeats.length} 席`;
+}
+
+window.saveTableName = async function() {
+    if(!currentTableCode || !isAdmin) return;
+    const newName = document.getElementById('tm-name').value.trim();
+    setSyncStatus('saving');
+    try {
+        await set(ref(db, PROJECT_ID + '/table_names2026/' + currentTableCode), newName || null);
+        setSyncStatus('ok'); toast('桌名已儲存', 'tok');
+    } catch(e) { setSyncStatus('error'); toast('儲存失敗', 'ter'); }
+}
+
+window.adjustTableSeat = async function(delta) {
+    if(!currentTableCode || !isAdmin) return;
+    const tableSeats = Object.keys(seatMap).filter(k => k.startsWith(currentTableCode + '-'));
+    const seatNums = tableSeats.map(k => parseInt(k.split('-')[1]));
+    const maxNum = seatNums.length > 0 ? Math.max(...seatNums) : 0;
+
+    if (delta === 1) {
+        const nextNum = maxNum + 1;
+        const newCode = `${currentTableCode}-${nextNum}`;
+        setSyncStatus('saving');
+        try {
+            await set(ref(db, PROJECT_ID + '/seats_master2026/' + newCode), "");
+            toast(`已新增一席：${newCode}`, 'tok');
+        } catch(e) { toast('新增失敗', 'ter'); }
+    } else if (delta === -1) {
+        if (maxNum === 0) return toast('已經沒有座位可以移除了', 'ter');
+        const targetCode = `${currentTableCode}-${maxNum}`;
+        if (asgn[targetCode] || occupied[targetCode] || tags[targetCode]) {
+            toast(`【安全阻擋】請先清空「${targetCode}」的賓客/標記再刪除`, 'ter'); return;
+        }
+        setSyncStatus('saving');
+        try {
+            await set(ref(db, PROJECT_ID + '/seats_master2026/' + targetCode), null);
+            toast(`已移除一席：${targetCode}`, 'tin');
+        } catch(e) { toast('移除失敗', 'ter'); }
+    }
+}
+
+function buildRoundVenue(keys, wrap) {
+    document.querySelector('.stage').textContent = 'STAGE / 舞台 (圓桌模式)';
+    const headTables = {}, normalRows = {}; 
+    keys.forEach(k => {
+        const tCode = k.split('-')[0];
+        if (tCode.startsWith('H')) {
+            if (!headTables[tCode]) headTables[tCode] = [];
+            headTables[tCode].push(k);
+        } else {
+            const match = tCode.match(/^R(\d+)_/);
+            const rowNum = match ? match[1] : '1'; 
+            if (!normalRows[rowNum]) normalRows[rowNum] = {};
+            if (!normalRows[rowNum][tCode]) normalRows[rowNum][tCode] = [];
+            normalRows[rowNum][tCode].push(k);
+        }
+    });
+
+    function sortTableEntries(obj) {
+        return Object.entries(obj).sort((a, b) => {
+            const matchA = a[0].match(/T(\d+)/), matchB = b[0].match(/T(\d+)/);
+            const na = matchA ? parseInt(matchA[1]) : parseInt(a[0].replace(/\D/g,'')||0);
+            const nb = matchB ? parseInt(matchB[1]) : parseInt(b[0].replace(/\D/g,'')||0);
+            return na - nb;
+        });
+    }
+
+    function makeTableEl(tCode, seatCodes, isHead) {
+        const size = isHead ? 170 : 150, r = isHead ? 85  : 75;
+        const tWrap = document.createElement('div');
+        tWrap.className = 'round-table-wrap' + (isHead ? ' head-table' : '');
+        tWrap.style.width = size + 'px'; tWrap.style.height = size + 'px';
+
+        const center = document.createElement('div');
+        center.className = 'round-table-center' + (isAdmin ? ' table-center-hover' : '');
+        
+        let label = '';
+        if (tableNames[tCode]) label = tableNames[tCode];
+        else if (isHead) label = tCode.replace('H', '主桌 ');
+        else { const tMatch = tCode.match(/T(\d+)/); label = tMatch ? '桌號 ' + tMatch[1] : tCode; }
+
+        center.innerHTML = `<span>${label}</span><span style="font-size:9px;font-weight:normal;margin-top:2px;">${seatCodes.length} 席</span>`;
+        center.onclick = () => { if (isAdmin) openTableModal(tCode); };
+        tWrap.appendChild(center);
+
+        seatCodes.sort((a,b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]));
+        seatCodes.forEach((code, index) => {
+            const el = document.createElement('div');
+            const colorClass = isHead ? 'sh' : ('s' + (index%3===0?'a':index%3===1?'b':'c'));
+            el.className = 'seat round-seat ' + colorClass;
+            el.id = 's-' + code; el.dataset.id = code; el.title = code;
+            const angle = (index * (360 / seatCodes.length) - 90) * (Math.PI / 180);
+            const half = size / 2;
+            el.style.left = (half - 15 + r * Math.cos(angle)) + 'px';
+            el.style.top  = (half - 15 + r * Math.sin(angle)) + 'px';
+            attachSeatEvents(el, code); tWrap.appendChild(el);
+        });
+        return tWrap;
+    }
+
+    const headEntries = sortTableEntries(headTables);
+    if (headEntries.length > 0) {
+        const headSection = document.createElement('div');
+        headSection.className = 'head-table-section';
+        const headLabel = document.createElement('div');
+        headLabel.className = 'head-table-label';
+        headLabel.textContent = '👑 主桌區 Head Table';
+        headSection.appendChild(headLabel);
+        const headContainer = document.createElement('div');
+        headContainer.className = 'round-container';
+        headContainer.style.paddingTop = '0';
+        headEntries.forEach(([tCode, seatCodes]) => { headContainer.appendChild(makeTableEl(tCode, seatCodes, true)); });
+        headSection.appendChild(headContainer); wrap.appendChild(headSection);
+    }
+
+    const rowWrap = document.createElement('div'); rowWrap.className = 'round-row-wrap';
+    const rowNums = Object.keys(normalRows).sort((a,b) => parseInt(a) - parseInt(b));
+    rowNums.forEach(rNum => {
+        const rowContainer = document.createElement('div'); rowContainer.className = 'round-container';
+        const tablesInRow = sortTableEntries(normalRows[rNum]);
+        tablesInRow.forEach(([tCode, seatCodes]) => { rowContainer.appendChild(makeTableEl(tCode, seatCodes, false)); });
+        rowWrap.appendChild(rowContainer);
+    });
+    wrap.appendChild(rowWrap);
+}
+
+function buildGridVenue(keys, wrap) {
+    document.querySelector('.stage').textContent = 'STAGE / 舞台 (方陣排座模式)';
+    let maxRow = 0; const zoneSet = new Set(), maxSeatPerZone = {};
+
+    keys.forEach(k => {
+        const match = k.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+        if (match) {
+            const z = match[1].toUpperCase(), r = parseInt(match[2], 10), s = parseInt(match[3], 10);
+            zoneSet.add(z);
+            if (r > maxRow) maxRow = r;
+            if (!maxSeatPerZone[z] || s > maxSeatPerZone[z]) maxSeatPerZone[z] = s;
+        }
+    });
+
+    const zones = Array.from(zoneSet).sort(); if(zones.length === 0) return;
+    let totalCols = 0; zones.forEach(z => totalCols += maxSeatPerZone[z]);
+    const rowLabelW = 24, gapW = 12, availW = document.getElementById('venue-wrap').clientWidth - 32;
+    const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1)) / totalCols);
+    const seatW = Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
+
+    const hdr = document.createElement('div'); hdr.className = 'zone-header-row';
+    let hdrHTML = `<div style="width:${rowLabelW}px;flex-shrink:0;"></div>`;
+    zones.forEach((z, i) => {
+        if (i > 0) hdrHTML += `<div style="width:${gapW}px;flex-shrink:0;"></div>`;
+        const colorClass = ['zh-a', 'zh-b', 'zh-c', 'zh-d', 'zh-e'][i % 5];
+        hdrHTML += `<div class="zh ${colorClass}" style="width:${seatW * maxSeatPerZone[z]}px;flex-shrink:0;">${z} 區</div>`;
+    });
+    hdr.innerHTML = hdrHTML; wrap.appendChild(hdr);
+
+    for (let r = 1; r <= maxRow; r++) {
+        const row = document.createElement('div'); row.className = 'vrow';
+        const lbl = document.createElement('div'); lbl.className = 'rl'; lbl.style.width = rowLabelW + 'px'; lbl.textContent = r; row.appendChild(lbl);
+        zones.forEach((z, i) => {
+            if (i > 0) { const a = document.createElement('div'); a.style.width = gapW + 'px'; a.style.flexShrink = 0; row.appendChild(a); }
+            const zoneDiv = document.createElement('div'); zoneDiv.className = 'vzone';
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const code = `${z}${r}-${s}`;
+                const el = document.createElement('div');
+                const colorClass = ['sa', 'sb', 'sc', 'sd', 'se'][i % 5];
+                el.className = `seat ${colorClass}`; el.style.width = seatW + 'px'; el.id = 's-' + code; el.dataset.id = code; el.title = code;
+                if (!keys.includes(code)) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; } 
+                else attachSeatEvents(el, code);
+                zoneDiv.appendChild(el);
+            }
+            row.appendChild(zoneDiv);
+        });
+        wrap.appendChild(row);
+    }
+
+    // ── 渲染後校正：用第一排實際座位寬度覆寫標題寬度，徹底消除累積誤差 ──
+    requestAnimationFrame(() => {
+        const firstRow = wrap.querySelector('.vrow');
+        if (!firstRow) return;
+        const zoneDivs = firstRow.querySelectorAll('.vzone');
+        const hdrCells = wrap.querySelectorAll('.zone-header-row .zh');
+        zoneDivs.forEach((zd, i) => {
+            if (hdrCells[i]) {
+                const realWidth = zd.getBoundingClientRect().width;
+                hdrCells[i].style.width = realWidth + 'px';
+            }
+        });
+    });
+}
+
+function attachSeatEvents(el, code) {
+    el.draggable=false; el.onclick=()=>openModal(code);
+    el.addEventListener('dragstart',onDS); el.addEventListener('dragend',onDE);
+    el.addEventListener('dragover',onDO); el.addEventListener('dragleave',onDL); el.addEventListener('drop',onDP);
+}
+
+function onDS(e){clearLocator();const id=this.dataset.id;if(!isAdmin||(!asgn[id]&&!occupied[id])){e.preventDefault();return;}
+  dragGuest=asgn[id]||null;dragFrom=id;this.classList.add('drag-src'); e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragGuest||'');showTip(e,dragGuest||'佔用');}
+function onDE(){this.classList.remove('drag-src');dragGuest=null;dragFrom=null;hideTip();clearDO();}
+function onDO(e){if(!dragFrom)return;e.preventDefault();e.dataTransfer.dropEffect='move';clearDO();this.classList.add('drag-over');moveTip(e);}
+function onDL(){clearDO();}
+function onDP(e){
+  e.preventDefault();const toId=this.dataset.id;if(!dragFrom){clearDO();return;}
+  const toG=asgn[toId]||null;
+  if(dragGuest){
+    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];toast('↔ 互換完成','tin');}
+    else{delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;toast('✓ 移動完成','tok');}
+  }
+  dragGuest=null;dragFrom=null;hideTip();clearDO();refreshAll();scheduleSave();
+}
+
+function chipDrag(chip,g){
+  if (!isAdmin) return;
+  chip.draggable=true;
+  chip.addEventListener('dragstart',e=>{clearLocator();dragGuest=g;dragFrom=null;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',g);showTip(e,g);});
+  chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');dragGuest=null;dragFrom=null;hideTip();clearDO();});
+}
+
+window.openModal = function(code){
+  clearLocator();
+  modalCode=code;
+  const g=asgn[code]||'', occ=occupied[code], tag=tags[code]||'';
+  document.getElementById('m-code').innerHTML=`<span class="bz ${layoutMode==='round'?'bzb':'bza'}">${layoutMode==='round'?'圓桌':'方陣'}</span> 座位 ${code}`;
+  document.getElementById('m-name').textContent=occ?'（佔用中）':g||'（空位）';
+  
+  if (!isAdmin) {
+    document.getElementById('m-assign-sec').style.display='none';
+    document.getElementById('m-tag-sec').style.display='';
+    document.getElementById('btn-ceremony').style.display='none';
+    document.getElementById('btn-photo').style.display='none';
+    document.getElementById('btn-occ').style.display='';
+    document.getElementById('btn-occ').classList.toggle('active', !!occupied[code]);
+    const ci0=window.checkins&&window.checkins[code];
+    const ciBtn0=document.getElementById('m-checkin-btn');
+    if(g){
+      ciBtn0.style.display='';
+      if(ci0){ ciBtn0.textContent='✅ 已報到 '+(ci0.time||''); ciBtn0.className='checkin-modal-btn done'; }
+      else{ ciBtn0.textContent='☑ 標記報到'; ciBtn0.className='checkin-modal-btn'; }
+    }else{ ciBtn0.style.display='none'; }
+    document.getElementById('modal-bg').classList.add('show');
+    return;
+  }
+  
+  const avail=guests.filter(gg=>!Object.entries(asgn).some(([c,ag])=>c!==code&&ag===gg));
+  const sel=document.getElementById('m-select');
+  sel.innerHTML='<option value="">— 請選擇賓客 —</option>'+(g?`<option value="${g}" selected>${g}</option>`:'')+avail.filter(gg=>gg!==g).map(gg=>`<option value="${gg}">${gg}</option>`).join('');
+  
+  document.getElementById('m-assign-sec').style.display=occ?'none':'';
+  document.getElementById('m-clear-btn').style.display=g?'':'none';
+  const showTag=!occ; document.getElementById('m-tag-sec').style.display=showTag?'':'none';
+  if(showTag){
+    document.getElementById('btn-ceremony').style.display=g?'':'none';
+    document.getElementById('btn-photo').style.display=g?'':'none';
+    document.getElementById('btn-occ').style.display='';
+    document.getElementById('btn-ceremony').classList.toggle('active',tag==='ceremony');
+    document.getElementById('btn-photo').classList.toggle('active',tag==='photo');
+    document.getElementById('btn-occ').classList.toggle('active',false);
+  }
+  if(occ){
+    document.getElementById('m-tag-sec').style.display='';
+    document.getElementById('btn-ceremony').style.display='none';
+    document.getElementById('btn-photo').style.display='none';
+    document.getElementById('btn-occ').style.display='';
+    document.getElementById('btn-occ').classList.add('active');
+  }
+  const ci=window.checkins&&window.checkins[code];
+  const ciBtn=document.getElementById('m-checkin-btn');
+  if(g){
+    ciBtn.style.display='';
+    if(ci){ ciBtn.textContent='✅ 已報到 '+(ci.time||''); ciBtn.className='checkin-modal-btn done'; }
+    else{ ciBtn.textContent='☑ 標記報到'; ciBtn.className='checkin-modal-btn'; }
+  }else{ ciBtn.style.display='none'; }
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
+window.closeModal=function(){document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
+window.doAssignModal=function(g){
+  if(!modalCode)return;
+  if(g===''){delete asgn[modalCode];delete tags[modalCode];}else{asgn[modalCode]=g;delete occupied[modalCode];}
+  refreshAll();scheduleSave();openModal(modalCode);
+};
+window.toggleModalCheckin=async function(){
+  if(!modalCode||!asgn[modalCode]) return;
+  const code=modalCode;
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const r=ref(db, PROJECT_ID+'/checkins2026/'+code);
+  if(window.checkins&&window.checkins[code]){ await set(r, null); delete window.checkins[code]; }
+  else { const data={time,name:asgn[code]||''}; await set(r,data); if(!window.checkins) window.checkins={}; window.checkins[code]=data; }
+  refreshAll(); openModal(code);
+};
+
+window.clearSeat=function(){ if(!modalCode)return; delete asgn[modalCode]; delete tags[modalCode]; refreshAll();scheduleSave();openModal(modalCode); };
+window.toggleTag=function(t){
+  if(!modalCode)return;
+  if(tags[modalCode]===t)delete tags[modalCode];else tags[modalCode]=t;
+  refreshAll();scheduleSave();
+  document.getElementById('btn-ceremony').classList.toggle('active',tags[modalCode]==='ceremony');
+  document.getElementById('btn-photo').classList.toggle('active',tags[modalCode]==='photo');
+  toast(tags[modalCode]?`已標記：${tags[modalCode]==='ceremony'?'揭幕':'合影'}`:'已清除標記','tok');
+};
+window.toggleOccupied=function(){
+  if(!modalCode)return;
+  if(occupied[modalCode]){delete occupied[modalCode];toast('已取消佔用','tin');}
+  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];toast('🪑 已標記佔用','tok');}
+  refreshAll();scheduleSave();openModal(modalCode);
+};
+
+// ── ⚙️ 架構設定 Modal 專屬邏輯 ──
+// ── 分頁切換 ──
+window.openLookup = function() {
+  if (!PROJECT_ID || PROJECT_ID === 'EVENT_DEFAULT') {
+    toast('請先選擇活動', 'ter');
+    return;
+  }
+  const url = 'lookup_dynamic.html?event=' + encodeURIComponent(PROJECT_ID);
+  window.open(url, '_blank');
+};
+
+window.switchLayoutTab = function(tab) {
+  const manualBtn = document.getElementById('tab-manual-btn');
+  const excelBtn = document.getElementById('tab-excel-btn');
+  const manualPanel = document.getElementById('layout-tab-manual');
+  const excelPanel = document.getElementById('layout-tab-excel');
+  if (tab === 'manual') {
+    manualBtn.style.background = '#1B4F8A'; manualBtn.style.color = '#fff';
+    excelBtn.style.background = 'transparent'; excelBtn.style.color = '#6B7280';
+    manualPanel.style.display = ''; excelPanel.style.display = 'none';
+  } else {
+    excelBtn.style.background = '#1B4F8A'; excelBtn.style.color = '#fff';
+    manualBtn.style.background = 'transparent'; manualBtn.style.color = '#6B7280';
+    excelPanel.style.display = ''; manualPanel.style.display = 'none';
+  }
+};
+
+function showExcelStatus(msg, type) {
+  const el = document.getElementById('excel-upload-status');
+  el.style.display = 'block';
+  el.textContent = msg;
+  if (type === 'ok') { el.style.background = '#E8F5EE'; el.style.color = '#1A6B4A'; }
+  else if (type === 'err') { el.style.background = '#FBEAE8'; el.style.color = '#B33A2A'; }
+  else { el.style.background = '#F3F4F6'; el.style.color = '#4A4A4A'; }
+}
+
+window.handleExcelDrop = function(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = '#E5E7EB';
+  event.currentTarget.style.background = '#F9FAFB';
+  const file = event.dataTransfer.files[0];
+  if (file) processExcelFile(file);
+};
+
+document.getElementById('excel-upload-input').addEventListener('change', function(event) {
+  const file = event.target.files[0];
+  if (file) processExcelFile(file);
+  event.target.value = '';
+});
+
+async function processExcelFile(file) {
+  if (!isAdmin) { toast('請先登入才能上傳座位表', 'ter'); return; }
+  if (!PROJECT_ID || PROJECT_ID === 'EVENT_DEFAULT') {
+    showExcelStatus('❌ 請先選擇活動再上傳 Excel', 'err');
+    return;
+  }
+
+  showExcelStatus('解析 Excel 中…', 'info');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheetName = wb.SheetNames.find(n => /\d{4}/.test(n)) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const seatPat = /^[A-Za-z]+\d+(_T\d+)?-\d+$/;
+    const newAssign = {};
+    const newMaster = {};
+    const newTags = {};
+
+    // 保留儲存格內原本的換行（例如「公司」跟「姓名職稱」分兩行輸入），
+    // 只把每一行「內部」多餘的空白/Tab 收成一個空格，換行本身不會被吃掉
+    function cleanMultiline(v) {
+      if (v === null || v === undefined) return '';
+      return String(v)
+        .split(/\r\n|\r|\n/)
+        .map(line => line.replace(/[ \t]+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    // 自動偵測每列的座位碼，依連續同字母分組來判斷區段範圍
+    function detectZones(row) {
+      const zones = {};
+      let curZone = null, curStart = null;
+      row.forEach((val, col) => {
+        const v = String(val || '').trim();
+        if (seatPat.test(v)) {
+          const z = v.match(/^([A-Za-z]+)/)[1].toUpperCase();
+          if (z !== curZone) {
+            if (curZone) zones[curZone] = [curStart, col];
+            curZone = z; curStart = col;
+          }
+        }
+      });
+      if (curZone) zones[curZone] = [curStart, row.length];
+      return zones;
+    }
+
+    // ── 格式 A：橫式（座位碼列 + 賓客名列交錯，多欄並排）──
+    let i = 0;
+    while (i < raw.length) {
+      const row = raw[i].map(v => (v === null || v === undefined) ? '' : String(v).trim());
+      const codes = row.filter(v => seatPat.test(v));
+      if (codes.length >= 3 && i + 1 < raw.length) {
+        const nameRow = raw[i+1].map(v => cleanMultiline(v));
+        const zones = detectZones(row);
+        Object.values(zones).forEach(([start, end]) => {
+          for (let col = start; col < end; col++) {
+            const code = row[col] || '';
+            const name = nameRow[col] || '';
+            if (!seatPat.test(code)) continue;
+            newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
+            if (name) newAssign[code] = name;
+          }
+        });
+        i += 2;
+      } else {
+        i++;
+      }
+    }
+
+    // ── 格式 B：直式（A欄=座位碼，B欄=姓名，C欄=標記）──
+    if (Object.keys(newMaster).length === 0) {
+      raw.forEach(row => {
+        const code = String(row[0] || '').trim();
+        if (!seatPat.test(code)) return; // 跳過標題列、群組標題列（如【Head Table】）
+        const name = cleanMultiline(row[1]);
+        const tag = String(row[2] || '').trim();
+        newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
+        if (name) newAssign[code] = name;
+        if (tag && tag !== 'undefined') newTags[code] = tag;
+      });
+    }
+
+    // ── 格式 C：中文座位碼（左1A / 右3B…座位碼列 + 賓客名列交錯）──
+    // 轉換成系統通用格式：左→Z（A區）、右→Y（B區），數字=欄位，字母排號轉成排數
+    // 例：左1A → ZA1-1，右3B → YB1-3（A/B/C/D/E 排號轉成區域字母尾碼，確保不與其他活動衝突）
+    const cnSeatPat = /^([左右])(\d+)([A-Za-z])$/;
+    if (Object.keys(newMaster).length === 0) {
+      let ci = 0;
+      while (ci < raw.length) {
+        const row = raw[ci].map(v => (v === null || v === undefined) ? '' : String(v).trim());
+        const cnCodes = row.filter(v => cnSeatPat.test(v));
+        if (cnCodes.length >= 3 && ci + 1 < raw.length) {
+          const nameRow = raw[ci+1].map(v => cleanMultiline(v));
+          row.forEach((origCode, col) => {
+            const m = origCode.match(cnSeatPat);
+            if (!m) return;
+            const [, side, seatNum, rowLetter] = m;
+            // 左→A區，右→B區；rowLetter(A/B/C/D/E) 轉成排數(1/2/3/4/5)；seatNum 是該排內的座位序號
+            const zoneCode = (side === '左' ? 'A' : 'B');
+            const rowIdx = rowLetter.charCodeAt(0) - 64; // A=1, B=2, C=3...
+            const code = `${zoneCode}${rowIdx}-${seatNum}`; // 例：A1-1（左1A）、B3-5（右5C）
+            const name = nameRow[col] || '';
+            newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
+            if (name) newAssign[code] = name;
+          });
+          ci += 2;
+        } else {
+          ci++;
+        }
+      }
+    }
+
+    const totalMaster = Object.keys(newMaster).length;
+    const totalAssign = Object.keys(newAssign).length;
+    const totalTags = Object.keys(newTags).length;
+
+    if (totalMaster === 0) {
+      showExcelStatus('❌ 找不到座位資料，請確認 Excel 格式（座位碼欄如 A1-1、H1-1、R1_T1-1）', 'err');
+      return;
+    }
+
+    // 自動偵測排版模式：座位碼含 _T 或 H 開頭 → 圓桌，否則 → 方陣
+    const sampleCodes = Object.keys(newMaster);
+    const isRound = sampleCodes.some(c => c.includes('_T') || /^H\d/.test(c));
+    const detectedLayout = isRound ? 'round' : 'grid';
+
+    const ok = confirm(
+      `解析完成（Sheet: ${sheetName}）\n` +
+      `排版模式：${isRound ? '⭕ 圓桌' : '⬜ 方陣'}\n` +
+      `座位格局：${totalMaster} 格\n` +
+      `賓客資料：${totalAssign} 筆\n` +
+      (totalTags > 0 ? `標記資料：${totalTags} 筆\n` : '') +
+      `\n將覆寫「${PROJECT_ID}」的座位結構，確定要執行嗎？`
+    );
+    if (!ok) { showExcelStatus('已取消', 'info'); return; }
+
+    showExcelStatus('寫入 Firebase 中…', 'info');
+    layoutMode = detectedLayout;
+    sessionStorage.setItem('taitra_layout', detectedLayout);
+
+    // 【核心修正】整節點覆寫，徹底清除舊格局殘留（含自訂桌名、報到記錄），
+    // 避免新舊座位格局同時存在
+    await set(ref(db, PROJECT_ID), {
+      seats_master2026: newMaster,
+      assignments2026: Object.keys(newAssign).length ? newAssign : null,
+      tags2026: totalTags > 0 ? newTags : null,
+      seats2026: null,
+      table_names2026: null,
+      checkins2026: null
+    });
+
+    showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位（${isRound ? '圓桌' : '方陣'}模式）`, 'ok');
+    toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
+    document.getElementById('layout-modal-bg').classList.remove('show');
+    refreshAll();
+
+  } catch(e) {
+    console.error(e);
+    showExcelStatus('❌ 錯誤：' + e.message, 'err');
+  }
+}
+
+window.applyLayout = async function() {
+    if (!isAdmin) { toast('請先登入才能修改座位架構', 'ter'); return; }
+    if(!confirm("⚠️ 警告：這將會直接覆寫該活動的座位結構！\n\n確定要執行嗎？")) return;
+    
+    const mode = document.getElementById('l-mode').value;
+    const newMaster = {};
+    const ZK = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+    // 1. 生成資料結構 (與原本相同)
+    if (mode === 'grid') {
+        const rows = parseInt(document.getElementById('l-rows').value, 10);
+        const zones = document.getElementById('l-zones').value.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+        for (let r = 1; r <= rows; r++) {
+            for (let z = 0; z < zones.length; z++) {
+                for (let s = 1; s <= zones[z]; s++) {
+                    const code = `${ZK[z]}${r}-${s}`;
+                    newMaster[code] = ""; // 初始化為空字串
+                }
+            }
+        }
+    } else if (mode === 'round') {
+        const rowCounts = document.getElementById('l-round-rows').value.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+        const seats = parseInt(document.getElementById('l-seats').value, 10);
+        const headTables = parseInt(document.getElementById('l-head-tables').value, 10) || 0;
+        const headSeats = parseInt(document.getElementById('l-head-seats').value, 10) || 12;
+
+        for (let t = 1; t <= headTables; t++) {
+            for (let s = 1; s <= headSeats; s++) { newMaster[`H${t}-${s}`] = ""; }
+        }
+        let tSeq = 1;
+        for (let r = 0; r < rowCounts.length; r++) {
+            for (let t = 0; t < rowCounts[r]; t++) {
+                for (let s = 1; s <= seats; s++) { newMaster[`R${r+1}_T${tSeq}-${s}`] = ""; }
+                tSeq++;
+            }
+        }
+    }
+
+    setSyncStatus('saving');
+    try {
+        // 【核心修正】：這裡強制清空該活動路徑並寫入新結構，確保 Firebase 有效觸發 onValue
+        // 如果是新活動，這一行會直接建立資料庫
+        await set(ref(db, PROJECT_ID), {
+            seats_master2026: newMaster,
+            assignments2026: null, // 新架構必須清除舊分配
+            tags2026: null,
+            seats2026: null,
+            table_names2026: null, // 同步清除舊桌名，避免跟新格局殘留並存
+            checkins2026: null
+        });
+        
+        toast('🎉 座位架構已成功建立！', 'tok');
+        document.getElementById('layout-modal-bg').classList.remove('show');
+        
+        // 強制刷新頁面狀態
+        refreshAll();
+    } catch (e) {
+        console.error(e);
+        setSyncStatus('error');
+        toast('架構更新失敗，請檢查網路。', 'ter');
+    }
+};
+
+function refreshAll(){renderSeats();updateStats();renderChips();}
+function renderSeats(){
+  Object.keys(seatMap).forEach(code => {
+    const el = document.getElementById('s-'+code);
+    if(!el) return;
+    const g=asgn[code], occ=occupied[code], tag=tags[code];
+    el.classList.remove('occupied', 'ceremony', 'photo', 'filled', 'checked-in');
+    if(window.checkins&&window.checkins[code]) el.classList.add('checked-in');
+    if(occ) el.classList.add('occupied');
+    else if(tag==='ceremony') el.classList.add('ceremony');
+    else if(tag==='photo') el.classList.add('photo');
+    else if(g) el.classList.add('filled');
+    el.draggable=!!(g||occ);
+    
+    if(layoutMode === 'round') el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'): code.split('-')[1];
+    else el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'):'';
+    el.title=code+(occ?' — 佔用':g?' — '+g:'');
+  });
+}
+
+function updateStats(){
+  const total = Object.keys(seatMap).length;
+  const n=Object.keys(asgn).length, oc=Object.keys(occupied).length, gc=guests.length;
+  document.getElementById('sa').textContent=n+oc;
+  document.getElementById('se').textContent=total-n-oc;
+  document.getElementById('sg').textContent=gc;
+  document.getElementById('pf').style.width=(gc?n/gc*100:0)+'%';
+  document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
+}
+
+// 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
+let locatorTimer=null, locatorRAF=null;
+function locateSeat(code){
+  clearLocator();
+  const el0=document.getElementById('s-'+code);
+  if(!el0) return;
+  // inline:'center' 讓座位圖的「橫向捲動」也自動捲到目標（手機上B區在畫面外時必要）
+  el0.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+  const pin=document.createElement('div');
+  pin.className='seat-pin';
+  pin.textContent='📍';
+  pin.style.position='fixed';
+  document.body.appendChild(pin);
+  // 每一影格跟著座位的實際位置走：捲動中、捲動後、甚至座位圖被重蓋都能對準
+  const tick=()=>{
+    const el=document.getElementById('s-'+code);
+    if(el){
+      el.classList.add('seat-target');
+      const r=el.getBoundingClientRect();
+      pin.style.display='block';
+      pin.style.left=(r.left+r.width/2)+'px';
+      pin.style.top=(r.top-38)+'px';
+    } else {
+      pin.style.display='none';
+    }
+    locatorRAF=requestAnimationFrame(tick);
+  };
+  tick();
+  // 不自動消失：持續跳動，直到使用者做下一個動作（搜尋別人、點座位、拖曳）才清除
+}
+
+function clearLocator(){
+  cancelAnimationFrame(locatorRAF);
+  clearTimeout(locatorTimer);
+  document.querySelectorAll('.seat-pin').forEach(x=>x.remove());
+  document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
+}
+
+window.renderChips=function renderChips(){
+  const aset=new Set(Object.values(asgn));
+  const kw=(document.getElementById('gs')||{value:''}).value.trim().toLowerCase();
+  document.querySelectorAll('.seat.found').forEach(el=>el.classList.remove('found'));
+  const box=document.getElementById('chips');box.innerHTML='';
+
+  if(kw){
+    let foundSeats=[];
+    Object.entries(asgn).forEach(([code,name])=>{
+      if(name&&name.toLowerCase().includes(kw)){
+        const el=document.getElementById('s-'+code);
+        if(el){el.classList.add('found');foundSeats.push({code,name});}
+      }
+    });
+    const unassignedMatches=guests.filter(g=>!aset.has(g)&&g.toLowerCase().includes(kw));
+    document.getElementById('uc-count').textContent=(foundSeats.length+unassignedMatches.length)+' 筆結果';
+
+    if(!foundSeats.length&&!unassignedMatches.length){
+      box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">找不到符合的賓客</div>';
+      return;
+    }
+    foundSeats.forEach(({code,name})=>{
+      const chip=document.createElement('span'); chip.className='chip'; chip.style.cssText='background:#FEFCE8;border-color:#CA8A04;color:#713F12;';
+      chip.textContent=name;
+      const badge=document.createElement('span'); badge.style.cssText='font-size:9px;background:#FDE047;color:#713F12;padding:1px 5px;border-radius:4px;margin-left:5px;font-weight:700;';
+      badge.textContent=code; chip.appendChild(badge);
+      chip.onclick=()=>locateSeat(code);
+      box.appendChild(chip);
+    });
+    unassignedMatches.forEach(g=>{
+      const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
+      chip.onclick=()=>{
+        if(!isAdmin) return toast('請先登入才能指派座位','ter');
+        if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+        else toast('請先點選一個座位','ter');
+      };
+      const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
+      xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
+      chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
+    });
+    return;
+  }
+
+  let list=guests.filter(g=> g && g.trim() !== '' && !aset.has(g));
+  document.getElementById('uc-count').textContent=list.length+' 未分配';
+  if(!list.length){box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">🎉 所有賓客皆已分配！</div>';return;}
+  list.forEach(g=>{
+    const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
+    chip.onclick=()=>{
+      if(!isAdmin) return toast('請先登入才能指派座位','ter');
+      if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+      else toast('請先點選一個座位','ter');
+    };
+    const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
+    xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
+    chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
+  });
+}
+
+function removeGuest(g){
+  if (!isAdmin) return;
+  const idx=guests.indexOf(g);if(idx===-1)return;guests.splice(idx,1);
+  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];}});
+  Object.entries(seatMap).forEach(([c,n])=>{if(n===g){seatMap[c]='';}});
+  refreshAll();scheduleSave();toast('已移除：'+g.substring(0,15)+'...','tin');
+}
+window.addGuest=function(){
+  const inp=document.getElementById('gi');
+  const n=inp.value.trim();
+  if(!n)return toast('請輸入賓客名稱','ter');
+  if(guests.includes(n))return toast('此賓客已在名單中','ter');
+  guests.push(n); guests.sort(); inp.value=''; refreshAll(); scheduleSave(); toast('已新增','tok');
+};
+window.doReset = async function() {
+  const eventName = document.getElementById('event-name-input').value;
+  if (!confirm(`⚠️ 警告：確定要【徹底清除】所有資料嗎？\n這將會直接刪除「${eventName}」的所有座位、名單與報到紀錄！\n清除後資料將無法復原，確定要執行嗎？`)) return;
+
+  // 阻斷可能的背景儲存，避免清空後又把舊資料寫回去
+  clearTimeout(saveTimer);
+  setSyncStatus('saving');
+  try {
+    // 【核心修正】：直接刪除該活動在 Firebase 的整個根節點
+    await set(ref(db, PROJECT_ID), null);
+
+    // 完全清除本地快取陣列
+    clearLocalData();
+    refreshAll();
+    
+    document.getElementById('vr').innerHTML = '<div style="text-align:center; padding: 40px; color: #9CA3AF;">目前資料庫已清空。<br><br>請點擊右上角「⚙️ 架構設定」建立新地圖。</div>';
+    toast('✅ 已徹底清空資料庫！', 'tok');
+  } catch (error) {
+    setSyncStatus('error');
+    toast('重置失敗，請檢查網路連線', 'ter');
+  }
+};
+
+window.doExport = async function() {
+    // 賓客欄位斷行規則：
+    // 1. 如果字串裡已經有真正的換行（Excel 原本就打兩行），完全尊重原本的斷法，不再處理。
+    // 2. 如果沒有換行（打成一行），一律用「第一個空白」當作公司／姓名職稱的分界，
+    //    不管後面姓名跟職稱之間是連著打還是多打一個空白，都當成同一段（第二行），
+    //    避免因為輸入習慣不一致，讓公司名稱被錯誤拆開。
+    function splitCompanyName(str) {
+        if (!str) return str;
+        if (str.includes('\n')) return str;
+        const idx = str.indexOf(' ');
+        if (idx === -1) return str;
+        const company = str.slice(0, idx).trim();
+        const rest = str.slice(idx + 1).trim();
+        if (!company || !rest) return str;
+        return company + '\n' + rest;
+    }
+
+    const keys = Object.keys(seatMap).sort((a, b) => {
+        const pa = a.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
+        const pb = b.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
+        if (!pa || !pb) return a.localeCompare(b);
+        if (pa[1] !== pb[1]) return pa[1].localeCompare(pb[1]);
+        if (parseInt(pa[2]) !== parseInt(pb[2])) return parseInt(pa[2]) - parseInt(pb[2]);
+        return parseInt(pa[3]) - parseInt(pb[3]);
+    });
+
+    if (keys.length === 0) { toast('目前沒有座位資料可以匯出', 'ter'); return; }
+
+    const isRound = layoutMode === 'round';
+    const eventName = (sessionStorage.getItem('taitra_event_name') || document.title.replace(' · 座位系統','') || '座位系統').trim();
+
+    toast('正在產生 Excel…', 'tin');
+    const wb = new ExcelJS.Workbook();
+
+    if (isRound) {
+        // ═══ 圓桌禮賓位置圖 → JPG ═══
+        // 樣式仿「主桌位置圖」：白底名牌＋橘色禮賓序號＋黃色主位/主賓標籤，
+        // 圓桌本體為深藍圓框，座位卡排在外圈橢圓軌道，不遮擋圓形；下方為舞台背板。
+        // 禮賓序號規則：主位可自選（預設 12 點鐘）；主位對面＝1(主賓)、
+        // 1 的右邊＝2、2 的對面＝3、3 的右邊＝4…依序交替替補。
+
+        const tables = {};
+        keys.forEach(k => { const tCode = k.split('-')[0]; if (!tables[tCode]) tables[tCode] = []; tables[tCode].push(k); });
+        const tableKeys = Object.keys(tables).sort((a, b) => {
+            const isHA = a.startsWith('H'), isHB = b.startsWith('H');
+            if (isHA && !isHB) return -1;
+            if (!isHA && isHB) return 1;
+            const ma = a.match(/T(\d+)/), mb = b.match(/T(\d+)/);
+            const na = ma ? parseInt(ma[1]) : parseInt(a.replace(/\D/g,'')||0);
+            const nb = mb ? parseInt(mb[1]) : parseInt(b.replace(/\D/g,'')||0);
+            return na - nb;
+        });
+
+        // ── 選主位（實體座位號：1 = 12 點鐘方向，順時針）──
+        const hostRaw = prompt(
+            '主位在哪個座位？\n輸入「實體座位號」(1 = 12點鐘方向，順時針編號)。\n' +
+            '多桌時可用逗號依桌次分別指定，例如：1,6\n' +
+            '留空 = 各桌預設 12 點鐘方向（上方）。', '');
+        if (hostRaw === null) { toast('已取消匯出', 'ter'); return; }
+        const hostList = hostRaw.split(',').map(s => parseInt(s.trim())).filter(v => !isNaN(v));
+
+        toast('正在繪製 JPG…', 'tin');
+
+        // 產生每個實體座位(0-based, 12點鐘起順時針)的禮賓標籤
+        // 規則（以主位為中心，右手／左手交替往外）：
+        // 主位對面＝1(主賓)；主位右手＝2，2的對面＝3(同時也是1的右手)；
+        // 主位左手＝4，4的對面＝5(同時也是1的左手)；6＝2的右手，7＝6的對面(=3的右手)；
+        // 8＝4的左手，9＝8的對面(=5的左手)…以此類推，右手鏈與左手鏈各自往外延伸。
+        function protocolLabels(n, hostSeatNo) {
+            let h = (hostSeatNo >= 1 && hostSeatNo <= n) ? hostSeatNo - 1 : 0; // 預設 12 點鐘（上方）
+            const R = i => (i % n + n) % n;
+            const half = Math.floor(n / 2);
+            const label = new Array(n).fill(null);
+            label[h] = { type: 'host' };
+            const used = new Set([h]);
+            const nextFree = idx => { let g = 0; while (used.has(idx) && g++ <= n) idx = R(idx - 1); return idx; };
+            const place = (idx, r) => { label[idx] = (r === 1) ? { type: 'guest', rank: 1 } : { type: 'num', rank: r }; used.add(idx); };
+
+            let rank = 1;
+            if (n - 1 >= 1) { place(nextFree(R(h + half)), 1); rank = 2; }
+            let rightAnchor = h, leftAnchor = h;
+            while (rank <= n - 1) {
+                const rightSeat = nextFree(R(rightAnchor - 1));
+                place(rightSeat, rank); rightAnchor = rightSeat; rank++;
+                if (rank > n - 1) break;
+                const oppRight = nextFree(R(rightAnchor + half));
+                place(oppRight, rank); rank++;
+                if (rank > n - 1) break;
+                const leftSeat = nextFree(R(leftAnchor + 1));
+                place(leftSeat, rank); leftAnchor = leftSeat; rank++;
+                if (rank > n - 1) break;
+                const oppLeft = nextFree(R(leftAnchor + half));
+                place(oppLeft, rank); rank++;
+            }
+            return { label, hostIdx: h };
+        }
+
+        const FONT = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
+        const NAVY = '#1D3A6E', INK = '#13315C', ORANGE = '#F5A623', YELLOW = '#FFF200';
+        const maxN = Math.max.apply(null, tableKeys.map(t => tables[t].length));
+
+        const BOX_W = 176, BOX_H = 58;
+        const RX = Math.max(305, maxN * 32);
+        const RY = Math.max(205, maxN * 22);
+        const CIRCLE_R = 145;
+
+        const TPR = 2;
+        const CELL_W = RX * 2 + BOX_W + 70;
+        const CELL_H = RY * 2 + BOX_H + 80;
+        const TITLE_H = 84, PAD = 24;
+        const nCols = Math.min(TPR, tableKeys.length);
+        const nRows = Math.ceil(tableKeys.length / TPR);
+        const W = PAD * 2 + nCols * CELL_W;
+        const H = TITLE_H + nRows * CELL_H + PAD;
+
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = W * scale; canvas.height = H * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#132742'; ctx.fillRect(0, 0, W, 58);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 26px ' + FONT;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(eventName + '－主桌位置圖', W / 2, 29);
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function fitLines(text, maxW, maxLines) {
+            const sizes = [16, 14, 13, 12];
+            for (const size of sizes) {
+                ctx.font = 'bold ' + size + 'px ' + FONT;
+                const lines = []; let cur = '';
+                for (const ch of text) {
+                    if (ctx.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; }
+                    else cur += ch;
+                }
+                if (cur) lines.push(cur);
+                if (lines.length <= maxLines) return { lines, size };
+            }
+            ctx.font = 'bold 12px ' + FONT;
+            const lines = []; let cur = '';
+            for (const ch of text) {
+                if (ctx.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; }
+                else cur += ch;
+            }
+            if (cur) lines.push(cur);
+            const cut = lines.slice(0, maxLines);
+            cut[maxLines - 1] = cut[maxLines - 1].slice(0, -1) + '…';
+            return { lines: cut, size: 12 };
+        }
+
+        tableKeys.forEach((tCode, idx) => {
+            const cx = PAD + (idx % TPR) * CELL_W + CELL_W / 2;
+            const cy = TITLE_H + Math.floor(idx / TPR) * CELL_H + CELL_H / 2;
+            const seats = tables[tCode].sort((x, y) => parseInt(x.split('-')[1]) - parseInt(y.split('-')[1]));
+            const n = seats.length;
+
+            const hostSeatNo = hostList.length === 0 ? 0 : (hostList.length === 1 ? hostList[0] : (hostList[idx] || 0));
+            const proto = protocolLabels(n, hostSeatNo);
+
+            // 圓桌本體（深藍圓框，同範例圖；桌名淡淡放中央）
+            ctx.beginPath(); ctx.arc(cx, cy, CIRCLE_R, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFFFFF'; ctx.fill();
+            ctx.lineWidth = 4; ctx.strokeStyle = NAVY; ctx.stroke();
+
+            let label = '';
+            if (tableNames[tCode]) label = tableNames[tCode];
+            else if (tCode.startsWith('H')) label = '主桌 ' + tCode.replace('H', '');
+            else { const tm = tCode.match(/T(\d+)/); label = tm ? '桌號 ' + tm[1] : tCode; }
+            ctx.fillStyle = 'rgba(29,58,110,0.45)';
+            ctx.font = 'bold 20px ' + FONT;
+            ctx.fillText(label, cx, cy);
+
+            seats.forEach((code, i) => {
+                const ang = (i * (360 / n) - 90) * Math.PI / 180;
+                const sx = cx + RX * Math.cos(ang);
+                const sy = cy + RY * Math.sin(ang);
+                const name = (asgn[code] || '').trim();
+                const info = proto.label[i];
+
+                // 名牌卡（白底深藍框；空位為灰色虛線框）
+                roundRect(sx - BOX_W / 2, sy - BOX_H / 2, BOX_W, BOX_H, 4);
+                ctx.fillStyle = '#FFFFFF'; ctx.fill();
+                if (name) {
+                    ctx.lineWidth = 2.5; ctx.strokeStyle = NAVY; ctx.stroke();
+                    const fit = fitLines(name, BOX_W - 16, 3);
+                    ctx.fillStyle = INK;
+                    ctx.font = 'bold ' + fit.size + 'px ' + FONT;
+                    const lh = fit.size + 4;
+                    const startY = sy - ((fit.lines.length - 1) * lh) / 2;
+                    fit.lines.forEach((ln, li) => ctx.fillText(ln, sx, startY + li * lh));
+                } else {
+                    ctx.lineWidth = 1.5; ctx.strokeStyle = '#B9C2D0';
+                    ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+                }
+
+                // 卡片朝圓心方向的邊界點（放序號徽章）與再往內的位置（放黃色標籤）
+                const dx = cx - sx, dy = cy - sy;
+                const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+                const tEdge = Math.min(
+                    Math.abs(ux) > 1e-6 ? (BOX_W / 2) / Math.abs(ux) : 1e9,
+                    Math.abs(uy) > 1e-6 ? (BOX_H / 2) / Math.abs(uy) : 1e9
+                );
+                const bx = sx + ux * tEdge, by = sy + uy * tEdge;
+
+                if (info && (info.type === 'num' || info.type === 'guest')) {
+                    // 橘色禮賓序號（主賓 = 1）
+                    const BW = 27;
+                    ctx.fillStyle = ORANGE;
+                    ctx.fillRect(bx - BW / 2, by - BW / 2, BW, BW);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 16px ' + FONT;
+                    ctx.fillText(String(info.rank), bx, by + 1);
+                }
+                if (info && (info.type === 'host' || info.type === 'guest')) {
+                    // 黃色「主位／主賓」標籤（在名牌與圓桌之間）
+                    const tagText = info.type === 'host' ? '主位' : '主賓';
+                    const TW = 56, TH = 27;
+                    const tx = sx + ux * (tEdge + (info.type === 'guest' ? 46 : 26));
+                    const ty = sy + uy * (tEdge + (info.type === 'guest' ? 46 : 26));
+                    ctx.fillStyle = YELLOW;
+                    ctx.fillRect(tx - TW / 2, ty - TH / 2, TW, TH);
+                    ctx.strokeStyle = '#D9C900'; ctx.lineWidth = 1;
+                    ctx.strokeRect(tx - TW / 2, ty - TH / 2, TW, TH);
+                    ctx.fillStyle = '#1A1A1A';
+                    ctx.font = 'bold 16px ' + FONT;
+                    ctx.fillText(tagText, tx, ty + 1);
+                }
+            });
+        });
+
+        const now = new Date();
+        const ts = (now.getMonth() + 1) + '' + now.getDate() + '_' + now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
+        const safeLabel = (eventName || '席次圖').replace(/[\\/:*?"<>|]/g, '').substring(0, 20);
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = safeLabel + '_主桌位置圖_' + ts + '.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast('✅ JPG 匯出完成！', 'tok');
+        }, 'image/jpeg', 0.92);
+        return;
+    }
+
+    const zoneSet = new Set(), maxSeatPerZone = {}, maxRow = { v: 0 };
+    keys.forEach(k => {
+        const m = k.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+        if (!m) return;
+        const [, z, r, s] = m;
+        zoneSet.add(z);
+        if (parseInt(r) > maxRow.v) maxRow.v = parseInt(r);
+        if (!maxSeatPerZone[z] || parseInt(s) > maxSeatPerZone[z]) maxSeatPerZone[z] = parseInt(s);
+    });
+    const zones = Array.from(zoneSet).sort();
+    const zoneNames = { A: 'A 區（左）', B: 'B 區（中）', C: 'C 區（右）', D: 'D 區', E: 'E 區' };
+
+    const ZONE_PALETTE = [
+        { code:'FFD4E6F8', name:'FFE8F1FB', zone:'FF1D5EA8' },
+        { code:'FFD9EAD3', name:'FFEAF4E5', zone:'FF4A8C3F' },
+        { code:'FFFFF2CC', name:'FFFFF9E0', zone:'FFB8960C' },
+        { code:'FFF4CCCC', name:'FFFAE5E5', zone:'FFB23B3B' },
+        { code:'FFE6D9F2', name:'FFF0E8FA', zone:'FF7A4FB5' },
+    ];
+    const zoneColorMap = {};
+    zones.forEach((z, i) => { zoneColorMap[z] = ZONE_PALETTE[i % ZONE_PALETTE.length]; });
+
+    const ws = wb.addWorksheet('席次圖');
+
+    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（逐字由上往下排列，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
+
+    function toVerticalRichText(str, baseSize) {
+        if (!str) return null;
+        const tokens = str.split(' ').filter(t => t.length > 0);
+        const runs = [];
+        tokens.forEach(token => {
+            const isLatin = /^[A-Za-z0-9.,'-]+$/.test(token);
+            if (isLatin) {
+                runs.push({ font: { name:'@微軟正黑體', size:baseSize, bold:true }, text: token + '\n' });
+            } else {
+                Array.from(token).forEach(ch => {
+                    runs.push({ font: { name:'微軟正黑體', size:baseSize, bold:true }, text: ch + '\n' });
+                });
+            }
+        });
+        if (runs.length) {
+            runs[runs.length - 1].text = runs[runs.length - 1].text.replace(/\n$/, '');
+        }
+        return runs;
+    }
+
+    let colStarts = {}, curCol = 2;
+    zones.forEach(z => { colStarts[z] = curCol; curCol += maxSeatPerZone[z] + 1; });
+    const totalCols = curCol - 1;
+
+    ws.getColumn(1).width = 5;
+    zones.forEach(z => {
+        const colW = useVertical ? 11 : 16;
+        for (let s = 0; s < maxSeatPerZone[z]; s++) ws.getColumn(colStarts[z] + s).width = colW;
+        ws.getColumn(colStarts[z] + maxSeatPerZone[z]).width = 2;
+    });
+
+    ws.mergeCells(1, 1, 1, totalCols);
+    const titleCell = ws.getCell(1, 1);
+    titleCell.value = eventName + ' 席次圖';
+    titleCell.font = { name:'Arial', size:17, bold:true, color:{argb:'FFFFFFFF'} };
+    titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF132742'} };
+    titleCell.alignment = { horizontal:'center', vertical:'middle' };
+    ws.getRow(1).height = 40;
+    ws.getRow(2).height = 8;
+
+    zones.forEach(z => {
+        const startCol = colStarts[z], endCol = colStarts[z] + maxSeatPerZone[z] - 1;
+        ws.mergeCells(3, startCol, 3, endCol);
+        const cell = ws.getCell(3, startCol);
+        cell.value = zoneNames[z] || (z + ' 區');
+        cell.font = { name:'Arial', size:11, bold:true, color:{argb:'FFFFFFFF'} };
+        cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:zoneColorMap[z].zone} };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+    ws.getRow(3).height = 24;
+
+    zones.forEach(z => {
+        for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+            const cell = ws.getCell(4, colStarts[z] + s - 1);
+            cell.value = s;
+            cell.font = { name:'Arial', size:10, bold:true, color:{argb:'FFFFFFFF'} };
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1D5EA8'} };
+            cell.alignment = { horizontal:'center', vertical:'middle' };
+        }
+    });
+    ws.getRow(4).height = useVertical ? 12 : 16;
+
+    let curRow = 5;
+    for (let r = 1; r <= maxRow.v; r++) {
+        const codeRowIdx = curRow, nameRowIdx = curRow + 1;
+        ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
+        ws.getRow(nameRowIdx).height = useVertical ? 150 : undefined; // 豎排固定 150：Excel 對程式產生的豎排＋換行有渲染延遲的限制，動態精算高度並沒有解決，改用固定值
+
+        const rowNames = {};
+        zones.forEach(z => {
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const code = `${z}${r}-${s}`;
+                rowNames[code] = splitCompanyName(asgn[code] || '');
+            }
+        });
+
+        const rowLabelCell = ws.getCell(nameRowIdx, 1);
+        rowLabelCell.value = r;
+        rowLabelCell.font = { name:'Arial', size:11, bold:true };
+        rowLabelCell.alignment = { horizontal:'center', vertical:'middle' };
+
+        zones.forEach(z => {
+            const palette = zoneColorMap[z];
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const col = colStarts[z] + s - 1;
+                const code = `${z}${r}-${s}`;
+                const exists = keys.includes(code);
+
+                const codeCell = ws.getCell(codeRowIdx, col);
+                codeCell.value = exists ? code : '';
+                codeCell.font = { name:'Arial', size:10, bold:true };
+                codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
+                codeCell.alignment = { horizontal:'center', vertical:'middle' };
+
+                const fullName = rowNames[code];
+                const nameCell = ws.getCell(nameRowIdx, col);
+                nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
+
+                if (useVertical) {
+                    // 使用 Excel 原生「垂直文字」(vertText)，等同工具列的「垂直文字」按鈕，
+                    // 儲存格內容保持完整字串，不再逐字插入換行
+                    nameCell.value = fullName;
+                    nameCell.font = { name:'微軟正黑體', size:12, bold:true };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', textRotation:'vertical' };
+                } else {
+                    nameCell.value = fullName;
+                    nameCell.font = { name:'微軟正黑體', size:13, bold:true };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', wrapText:true };
+                }
+            }
+        });
+        curRow += 2;
+    }
+
+    exportUnassignedSheet(wb);
+    await downloadWorkbook(wb, eventName);
+};
+
+function exportUnassignedSheet(wb) {
+    if (guests.length === 0) return;
+    const assignedNames = new Set(Object.values(asgn).filter(Boolean));
+    const unassigned = guests.filter(g => g && g.trim() !== '' && !assignedNames.has(g));
+    if (unassigned.length > 0) {
+        const ws2 = wb.addWorksheet('未分配賓客');
+        ws2.getColumn(1).width = 36;
+        ws2.addRow(['未分配賓客名單']).font = { bold:true };
+        unassigned.forEach(g => ws2.addRow([g]));
+    }
+}
+
+async function downloadWorkbook(wb, eventName) {
+    const now = new Date();
+    const ts = `${now.getMonth()+1}${now.getDate()}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+    const safeLabel = (eventName || '席次圖').replace(/[\\/:*?"<>|]/g, '').substring(0, 20);
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeLabel}_${ts}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('✅ 匯出完成！', 'tok');
+}
+
+function clearDO(){document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));}
+function showTip(e,t){dtt.textContent=t;dtt.style.display='block';moveTip(e);}
+function moveTip(e){dtt.style.left=(e.clientX+14)+'px';dtt.style.top=(e.clientY-28)+'px';}
+function hideTip(){dtt.style.display='none';}
+document.addEventListener('dragover',e=>{if(dragGuest||dragFrom)moveTip(e);});
+function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+cls;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800);}
+
+// 搜尋下一個人（輸入變動）時，收掉上一個定位標
+const _gsEl = document.getElementById('gs');
+if (_gsEl) _gsEl.addEventListener('input', clearLocator);
+
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+        if(Object.keys(seatMap).length > 0) { buildVenue(Object.keys(seatMap)); refreshAll(); }
+    }, 200);
+});
+
+// ═══════════════ 圓桌細節圖：可拖曳 WYSIWYG 編輯器 ═══════════════
+// 與活動資料庫連動：開啟時載入（無存檔則以目前座位預填），拖曳/套用名單即自動儲存至 Firebase。
+const DC_BOARD_W = 680, DC_BOARD_H = 640, DC_CIRCLE_R = 150, DC_RX = 258, DC_RY = 245;
+let detailState = {};          // { tCode: { cards:[{id,text,role,rank,x,y,tagHidden,badgeDX,badgeDY}] } }
+let dcSaveTimer = null, dcIdSeq = 1;
+let dcSwapSource = null;       // { tCode, id } 交換位置：已選取的第一張名牌
+
+function dcStatus(msg, ok) {
+    const el = document.getElementById('dc-status');
+    if (el) { el.textContent = msg || ''; el.style.color = ok === false ? '#FCA5A5' : '#A7F3D0'; }
+}
+function dcSave() {
+    clearTimeout(dcSaveTimer);
+    dcStatus('儲存中…');
+    dcSaveTimer = setTimeout(async () => {
+        try { await set(ref(db, PROJECT_ID + '/detail_chart2026'), detailState); dcStatus('已自動儲存 ✓'); }
+        catch (e) { dcStatus('儲存失敗，請檢查網路', false); }
+    }, 700);
+}
+
+// 禮賓序位規則（以主位為中心，右手／左手交替往外）：
+// 主位對面＝1(主賓)；主位右手＝2，2的對面＝3(同時也是1的右手)；
+// 主位左手＝4，4的對面＝5(同時也是1的左手)；6＝2的右手，7＝6的對面(=3的右手)；
+// 8＝4的左手，9＝8的對面(=5的左手)…右手鏈與左手鏈各自往外延伸。
+function dcOrderFromHost(n, hostPi) {
+    const R = i => (i % n + n) % n;
+    const half = Math.floor(n / 2);
+    const order = [];                      // order[r-1] = 序號 r 的實體索引
+    const used = new Set([hostPi]);
+    const nextFree = idx => { let g = 0; while (used.has(idx) && g++ <= n) idx = R(idx - 1); return idx; };
+    const place = idx => { order.push(idx); used.add(idx); };
+
+    if (n - 1 >= 1) place(nextFree(R(hostPi + half))); // rank 1 = 主位對面
+    let rightAnchor = hostPi, leftAnchor = hostPi;
+    while (order.length < n - 1) {
+        const rightSeat = nextFree(R(rightAnchor - 1));
+        place(rightSeat); rightAnchor = rightSeat;
+        if (order.length >= n - 1) break;
+        const oppRight = nextFree(R(rightAnchor + half));
+        place(oppRight);
+        if (order.length >= n - 1) break;
+        const leftSeat = nextFree(R(leftAnchor + 1));
+        place(leftSeat); leftAnchor = leftSeat;
+        if (order.length >= n - 1) break;
+        const oppLeft = nextFree(R(leftAnchor + half));
+        place(oppLeft);
+    }
+    return order;
+}
+function dcAssignRoles(st, n) {
+    const hostPi = Number.isInteger(st.hostPi) ? st.hostPi : 0;
+    const order = dcOrderFromHost(n, hostPi);
+    st.cards.forEach(c => {
+        if (c.role === 'free' || !Number.isInteger(c.pi)) return;
+        if (c.pi === hostPi) { c.role = 'host'; c.rank = 0; }
+        else {
+            const r = order.indexOf(c.pi) + 1;
+            c.role = (r === 1) ? 'guest' : 'num';
+            c.rank = r;
+        }
+    });
+}
+function dcEventName() {
+    let n = (sessionStorage.getItem('taitra_event_name') || '').trim();
+    if (!n) { const t = document.getElementById('main-title'); if (t) n = t.textContent.replace('🎟', '').trim(); }
+    if (!n) n = document.title.replace(' · 座位系統', '').trim();
+    return n || '活動';
+}
+// 名牌視覺大小依禮賓序位遞減：主位最大 > 主賓(1) > 2 > 3 …，序位數字越大名牌越小。
+// 先以 10 人版本（主位+9）為基準比例；若桌次人數更多，數字越大的名牌會持續縮小到最小尺寸為止。
+function dcCardSize(rank) {
+    const w = Math.max(112, 176 - rank * 7);
+    const fs = Math.max(11, 15 - rank * 0.42);
+    return { w, fs };
+}
+function dcDefaultPos(physIdx, n) {
+    const ang = (physIdx * (360 / n) - 90) * Math.PI / 180;
+    let x = Math.round(DC_BOARD_W / 2 + DC_RX * Math.cos(ang));
+    let y = Math.round(DC_BOARD_H / 2 + DC_RY * Math.sin(ang));
+    x = Math.min(DC_BOARD_W - 92, Math.max(92, x));   // 名牌不超出畫布
+    y = Math.min(DC_BOARD_H - 32, Math.max(32, y));
+    return { x, y };
+}
+function dcTableLabel(tCode) {
+    if (tableNames[tCode]) return tableNames[tCode];
+    if (tCode.startsWith('H')) return '主桌 ' + tCode.replace('H', '');
+    const tm = tCode.match(/T(\d+)/); return tm ? '桌號 ' + tm[1] : tCode;
+}
+function dcGroupTables() {
+    const tables = {};
+    Object.keys(seatMap).forEach(k => { const t = k.split('-')[0]; if (!tables[t]) tables[t] = []; tables[t].push(k); });
+    let order = Object.keys(tables).sort((a, b) => {
+        const isHA = a.startsWith('H'), isHB = b.startsWith('H');
+        if (isHA && !isHB) return -1;
+        if (!isHA && isHB) return 1;
+        const ma = a.match(/T(\d+)/), mb = b.match(/T(\d+)/);
+        const na = ma ? parseInt(ma[1]) : parseInt(a.replace(/\D/g, '') || 0);
+        const nb = mb ? parseInt(mb[1]) : parseInt(b.replace(/\D/g, '') || 0);
+        return na - nb;
+    });
+    // 與架構設定連動：只呈現「主桌」，外面生成幾個主桌，這裡就有幾個圓桌
+    const hOnly = order.filter(t => t.startsWith('H'));
+    if (hOnly.length > 0) order = hOnly;
+    order.forEach(t => tables[t].sort((x, y) => parseInt(x.split('-')[1]) - parseInt(y.split('-')[1])));
+    return { tables, order };
+}
+// 由目前座位分配預填（主位預設＝實體座位1／12點鐘，可用「點選主位」改）
+function dcDefaultTableState(tCode, seats) {
+    const n = seats.length, cards = [];
+    seats.forEach((code, i) => {
+        const p = dcDefaultPos(i, n);
+        cards.push({ id: 'c' + (dcIdSeq++), text: (asgn[code] || '').trim(), pi: i, role: 'num', rank: 0, x: p.x, y: p.y });
+    });
+    const st = { cards, hostPi: 0 };
+    dcAssignRoles(st, n);
+    return st;
+}
+
+window.openDetailChart = function () {
+    if (layoutMode !== 'round') { toast('目前活動不是圓桌模式', 'ter'); return; }
+    if (Object.keys(seatMap).length === 0) { toast('尚無座位資料，請先建立架構', 'ter'); return; }
+    document.getElementById('detail-overlay').classList.add('show');
+    document.getElementById('dc-title').textContent = '🪑 ' + dcEventName() + '－圓桌細節圖（拖曳名牌，所見即所得）';
+    dcStatus('載入中…');
+    onValue(ref(db, PROJECT_ID + '/detail_chart2026'), snap => {
+        detailState = snap.val() || {};
+        dcBuild();
+        dcStatus('');
+    }, { onlyOnce: true });
+};
+window.closeDetailChart = function () {
+    document.getElementById('detail-overlay').classList.remove('show');
+};
+
+function dcBuild() {
+    const body = document.getElementById('dc-body');
+    body.innerHTML = '';
+    const { tables, order } = dcGroupTables();
+    order.forEach(tCode => {
+        const cur = detailState[tCode];
+        const ringOk = cur && Array.isArray(cur.cards) &&
+            cur.cards.filter(c => c.role !== 'free').every(c => Number.isInteger(c.pi));
+        if (!ringOk) {
+            const oldRing = cur && Array.isArray(cur.cards) ? cur.cards.filter(c => c.role !== 'free').sort((a, b) => (a.rank||0) - (b.rank||0)) : null;
+            const oldFree = cur && Array.isArray(cur.cards) ? cur.cards.filter(c => c.role === 'free') : [];
+            detailState[tCode] = dcDefaultTableState(tCode, tables[tCode]);
+            if (oldRing) {
+                const ring = detailState[tCode].cards.slice().sort((a, b) => a.rank - b.rank);
+                ring.forEach((c, i) => { if (oldRing[i] && oldRing[i].text !== undefined) c.text = oldRing[i].text; });
+                detailState[tCode].cards.push(...oldFree);
+            }
+        }
+        body.appendChild(dcBuildPanel(tCode, tables[tCode]));
+    });
+}
+
+function dcBuildPanel(tCode, seats) {
+    const st = detailState[tCode];
+    const panel = document.createElement('div');
+    panel.className = 'dc-panel';
+    const h3 = document.createElement('h3');
+    h3.textContent = dcTableLabel(tCode) + '（' + seats.length + ' 席）';
+    panel.appendChild(h3);
+
+    const board = document.createElement('div');
+    board.className = 'dc-board';
+    board.dataset.tcode = tCode;
+
+    const circle = document.createElement('div');
+    circle.className = 'dc-circle';
+    const cd = DC_CIRCLE_R * 2;
+    circle.style.width = cd + 'px'; circle.style.height = cd + 'px';
+    circle.style.left = (DC_BOARD_W / 2 - DC_CIRCLE_R) + 'px';
+    circle.style.top = (DC_BOARD_H / 2 - DC_CIRCLE_R) + 'px';
+    circle.textContent = dcTableLabel(tCode);
+    board.appendChild(circle);
+
+    st.cards.forEach(card => {
+        const cardEl = dcBuildCard(card, tCode);
+        board.appendChild(cardEl);
+    });
+    panel.appendChild(board);
+    // 需在插入 DOM 後才能量測尺寸 → 下一個 frame 貼齊徽章
+    requestAnimationFrame(() => {
+        board.querySelectorAll('.dc-card').forEach((cardEl, i) => {
+            const c = st.cards[i];
+            if (c) dcDecorate(cardEl, c);
+        });
+    });
+
+    // ── 名單輸入區 ──
+    const side = document.createElement('div');
+    side.className = 'dc-side';
+    const hint = document.createElement('div');
+    hint.className = 'dc-hint';
+    hint.innerHTML = '由上至下每行一位，依序＝<b>主位、主賓(1)、2、3、4…</b>；' +
+        '按「👑 點選主位」後<b>手點任一名牌</b>即設為主位，自動重排：對面＝1、1右邊＝2、2對面＝3…。' +
+        '名牌可拖曳微調，雙擊可編輯文字（加掛名牌清空＝刪除）。<br>' +
+        '<b>📥 匯入席次圖名單</b>＝把前方已分配的賓客帶進本桌（前方無資料時不覆蓋）；' +
+        '<b>📤 寫回前方座位</b>＝反過來把本桌名牌目前的方位換算成前方最接近的座位號寫回（前方原本該座位會被覆蓋）。';
+    side.appendChild(hint);
+    const ta = document.createElement('textarea');
+    ta.placeholder = '第1行：主位\n第2行：主賓（序號1）\n第3行：序號2\n…';
+    // 以目前卡片內容（依禮賓序）預填
+    const ordered = st.cards.filter(c => c.role !== 'free').slice().sort((a, b) => a.rank - b.rank);
+    ta.value = ordered.map(c => c.text).join('\n').replace(/\n+$/, '');
+    side.appendChild(ta);
+    const act = document.createElement('div');
+    act.className = 'dc-actions';
+    const bApply = document.createElement('button');
+    bApply.textContent = '⬆ 套用名單到圓桌';
+    bApply.onclick = () => {
+        const lines = ta.value.split('\n').map(s => s.trim());
+        const proto = st.cards.filter(c => c.role !== 'free').sort((a, b) => a.rank - b.rank);
+        proto.forEach((c, i) => { c.text = lines[i] || ''; });
+        // 多出來的行 → 加掛名牌，疊在右下角
+        const extra = lines.slice(proto.length).filter(s => s);
+        extra.forEach((txt, j) => {
+            st.cards.push({ id: 'c' + (dcIdSeq++), text: txt, role: 'free', rank: 999, x: DC_BOARD_W - 120, y: 60 + j * 64 });
+        });
+        dcRefreshBoard(board, tCode);
+        dcSave();
+    };
+    const bAdd = document.createElement('button');
+    bAdd.textContent = '➕ 新增名牌';
+    bAdd.onclick = () => {
+        st.cards.push({ id: 'c' + (dcIdSeq++), text: '（雙擊編輯）', role: 'free', rank: 999, x: DC_BOARD_W - 120, y: 60 });
+        dcRefreshBoard(board, tCode);
+        dcSave();
+    };
+    const bReset = document.createElement('button');
+    bReset.textContent = '🔄 重排回預設位置';
+    bReset.onclick = () => {
+        const n = seats.length;
+        st.cards.forEach(c => {
+            if (c.role === 'free' || !Number.isInteger(c.pi)) return;
+            const p = dcDefaultPos(c.pi, n);
+            c.x = p.x; c.y = p.y;
+        });
+        dcRefreshBoard(board, tCode);
+        dcSave();
+    };
+    const bHost = document.createElement('button');
+    bHost.textContent = '👑 點選主位';
+    bHost.onclick = () => {
+        const on = !board.classList.contains('picking');
+        document.querySelectorAll('.dc-board.picking').forEach(b => b.classList.remove('picking'));
+        document.querySelectorAll('.dc-actions button.active').forEach(b => b.classList.remove('active'));
+        if (on) {
+            board.classList.add('picking');
+            bHost.classList.add('active');
+            dcStatus('請在圓桌上點選一張名牌設為主位…');
+        } else { dcStatus(''); }
+    };
+    // 對稱排列：主位保持在目前方向，其餘名牌依實體座位序等距對稱分佈一圈
+    const bSym = document.createElement('button');
+    bSym.textContent = '♻️ 對稱排列';
+    bSym.title = '以主位目前的方向為基準，其他名牌等距對稱繞圓排列';
+    bSym.onclick = () => {
+        const n = seats.length;
+        const ring = st.cards.filter(c => c.role !== 'free' && Number.isInteger(c.pi));
+        const hostCard = ring.find(c => c.role === 'host');
+        let base = -Math.PI / 2;
+        if (hostCard) base = Math.atan2(hostCard.y - DC_BOARD_H / 2, hostCard.x - DC_BOARD_W / 2);
+        const hostPi = Number.isInteger(st.hostPi) ? st.hostPi : 0;
+        ring.forEach(c => {
+            const rel = ((c.pi - hostPi) % n + n) % n;
+            const ang = base + rel * (2 * Math.PI / n);
+            c.x = Math.min(DC_BOARD_W - 92, Math.max(92, Math.round(DC_BOARD_W / 2 + DC_RX * Math.cos(ang))));
+            c.y = Math.min(DC_BOARD_H - 32, Math.max(32, Math.round(DC_BOARD_H / 2 + DC_RY * Math.sin(ang))));
+        });
+        dcRefreshBoard(board, tCode);
+        dcSave();
+        toast('♻️ 已依主位方向對稱排列', 'tok');
+    };
+    // 匯入前方席次圖：不理會前方實體座位號(1-12)，只取前方目前已分配的賓客名單，
+    // 依「本桌已產生的禮賓方向」（主位→主賓(1)→2→3…）依序對應填入。
+    // 注意：前方若沒有賓客可對應（空位），不會清空本桌原本已有的名字，避免資料不見。
+    const bImport = document.createElement('button');
+    bImport.textContent = '📥 匯入席次圖名單';
+    bImport.title = '取前方主畫面此桌目前已分配的賓客名單，依本桌主位方向的禮賓序位依序對應（不理會前方座位號，前方無資料時不覆蓋原本名字）';
+    bImport.onclick = () => {
+        const names = seats.map(code => (asgn[code] || '').trim()).filter(n => n !== '');
+        const proto = st.cards.filter(c => c.role !== 'free').slice().sort((a, b) => a.rank - b.rank);
+        let changed = 0;
+        proto.forEach((c, i) => {
+            if (names[i]) { c.text = names[i]; changed++; }
+        });
+        dcRefreshBoard(board, tCode);
+        ta.value = proto.map(c => c.text).join('\n').replace(/\n+$/, '');
+        dcSave();
+        if (changed > 0) {
+            toast('📥 已依主桌方向匯入 ' + changed + ' 位賓客', 'tok');
+        } else {
+            toast('⚠️ 前方目前沒有可匯入的賓客名單，本桌名字維持原狀', 'tin');
+        }
+    };
+    // 寫回前方座位：反方向 — 把本桌名牌目前在圖上的「實際方位」換算成前方最接近的座位號，直接寫回前方指定。
+    // 角度不必完全精準（有偏差沒關係），只是盡量讓主位落在前方最接近上/下/左/右的座位號；前方原本該座位的賓客會被覆蓋。
+    const bWriteBack = document.createElement('button');
+    bWriteBack.textContent = '📤 寫回前方座位';
+    bWriteBack.title = '依名牌目前在圖上的方位，換算成前方最接近的座位號並直接寫回（前方該座位原本的賓客會被覆蓋）';
+    bWriteBack.onclick = () => {
+        const n = seats.length;
+        const ring = st.cards.filter(c => c.role !== 'free' && c.text && c.text.trim() !== '');
+        if (ring.length === 0) { toast('⚠️ 本桌目前沒有可寫回前方的賓客', 'tin'); return; }
+        const cx = DC_BOARD_W / 2, cy = DC_BOARD_H / 2, step = 360 / n;
+        const items = ring.map(c => {
+            const angDeg = Math.atan2(c.y - cy, c.x - cx) * 180 / Math.PI; // -90° = 正上方
+            let idx = Math.round((angDeg + 90) / step);
+            idx = ((idx % n) + n) % n;
+            return { c, idx };
+        });
+        // 多張名牌換算後搶同一個前方座位號時，依序遞補到下一個空位，避免互相覆蓋
+        const used = new Set();
+        items.forEach(item => {
+            let idx = item.idx, guard = 0;
+            while (used.has(idx) && guard++ < n) idx = (idx + 1) % n;
+            used.add(idx);
+            item.idx = idx;
+        });
+        items.forEach(item => {
+            const code = seats[item.idx];
+            if (code) { asgn[code] = item.c.text.trim(); delete occupied[code]; }
+        });
+        refreshAll();
+        scheduleSave();
+        toast('📤 已依方向寫回前方 ' + items.length + ' 個座位', 'tok');
+    };
+    act.appendChild(bHost); act.appendChild(bSym); act.appendChild(bImport); act.appendChild(bWriteBack); act.appendChild(bApply); act.appendChild(bAdd); act.appendChild(bReset);
+    side.appendChild(act);
+    panel.appendChild(side);
+    return panel;
+}
+
+function dcRefreshBoard(board, tCode) {
+    board.querySelectorAll('.dc-card').forEach(el => el.remove());
+    detailState[tCode].cards.forEach(card => {
+        const el = dcBuildCard(card, tCode);
+        board.appendChild(el);
+        dcDecorate(el, card);
+    });
+}
+
+// 交換位置：點第一張名牌的 ⇄ 選取，再點第二張的 ⇄ 即互換兩張名牌的文字內容
+// （位置、序號徽章、主位/主賓標籤都留在原位，只交換姓名，適合用來對調長官與長官姓名等任意兩個名牌）
+function dcSwapClick(tCode, card, el) {
+    const board = el.closest('.dc-board');
+    if (!dcSwapSource) {
+        dcSwapSource = { tCode, id: card.id };
+        el.classList.add('dc-swap-selected');
+        dcStatus('已選取「' + (card.text || '空位') + '」，請點選另一張名牌的 ⇄ 完成交換…');
+        return;
+    }
+    if (dcSwapSource.id === card.id && dcSwapSource.tCode === tCode) {
+        // 再點一次自己＝取消選取
+        dcSwapSource = null;
+        el.classList.remove('dc-swap-selected');
+        dcStatus('');
+        return;
+    }
+    if (dcSwapSource.tCode !== tCode) {
+        toast('僅支援同一桌內的名牌互換', 'ter');
+        document.querySelectorAll('.dc-swap-selected').forEach(x => x.classList.remove('dc-swap-selected'));
+        dcSwapSource = null;
+        dcStatus('');
+        return;
+    }
+    const st = detailState[tCode];
+    const a = st.cards.find(c => c.id === dcSwapSource.id);
+    const b = card;
+    if (a && b) { const tmp = a.text; a.text = b.text; b.text = tmp; }
+    document.querySelectorAll('.dc-swap-selected').forEach(x => x.classList.remove('dc-swap-selected'));
+    dcSwapSource = null;
+    dcRefreshBoard(board, tCode);
+    dcSave();
+    dcStatus('');
+    toast('🔀 已交換兩張名牌的姓名', 'tok');
+}
+
+// 序號徽章與主位/主賓標籤永遠貼在名牌「面向圓心」的那一側（靠近圓形）
+function dcDecorate(el, card) {
+    const badge = el.querySelector('.dc-badge');
+    const tag = el.querySelector('.dc-tag');
+    if (!badge && !tag) return;
+    const w = el.offsetWidth || 150, h = el.offsetHeight || 44;
+    const dx = DC_BOARD_W / 2 - card.x, dy = DC_BOARD_H / 2 - card.y;
+    const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    const t = Math.min(
+        Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9,
+        Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
+    );
+    const ex = w / 2 + ux * t, ey = h / 2 + uy * t;   // 卡片邊界上朝圓心的點
+    if (badge) {
+        // 數字徽章預設貼齊名牌邊緣，若使用者曾手動拖曳過，疊加其自訂偏移量（避免遮住名字）
+        const bdx = card.badgeDX || 0, bdy = card.badgeDY || 0;
+        badge.style.left = (ex - 13 + bdx) + 'px';
+        badge.style.top = (ey - 13 + bdy) + 'px';
+    }
+    if (tag) {
+        const tw = tag.offsetWidth || 56, th = tag.offsetHeight || 27;
+        const off = t + 24 + (badge ? 16 : 0);
+        tag.style.left = (w / 2 + ux * off - tw / 2) + 'px';
+        tag.style.top = (h / 2 + uy * off - th / 2) + 'px';
+        tag.style.transform = 'none';
+        tag.style.bottom = 'auto';
+    }
+}
+
+function dcBuildCard(card, tCode) {
+    const el = document.createElement('div');
+    el.className = 'dc-card' + (card.text ? '' : ' empty');
+    el.style.left = card.x + 'px';
+    el.style.top = card.y + 'px';
+    // 名牌大小依禮賓序位遞減：主位(rank 0)最大，主賓(1)次之，數字越大越小；加掛名牌固定用中等大小
+    const sizeRank = card.role === 'free' ? 4 : (card.rank || 0);
+    const sz = dcCardSize(sizeRank);
+    el.style.width = (card.w || sz.w) + 'px';
+    if (card.h) el.style.height = card.h + 'px';
+    el.style.fontSize = sz.fs + 'px';
+    const txt = document.createElement('span');
+    txt.textContent = card.text || '（空）';
+    el.appendChild(txt);
+    if (card.role === 'guest' || card.role === 'num') {
+        const b = document.createElement('div');
+        b.className = 'dc-badge';
+        b.textContent = card.rank;
+        b.title = '拖曳可移動數字位置，避免擋住名字';
+        el.appendChild(b);
+        // 數字徽章可獨立拖曳（跟名牌一樣），移開後偏移量會記住
+        b.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            e.preventDefault();
+            b.setPointerCapture(e.pointerId);
+            const startX = e.clientX, startY = e.clientY;
+            const baseLeft = parseFloat(b.style.left) || 0, baseTop = parseFloat(b.style.top) || 0;
+            const move = ev => {
+                b.style.left = (baseLeft + (ev.clientX - startX)) + 'px';
+                b.style.top = (baseTop + (ev.clientY - startY)) + 'px';
+            };
+            const up = () => {
+                b.removeEventListener('pointermove', move);
+                b.removeEventListener('pointerup', up);
+                // 換算成相對於預設貼齊位置的偏移量，之後名牌移動時徽章會跟著保持這個偏移
+                const w = el.offsetWidth || 150, h = el.offsetHeight || 44;
+                const dx = DC_BOARD_W / 2 - card.x, dy = DC_BOARD_H / 2 - card.y;
+                const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+                const t2 = Math.min(
+                    Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9,
+                    Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
+                );
+                const ex = w / 2 + ux * t2, ey = h / 2 + uy * t2;
+                card.badgeDX = (parseFloat(b.style.left) + 13) - ex;
+                card.badgeDY = (parseFloat(b.style.top) + 13) - ey;
+                dcSave();
+            };
+            b.addEventListener('pointermove', move);
+            b.addEventListener('pointerup', up);
+        });
+    }
+    if (card.role === 'host' || card.role === 'guest') {
+        const t = document.createElement('div');
+        t.className = 'dc-tag' + (card.tagHidden ? ' dc-tag-hidden' : '');
+        t.textContent = card.tagHidden ? '' : (card.role === 'host' ? '主位' : '主賓');
+        t.title = '點一下可隱藏／再點一下恢復顯示，避免標籤擋到名牌';
+        el.appendChild(t);
+        // 點選「主位／主賓」標籤可隱藏／出現，避免擋到名字或其他名牌
+        t.addEventListener('pointerdown', e => e.stopPropagation());
+        t.addEventListener('click', e => {
+            e.stopPropagation();
+            card.tagHidden = !card.tagHidden;
+            t.classList.toggle('dc-tag-hidden', card.tagHidden);
+            t.textContent = card.tagHidden ? '' : (card.role === 'host' ? '主位' : '主賓');
+            dcDecorate(el, card);
+            dcSave();
+        });
+    }
+    // 交換位置小按鈕：先點一張名牌的 ⇄，再點另一張名牌的 ⇄，即可互換兩者文字內容
+    const swapBtn = document.createElement('div');
+    swapBtn.className = 'dc-swap-btn';
+    swapBtn.textContent = '⇄';
+    swapBtn.title = '交換位置：先點這裡，再點另一張名牌的 ⇄';
+    swapBtn.addEventListener('pointerdown', e => e.stopPropagation());
+    swapBtn.addEventListener('click', e => { e.stopPropagation(); dcSwapClick(tCode, card, el); });
+    el.appendChild(swapBtn);
+    // 拖曳（滑鼠＋觸控）；「點選主位」模式下改為選取
+    el.addEventListener('pointerdown', e => {
+        const board = el.parentElement;
+        if (board && board.classList.contains('picking')) {
+            e.preventDefault();
+            if (card.role === 'free' || !Number.isInteger(card.pi)) { toast('加掛名牌不能設為主位', 'ter'); return; }
+            const st = detailState[tCode];
+            const n = st.cards.filter(c => c.role !== 'free').length;
+            st.hostPi = card.pi;
+            dcAssignRoles(st, n);
+            board.classList.remove('picking');
+            const panel = board.closest('.dc-panel');
+            if (panel) panel.querySelectorAll('.dc-actions button.active').forEach(b => b.classList.remove('active'));
+            dcRefreshBoard(board, tCode);
+            dcSave();
+            dcStatus('');
+            toast('👑 已設定主位，序號已重新編排', 'tok');
+            return;
+        }
+        e.preventDefault();
+        el.setPointerCapture(e.pointerId);
+        const startX = e.clientX, startY = e.clientY, ox = card.x, oy = card.y;
+        const move = ev => {
+            card.x = Math.min(DC_BOARD_W - 30, Math.max(30, ox + (ev.clientX - startX)));
+            card.y = Math.min(DC_BOARD_H - 24, Math.max(24, oy + (ev.clientY - startY)));
+            el.style.left = card.x + 'px';
+            el.style.top = card.y + 'px';
+            dcDecorate(el, card);   // 徽章/標籤跟著轉向圓心
+        };
+        const up = () => {
+            el.removeEventListener('pointermove', move);
+            el.removeEventListener('pointerup', up);
+            dcSave();
+        };
+        el.addEventListener('pointermove', move);
+        el.addEventListener('pointerup', up);
+    });
+    el.addEventListener('dblclick', () => {
+        const v = prompt('編輯名牌內容（加掛名牌清空＝刪除）', card.text);
+        if (v === null) return;
+        card.text = v.trim();
+        if (!card.text && card.role === 'free') {
+            detailState[tCode].cards = detailState[tCode].cards.filter(c => c.id !== card.id);
+        }
+        dcRefreshBoard(el.parentElement || document.querySelector('.dc-board[data-tcode="' + tCode + '"]'), tCode);
+        dcSave();
+    });
+    // 調整大小：右下角小方塊，可拖曳自由調整這張名牌的寬／高（雙擊右下角可還原成預設大小）
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'dc-resize-handle';
+    resizeHandle.title = '拖曳調整這張名牌的寬高（雙擊還原預設大小）';
+    resizeHandle.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        resizeHandle.setPointerCapture(e.pointerId);
+        const startX = e.clientX, startY = e.clientY;
+        const baseW = el.offsetWidth, baseH = el.offsetHeight;
+        const move = ev => {
+            const w = Math.max(70, baseW + (ev.clientX - startX));
+            const h = Math.max(24, baseH + (ev.clientY - startY));
+            card.w = Math.round(w);
+            card.h = Math.round(h);
+            el.style.width = card.w + 'px';
+            el.style.height = card.h + 'px';
+            dcDecorate(el, card);
+        };
+        const up = () => {
+            resizeHandle.removeEventListener('pointermove', move);
+            resizeHandle.removeEventListener('pointerup', up);
+            dcSave();
+        };
+        resizeHandle.addEventListener('pointermove', move);
+        resizeHandle.addEventListener('pointerup', up);
+    });
+    resizeHandle.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        card.w = null; card.h = null;
+        el.style.width = sz.w + 'px';
+        el.style.height = '';
+        dcDecorate(el, card);
+        dcSave();
+    });
+    el.appendChild(resizeHandle);
+    return el;
+}
+
+// ── 匯出 JPG（所見即所得）──
+window.dcExportJPG = function () {
+    const boards = Array.from(document.querySelectorAll('#dc-body .dc-board'));
+    if (boards.length === 0) { toast('沒有可匯出的內容', 'ter'); return; }
+    const eventName = dcEventName();   // 表頭＝前方建立活動時輸入的展名
+    const FONT = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
+    const NAVY = '#1D3A6E', INK = '#13315C', ORANGE = '#F5A623', YELLOW = '#FFF200';
+
+    // 最多 3 個主桌時整排橫印；超過 3 桌回到每列 2 桌
+    const TPR = boards.length <= 3 ? Math.max(1, boards.length) : 2;
+    const PAD = 24, TITLE_H = 76, LABEL_H = 34, GAP = 26;
+    const nCols = Math.min(TPR, boards.length);
+    const nRows = Math.ceil(boards.length / TPR);
+    const W = PAD * 2 + nCols * DC_BOARD_W + (nCols - 1) * GAP;
+    const H = TITLE_H + nRows * (DC_BOARD_H + LABEL_H) + (nRows - 1) * GAP + PAD;
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale; canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#132742'; ctx.fillRect(0, 0, W, 54);
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 25px ' + FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(eventName + '－主桌位置圖', W / 2, 27);
+
+    function wrapText(text, maxW, size) {
+        ctx.font = 'bold ' + size + 'px ' + FONT;
+        const lines = []; let cur = '';
+        for (const ch of text) {
+            if (ctx.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; }
+            else cur += ch;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    }
+
+    boards.forEach((board, idx) => {
+        const tCode = board.dataset.tcode;
+        const ox = PAD + (idx % TPR) * (DC_BOARD_W + GAP);
+        const oy = TITLE_H + Math.floor(idx / TPR) * (DC_BOARD_H + LABEL_H + GAP);
+
+        ctx.fillStyle = INK; ctx.font = 'bold 19px ' + FONT;
+        ctx.fillText(dcTableLabel(tCode), ox + DC_BOARD_W / 2, oy + LABEL_H / 2);
+        const by0 = oy + LABEL_H;
+
+        // 圓桌
+        ctx.beginPath();
+        ctx.arc(ox + DC_BOARD_W / 2, by0 + DC_BOARD_H / 2, DC_CIRCLE_R, 0, Math.PI * 2);
+        ctx.lineWidth = 6; ctx.strokeStyle = NAVY; ctx.stroke();
+        ctx.fillStyle = 'rgba(29,58,110,0.35)'; ctx.font = 'bold 22px ' + FONT;
+        ctx.fillText(dcTableLabel(tCode), ox + DC_BOARD_W / 2, by0 + DC_BOARD_H / 2);
+
+        // 名牌（依 DOM 實際大小與位置繪製）
+        board.querySelectorAll('.dc-card').forEach(el => {
+            const w = el.offsetWidth, h = el.offsetHeight;
+            const cx = ox + parseFloat(el.style.left), cy = by0 + parseFloat(el.style.top);
+            const x = cx - w / 2, y = cy - h / 2;
+            const isEmpty = el.classList.contains('empty');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(x, y, w, h);
+            if (isEmpty) { ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = '#B9C2D0'; }
+            else { ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.strokeStyle = NAVY; }
+            ctx.strokeRect(x, y, w, h);
+            ctx.setLineDash([]);
+
+            if (!isEmpty) {
+                const text = el.querySelector('span').textContent;
+                let size = 14, lines = wrapText(text, w - 16, size);
+                while (lines.length * (size + 4) > h - 6 && size > 11) { size--; lines = wrapText(text, w - 16, size); }
+                ctx.fillStyle = INK; ctx.font = 'bold ' + size + 'px ' + FONT;
+                const lh = size + 4, startY = cy - ((lines.length - 1) * lh) / 2;
+                lines.forEach((ln, li) => ctx.fillText(ln, cx, startY + li * lh));
+            }
+            // 徽章與標籤：貼在名牌面向圓心的那一側
+            const bcx = ox + DC_BOARD_W / 2, bcy = by0 + DC_BOARD_H / 2;
+            const ddx = bcx - cx, ddy = bcy - cy;
+            const dl = Math.hypot(ddx, ddy) || 1, ux = ddx / dl, uy = ddy / dl;
+            const tEdge = Math.min(
+                Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9,
+                Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
+            );
+            const badge = el.querySelector('.dc-badge');
+            let epx, epy;
+            if (badge) {
+                // 用畫面上實際的徽章位置（含使用者手動拖曳的偏移量），而不是重新計算預設位置，
+                // 這樣匯出的 JPG 才會跟畫面上看到的一致，數字不會跳回原位。
+                epx = x + parseFloat(badge.style.left) + 13;
+                epy = y + parseFloat(badge.style.top) + 13;
+                ctx.fillStyle = ORANGE;
+                ctx.fillRect(epx - 13, epy - 13, 26, 26);
+                ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 15px ' + FONT;
+                ctx.fillText(badge.textContent, epx, epy + 1);
+            } else {
+                epx = cx + ux * tEdge; epy = cy + uy * tEdge;
+            }
+            const tag = el.querySelector('.dc-tag');
+            if (tag && !tag.classList.contains('dc-tag-hidden')) {
+                ctx.font = 'bold 15px ' + FONT;
+                const tw = Math.ceil(ctx.measureText(tag.textContent).width) + 24, th = 27;
+                const off = tEdge + 24 + (badge ? 16 : 0);
+                const tcx = cx + ux * off, tcy = cy + uy * off;
+                ctx.fillStyle = YELLOW;
+                ctx.fillRect(tcx - tw / 2, tcy - th / 2, tw, th);
+                ctx.strokeStyle = '#D9C900'; ctx.lineWidth = 1;
+                ctx.strokeRect(tcx - tw / 2, tcy - th / 2, tw, th);
+                ctx.fillStyle = '#111';
+                ctx.fillText(tag.textContent, tcx, tcy + 1);
+            }
+        });
+    });
+
+    const now = new Date();
+    const ts = (now.getMonth() + 1) + '' + now.getDate() + '_' + now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
+    const safeLabel = eventName.replace(/[\\/:*?"<>|]/g, '').substring(0, 20);
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeLabel + '_主桌位置圖_' + ts + '.jpg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('✅ JPG 匯出完成！', 'tok');
+    }, 'image/jpeg', 0.92);
+};
+
+</script>
+</div><!-- /main-content -->
+</body>
+</html>
