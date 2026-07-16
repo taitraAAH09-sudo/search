@@ -198,6 +198,17 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
       <input type="text" id="event-name-input" placeholder="例如：2026 台灣國際醫療展" maxlength="30"
         style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:14px;outline:none;">
       <div style="font-size:11px;color:#1B4F8A;margin-top:6px;font-weight:500;">💡 提示：輸入相同名稱會載入舊有資料，輸入新名稱則建立全新且乾淨的資料庫。</div>
+      <div id="recent-events-box" style="margin-top:10px;display:none;">
+        <div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px;">🕘 最近使用（點一下帶入，避免打錯字又生一個新資料庫）</div>
+        <div id="recent-events-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+          <button id="all-events-toggle" type="button" onclick="toggleAllEvents()"
+            style="background:none;border:none;color:#1B4F8A;font-size:11.5px;cursor:pointer;padding:0;text-decoration:underline;display:none;">顯示全部活動 ▾</button>
+          <span id="event-total-count" style="font-size:11px;color:#9CA3AF;"></span>
+        </div>
+        <div id="all-events-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div id="manage-events-hint" style="display:none;font-size:10.5px;color:#9CA3AF;margin-top:6px;">💡 點活動名稱右上角的 × 可刪除該活動的所有資料（無法復原）</div>
+      </div>
     </div>
 
     <div style="margin-bottom:20px;">
@@ -453,7 +464,7 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 </div>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getDatabase,ref,onValue,set}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getDatabase,ref,onValue,set,remove}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const fb=initializeApp({
     apiKey: "AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
@@ -552,6 +563,91 @@ function clearLocalData() {
   guests.length = 0;
 }
 
+/* ── 最近使用的活動：event_registry 節點記每個活動的最後進入時間 ──
+   另用 REST shallow 撈出資料庫根層所有 EVENT_ 節點（含還沒進過 registry 的舊活動） */
+const DB_ROOT_URL = 'https://taitra-table-default-rtdb.firebaseio.com';
+function eventChip(name, isRecent){
+  const wrap=document.createElement('span');
+  wrap.style.cssText='position:relative;display:inline-flex;';
+  const b=document.createElement('button');
+  b.type='button';
+  b.textContent=name;
+  b.style.cssText=`padding:6px 22px 6px 12px;border-radius:999px;border:1.5px solid ${isRecent?'#1B4F8A':'#E5E7EB'};background:${isRecent?'#EBF1F9':'#F9FAFB'};color:${isRecent?'#1B4F8A':'#374151'};font-size:12.5px;font-weight:700;cursor:pointer;`;
+  b.onclick=()=>{
+    document.getElementById('event-name-input').value=name;
+    document.getElementById('event-name-input').focus();
+  };
+  const x=document.createElement('button');
+  x.type='button';
+  x.textContent='×';
+  x.title='刪除此活動的所有資料';
+  x.style.cssText='position:absolute;right:3px;top:50%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:10px;line-height:1;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+  x.onmouseenter=()=>{x.style.background='#EF4444';};
+  x.onmouseleave=()=>{x.style.background='#CBD5E1';};
+  x.onclick=(e)=>{ e.stopPropagation(); deleteEventNode(name); };
+  wrap.appendChild(b); wrap.appendChild(x);
+  return wrap;
+}
+window.deleteEventNode=async function(name){
+  if(!confirm(`【第 1 次確認】確定要刪除「${name}」嗎？\n這會清空該活動的所有座位資料。`)) return;
+  if(!confirm(`【第 2 次確認】真的要刪除「${name}」嗎？\n刪除後無法復原。`)) return;
+  if(!confirm(`【第 3 次確認】最後確認：刪除「${name}」\n請再次確認您已經不需要這筆資料了。`)) return;
+  const safeNodeId='EVENT_'+name.replace(/[.#$\[\]]/g,'_').replace(/\s+/g,'_');
+  const regKey=name.replace(/[.#$\[\]\/]/g,'_');
+  try{
+    await remove(ref(db, safeNodeId));
+    await remove(ref(db, 'event_registry/'+regKey));
+    await loadRecentEvents();
+    const errEl=document.getElementById('event-select-err');
+    errEl.style.color='#059669';
+    errEl.textContent=`已刪除「${name}」`;
+    errEl.style.display='block';
+    setTimeout(()=>{errEl.style.display='none';errEl.style.color='#E11D48';},2000);
+  }catch(e){
+    alert('刪除失敗：'+e.message);
+  }
+};
+window.toggleAllEvents=function(){
+  const box=document.getElementById('all-events-chips');
+  const btn=document.getElementById('all-events-toggle');
+  const open=box.style.display==='none';
+  box.style.display=open?'flex':'none';
+  const total=btn.dataset.total||'';
+  btn.textContent=open?'收合 ▴':`顯示全部活動（共 ${total} 個）▾`;
+};
+async function loadRecentEvents(){
+  try{
+    const [regRes, rootRes]=await Promise.all([
+      fetch(DB_ROOT_URL+'/event_registry.json').then(r=>r.json()).catch(()=>null),
+      fetch(DB_ROOT_URL+'/.json?shallow=true').then(r=>r.json()).catch(()=>null)
+    ]);
+    const reg=regRes||{};
+    const allNames=Object.keys(rootRes||{})
+      .filter(k=>k.startsWith('EVENT_')&&k!=='EVENT_DEFAULT')
+      .map(k=>k.replace(/^EVENT_/,'').replace(/_/g,' '));
+    // 最近三個：依 registry 時間排序；registry 沒有的活動排在「全部」清單
+    const recent=Object.entries(reg).sort((a,b)=>b[1]-a[1]).map(([n])=>n).slice(0,3);
+    const box=document.getElementById('recent-events-box');
+    const rc=document.getElementById('recent-events-chips');
+    const ac=document.getElementById('all-events-chips');
+    const tg=document.getElementById('all-events-toggle');
+    const cnt=document.getElementById('event-total-count');
+    const hint=document.getElementById('manage-events-hint');
+    rc.innerHTML=''; ac.innerHTML='';
+    recent.forEach(n=>rc.appendChild(eventChip(n,true)));
+    const others=allNames.filter(n=>!recent.includes(n)).sort();
+    others.forEach(n=>ac.appendChild(eventChip(n,false)));
+    const total=new Set([...recent,...allNames]).size;
+    tg.dataset.total=total;
+    tg.textContent=(ac.style.display==='flex'?'收合 ▴':`顯示全部活動（共 ${total} 個）▾`);
+    tg.style.display=others.length?'inline':'none';
+    cnt.textContent=(!others.length&&total)?`共 ${total} 個活動`:'';
+    hint.style.display=total?'block':'none';
+    box.style.display=(recent.length||others.length)?'block':'none';
+  }catch(e){ /* 清單載不到不影響主功能 */ }
+}
+loadRecentEvents();
+
 window.confirmEventSelect = async function() {
   const eventName = document.getElementById('event-name-input').value.trim();
   const errEl = document.getElementById('event-select-err');
@@ -570,6 +666,11 @@ window.confirmEventSelect = async function() {
   sessionStorage.setItem('taitra_event_id', PROJECT_ID);
   sessionStorage.setItem('taitra_event_name', eventName);
   sessionStorage.setItem('taitra_layout', selectedLayout);
+
+  // 記錄最後使用時間 → 下次開頁「最近使用」會列出來
+  try{
+    await set(ref(db, 'event_registry/' + eventName.replace(/[.#$\[\]\/]/g, '_')), Date.now());
+  }catch(e){ /* registry 寫不進不影響進入 */ }
 
   document.getElementById('main-title').textContent = '🎟 ' + eventName;
   document.title = eventName + ' · 座位系統';
@@ -1142,6 +1243,17 @@ async function processExcelFile(file) {
     const newMaster = {};
     const newTags = {};
 
+    // 保留儲存格內原本的換行（例如「公司」跟「姓名職稱」分兩行輸入），
+    // 只把每一行「內部」多餘的空白/Tab 收成一個空格，換行本身不會被吃掉
+    function cleanMultiline(v) {
+      if (v === null || v === undefined) return '';
+      return String(v)
+        .split(/\r\n|\r|\n/)
+        .map(line => line.replace(/[ \t]+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n');
+    }
+
     // 自動偵測每列的座位碼，依連續同字母分組來判斷區段範圍
     function detectZones(row) {
       const zones = {};
@@ -1166,7 +1278,7 @@ async function processExcelFile(file) {
       const row = raw[i].map(v => (v === null || v === undefined) ? '' : String(v).trim());
       const codes = row.filter(v => seatPat.test(v));
       if (codes.length >= 3 && i + 1 < raw.length) {
-        const nameRow = raw[i+1].map(v => (v === null || v === undefined) ? '' : String(v).replace(/\s+/g,' ').trim());
+        const nameRow = raw[i+1].map(v => cleanMultiline(v));
         const zones = detectZones(row);
         Object.values(zones).forEach(([start, end]) => {
           for (let col = start; col < end; col++) {
@@ -1188,7 +1300,7 @@ async function processExcelFile(file) {
       raw.forEach(row => {
         const code = String(row[0] || '').trim();
         if (!seatPat.test(code)) return; // 跳過標題列、群組標題列（如【Head Table】）
-        const name = String(row[1] || '').replace(/\s+/g,' ').trim();
+        const name = cleanMultiline(row[1]);
         const tag = String(row[2] || '').trim();
         newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
         if (name) newAssign[code] = name;
@@ -1206,7 +1318,7 @@ async function processExcelFile(file) {
         const row = raw[ci].map(v => (v === null || v === undefined) ? '' : String(v).trim());
         const cnCodes = row.filter(v => cnSeatPat.test(v));
         if (cnCodes.length >= 3 && ci + 1 < raw.length) {
-          const nameRow = raw[ci+1].map(v => (v === null || v === undefined) ? '' : String(v).replace(/\s+/g,' ').trim());
+          const nameRow = raw[ci+1].map(v => cleanMultiline(v));
           row.forEach((origCode, col) => {
             const m = origCode.match(cnSeatPat);
             if (!m) return;
@@ -1504,6 +1616,22 @@ window.doReset = async function() {
 };
 
 window.doExport = async function() {
+    // 賓客欄位斷行規則：
+    // 1. 如果字串裡已經有真正的換行（Excel 原本就打兩行），完全尊重原本的斷法，不再處理。
+    // 2. 如果沒有換行（打成一行），一律用「第一個空白」當作公司／姓名職稱的分界，
+    //    不管後面姓名跟職稱之間是連著打還是多打一個空白，都當成同一段（第二行），
+    //    避免因為輸入習慣不一致，讓公司名稱被錯誤拆開。
+    function splitCompanyName(str) {
+        if (!str) return str;
+        if (str.includes('\n')) return str;
+        const idx = str.indexOf(' ');
+        if (idx === -1) return str;
+        const company = str.slice(0, idx).trim();
+        const rest = str.slice(idx + 1).trim();
+        if (!company || !rest) return str;
+        return company + '\n' + rest;
+    }
+
     const keys = Object.keys(seatMap).sort((a, b) => {
         const pa = a.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
         const pb = b.match(/^([A-Za-z_]+)(\d+)-(\d+)$/);
@@ -1838,7 +1966,15 @@ window.doExport = async function() {
     for (let r = 1; r <= maxRow.v; r++) {
         const codeRowIdx = curRow, nameRowIdx = curRow + 1;
         ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 170 : undefined; // 橫書：不設定固定高度，讓 Excel 自動調整
+        ws.getRow(nameRowIdx).height = useVertical ? 150 : undefined; // 豎排固定 150：Excel 對程式產生的豎排＋換行有渲染延遲的限制，動態精算高度並沒有解決，改用固定值
+
+        const rowNames = {};
+        zones.forEach(z => {
+            for (let s = 1; s <= maxSeatPerZone[z]; s++) {
+                const code = `${z}${r}-${s}`;
+                rowNames[code] = splitCompanyName(asgn[code] || '');
+            }
+        });
 
         const rowLabelCell = ws.getCell(nameRowIdx, 1);
         rowLabelCell.value = r;
@@ -1858,7 +1994,7 @@ window.doExport = async function() {
                 codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
                 codeCell.alignment = { horizontal:'center', vertical:'middle' };
 
-                const fullName = asgn[code] || '';
+                const fullName = rowNames[code];
                 const nameCell = ws.getCell(nameRowIdx, col);
                 nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
 
