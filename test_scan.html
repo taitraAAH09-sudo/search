@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>掃描測試工具 · 條碼 + 文字雙向辨識</title>
+<style>
+  :root{
+    --ink:#1b1f23;
+    --paper:#fafaf8;
+    --line:#dfe1e4;
+    --accent:#0f6b5c;
+    --accent-soft:#e4f2ee;
+    --warn:#b3541e;
+    --warn-soft:#fbeee3;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:20px 18px 60px;}
+  h1{font-size:19px;font-weight:700;margin:4px 0 2px;letter-spacing:.2px;}
+  .sub{font-size:13px;color:#6b7280;margin:0 0 18px;line-height:1.5;}
+  .stage{
+    position:relative;border-radius:14px;overflow:hidden;background:#111;
+    aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;
+  }
+  #video{width:100%;height:100%;object-fit:cover;display:none;}
+  #idle{color:#8b9096;font-size:13px;text-align:center;padding:0 30px;}
+  .frame-guide{
+    position:absolute; left:8%; right:8%; top:40%; height:20%;
+    border:2px solid #fff; border-radius:6px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,.35);
+    display:none; pointer-events:none;
+  }
+  .frame-guide.show{display:block;}
+  .hint{
+    position:absolute; bottom:10px; left:0; right:0; text-align:center;
+    color:#fff; font-size:12px; text-shadow:0 1px 3px rgba(0,0,0,.6); display:none;
+  }
+  .hint.show{display:block;}
+  .btnbar{display:flex; gap:10px; margin-top:14px;}
+  button{
+    flex:1; border:none; border-radius:10px; padding:13px 10px; font-size:14.5px;
+    font-weight:600; cursor:pointer; transition:transform .05s ease;
+  }
+  button:active{transform:scale(.97);}
+  .primary{background:var(--accent); color:#fff;}
+  .ghost{background:#fff; color:var(--ink); border:1px solid var(--line) !important;}
+  .ghost{border:1px solid var(--line);}
+  input[type=file]{display:none;}
+  .status{
+    margin-top:16px; font-size:13px; color:#6b7280; min-height:18px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:#c9cdd1;}
+  .dot.busy{background:var(--accent);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .result{
+    margin-top:18px; border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  }
+  .row{padding:14px 16px; border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row-title{
+    font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:#8b9096; margin-bottom:6px; display:flex; align-items:center; gap:6px;
+  }
+  .badge-ok{background:var(--accent-soft); color:var(--accent); border-radius:5px; padding:1px 7px; font-size:11px;}
+  .badge-fail{background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 7px; font-size:11px;}
+  .value{font-family:var(--mono); font-size:16px; word-break:break-all;}
+  .value.empty{color:#a8adb3; font-family:inherit; font-size:13.5px;}
+  .raw{font-family:var(--mono); font-size:12.5px; color:#555; white-space:pre-wrap; line-height:1.5; margin-top:4px;}
+  .timing{font-size:11.5px; color:#9aa0a6; margin-top:2px;}
+
+  .tips{margin-top:22px; font-size:12.5px; color:#8b9096; line-height:1.7;}
+  .tips b{color:#555;}
+  footer{margin-top:26px; text-align:center; font-size:11px; color:#c1c5c9;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📷 掃描測試工具</h1>
+  <p class="sub">拍你印好的名牌／條碼，同時測試「條碼解碼」跟「中文姓名 OCR」兩種辨識，跟正式查詢系統用的是同一套邏輯。</p>
+
+  <div class="stage">
+    <video id="video" playsinline autoplay muted></video>
+    <div id="idle">按下方「開啟相機」或「上傳照片」開始測試</div>
+    <div class="frame-guide" id="guide"></div>
+    <div class="hint" id="hint">🔴 即時掃描條碼中…對準條碼即可，不用按快門</div>
+  </div>
+
+  <div class="btnbar">
+    <button class="primary" id="btnCam">開啟相機</button>
+    <button class="ghost" id="btnUpload">上傳照片</button>
+  </div>
+  <div class="btnbar" id="captureBar" style="display:none;">
+    <button class="primary" id="btnCapture">📝 條碼掃不到？手動辨識文字</button>
+    <button class="ghost" id="btnCancelCam">取消</button>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment">
+
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">尚未開始</span></div>
+
+  <div class="result" id="result" style="display:none;">
+    <div class="row">
+      <div class="row-title">條碼解碼（ZXing／Code128／即時連續掃）<span id="badgeBar"></span></div>
+      <div class="value" id="barcodeValue">—</div>
+      <div class="timing" id="barcodeTime"></div>
+    </div>
+    <div class="row">
+      <div class="row-title">文字 OCR（Tesseract／中英文／按需觸發）<span id="badgeOcr"></span></div>
+      <div class="value" id="ocrValue">—</div>
+      <div class="raw" id="ocrRaw"></div>
+      <div class="timing" id="ocrTime"></div>
+    </div>
+  </div>
+
+  <div class="tips">
+    <b>相機模式現在是即時連續掃條碼：</b>一打開相機就不斷解碼畫面，對準條碼通常 0.2~1 秒內就會跳出結果，不用按快門。條碼掃不到時（沒貼條碼、反光、模糊），按「條碼掃不到？手動辨識文字」才會執行一次 OCR——OCR 本身較慢（約1~3秒），刻意設計成「按需觸發」而非即時，才不會讓手機一直全速跑辨識引擎。
+    <br><br>
+    <b>怎麼判讀結果：</b>條碼欄有值＝現場系統會直接秒配對，最理想。OCR 欄能唸出正確姓名＝退回文字辨識也還堪用。兩者都讀不到＝這張名牌印刷需要調整（加大字體、對比、避免反光材質）。
+    <br><br>
+    <b>提醒：</b>相機即時掃描需要在 https 網址下才能用（例如放上 GitHub Pages）；如果是直接用瀏覽器開啟本機檔案，請改用「上傳照片」，一樣會跑同一套辨識，只是沒有即時連續掃的效果。
+  </div>
+
+  <footer>本工具僅供測試名牌印刷品質，不會上傳任何資料到伺服器，所有辨識都在你的瀏覽器裡執行。</footer>
+</div>
+
+<script>
+let camStream = null;
+
+function setStatus(text, busy){
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('statusDot').classList.toggle('busy', !!busy);
+}
+
+/* ---------- 條碼：ZXing ---------- */
+let _zxingLoading = null;
+function loadZXing(){
+  if (window.ZXing) return Promise.resolve();
+  if (_zxingLoading) return _zxingLoading;
+  _zxingLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+    s.onload = res;
+    s.onerror = () => rej(new Error('條碼函式庫載入失敗，請確認網路連線'));
+    document.head.appendChild(s);
+  });
+  return _zxingLoading;
+}
+function zxingHints(){
+  const hints = new Map();
+  if (ZXing.DecodeHintType && ZXing.BarcodeFormat){
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128]);
+  }
+  return hints;
+}
+// 單張靜態圖片解碼（上傳照片模式用）
+async function tryDecodeBarcode(canvas){
+  try{
+    await loadZXing();
+    if (!window.ZXing) return null;
+    const reader = new ZXing.BrowserMultiFormatReader(zxingHints());
+    const dataUrl = canvas.toDataURL('image/png');
+    const result = await reader.decodeFromImageUrl(dataUrl);
+    return (result && result.getText) ? result.getText() : null;
+  }catch(e){
+    return null;
+  }
+}
+
+/* ---------- 即時連續掃條碼（相機模式用，不用按快門） ---------- */
+let liveReader = null;
+let liveScanStart = 0;
+async function startLiveBarcodeScan(videoEl, onHit){
+  await loadZXing();
+  liveReader = new ZXing.BrowserMultiFormatReader(zxingHints());
+  liveScanStart = performance.now();
+  await liveReader.decodeFromConstraints(
+    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+    videoEl,
+    (result, err) => {
+      if (result && result.getText){
+        onHit(result.getText(), performance.now() - liveScanStart);
+      }
+      // err 在沒讀到的每一幀都會觸發，是正常現象，忽略即可
+    }
+  );
+}
+function stopLiveBarcodeScan(){
+  if (liveReader){
+    try{ liveReader.reset(); }catch(e){}
+    liveReader = null;
+  }
+}
+
+/* ---------- OCR：Tesseract ---------- */
+let _tessLoading = null;
+function loadTesseract(){
+  if (window.Tesseract) return Promise.resolve();
+  if (_tessLoading) return _tessLoading;
+  _tessLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+    s.onload = res;
+    s.onerror = () => rej(new Error('OCR 引擎載入失敗，請確認網路連線'));
+    document.head.appendChild(s);
+  });
+  return _tessLoading;
+}
+function preprocessForOcr(canvas){
+  let src = canvas;
+  const minW = 1000;
+  if (src.width < minW){
+    const scale = minW / src.width;
+    const up = document.createElement('canvas');
+    up.width = Math.round(src.width * scale);
+    up.height = Math.round(src.height * scale);
+    const uctx = up.getContext('2d');
+    uctx.imageSmoothingEnabled = true;
+    uctx.imageSmoothingQuality = 'high';
+    uctx.drawImage(src, 0, 0, up.width, up.height);
+    src = up;
+  }
+  const ctx = src.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, src.width, src.height);
+  const d = imgData.data;
+  const n = src.width * src.height;
+  const gray = new Uint8ClampedArray(n);
+  const hist = new Array(256).fill(0);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++){
+    const g = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) | 0;
+    gray[p] = g; hist[g]++;
+  }
+  let sum = 0; for (let t = 0; t < 256; t++) sum += t * hist[t];
+  let sumB = 0, wB = 0, wF = 0, maxVar = 0, threshold = 140;
+  for (let t = 0; t < 256; t++){
+    wB += hist[t]; if (wB === 0) continue;
+    wF = n - wB; if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > maxVar){ maxVar = between; threshold = t; }
+  }
+  for (let i = 0, p = 0; i < d.length; i += 4, p++){
+    const v = gray[p] > threshold ? 255 : 0;
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return src;
+}
+async function runOcr(canvas){
+  await loadTesseract();
+  const pre = preprocessForOcr(canvas);
+  const { data } = await Tesseract.recognize(pre, 'chi_tra+eng', {});
+  return (data && data.text) ? data.text.trim() : '';
+}
+
+/* ---------- 共用：雙向辨識 ---------- */
+async function processCapturedImage(canvas){
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('barcodeValue').textContent = '辨識中…';
+  document.getElementById('barcodeValue').className = 'value';
+  document.getElementById('ocrValue').textContent = '辨識中…';
+  document.getElementById('ocrValue').className = 'value';
+  document.getElementById('ocrRaw').textContent = '';
+  document.getElementById('barcodeTime').textContent = '';
+  document.getElementById('ocrTime').textContent = '';
+  document.getElementById('badgeBar').textContent = '';
+  document.getElementById('badgeOcr').textContent = '';
+  setStatus('掃描中…（先試條碼，再試文字 OCR）', true);
+
+  const t0 = performance.now();
+  const code = await tryDecodeBarcode(canvas);
+  const t1 = performance.now();
+
+  if (code){
+    document.getElementById('barcodeValue').textContent = code;
+    document.getElementById('badgeBar').innerHTML = '<span class="badge-ok">讀到了</span>';
+  } else {
+    document.getElementById('barcodeValue').textContent = '沒有讀到條碼';
+    document.getElementById('barcodeValue').className = 'value empty';
+    document.getElementById('badgeBar').innerHTML = '<span class="badge-fail">未讀到</span>';
+  }
+  document.getElementById('barcodeTime').textContent = `耗時 ${(t1 - t0).toFixed(0)} ms`;
+
+  let ocrText = '';
+  let t2 = t1, t3 = t1;
+  try{
+    t2 = performance.now();
+    ocrText = await runOcr(canvas);
+    t3 = performance.now();
+  }catch(e){
+    ocrText = '';
+  }
+  const cjkOnly = (ocrText.match(/[\u4e00-\u9fff]{2,}/g) || []).join(' ／ ');
+  if (cjkOnly){
+    document.getElementById('ocrValue').textContent = cjkOnly;
+    document.getElementById('badgeOcr').innerHTML = '<span class="badge-ok">有辨識到文字</span>';
+  } else {
+    document.getElementById('ocrValue').textContent = '沒有辨識到可用文字';
+    document.getElementById('ocrValue').className = 'value empty';
+    document.getElementById('badgeOcr').innerHTML = '<span class="badge-fail">未辨識到</span>';
+  }
+  document.getElementById('ocrRaw').textContent = ocrText ? ('原始辨識輸出：' + ocrText.replace(/\s+/g,' ').trim()) : '';
+  document.getElementById('ocrTime').textContent = `耗時 ${(t3 - t2).toFixed(0)} ms`;
+
+  setStatus('完成，可以再拍一次比較', false);
+}
+
+/* ---------- 相機模式 ---------- */
+function closeCameraUI(){
+  stopLiveBarcodeScan();
+  if (camStream){ camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  const v = document.getElementById('video');
+  v.srcObject = null;
+  v.style.display = 'none';
+  document.getElementById('idle').style.display = 'flex';
+  document.getElementById('guide').classList.remove('show');
+  document.getElementById('hint').classList.remove('show');
+  document.getElementById('captureBar').style.display = 'none';
+  document.querySelector('.btnbar').style.display = 'flex';
+}
+
+document.getElementById('btnCam').onclick = async () => {
+  const v = document.getElementById('video');
+  try{
+    v.style.display = 'block';
+    document.getElementById('idle').style.display = 'none';
+    document.getElementById('guide').classList.add('show');
+    document.getElementById('hint').classList.add('show');
+    document.getElementById('captureBar').style.display = 'flex';
+    document.querySelector('.btnbar').style.display = 'none';
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('barcodeValue').textContent = '即時掃描中…';
+    document.getElementById('barcodeValue').className = 'value';
+    document.getElementById('ocrValue').textContent = '（條碼掃不到時，按下方按鈕手動觸發）';
+    document.getElementById('ocrValue').className = 'value empty';
+    document.getElementById('badgeBar').innerHTML = '';
+    document.getElementById('badgeOcr').innerHTML = '';
+    setStatus('條碼即時掃描中…對準即可，不用按快門', true);
+
+    await startLiveBarcodeScan(v, (text, ms) => {
+      // 即時讀到條碼：立刻顯示結果、停止掃描
+      document.getElementById('barcodeValue').textContent = text;
+      document.getElementById('badgeBar').innerHTML = '<span class="badge-ok">即時讀到</span>';
+      document.getElementById('barcodeTime').textContent = `對準後約 ${ms.toFixed(0)} ms 讀到`;
+      document.getElementById('ocrValue').textContent = '未執行（條碼已命中，不需要文字辨識）';
+      document.getElementById('ocrValue').className = 'value empty';
+      setStatus('條碼命中，掃描結束', false);
+      camStream = v.srcObject;
+      closeCameraUI();
+    });
+    camStream = v.srcObject;
+    setTimeout(() => {
+      if (liveReader){
+        setStatus('還沒讀到條碼？可能沒貼條碼或反光，按下方按鈕改用文字辨識', true);
+      }
+    }, 5000);
+  }catch(e){
+    setStatus('無法開啟相機（可能不是 https，或裝置不支援），請改用上傳照片', false);
+    closeCameraUI();
+    document.getElementById('fileInput').click();
+  }
+};
+document.getElementById('btnCancelCam').onclick = () => {
+  closeCameraUI();
+  setStatus('已取消');
+};
+document.getElementById('btnCapture').onclick = async () => {
+  // 手動觸發：條碼即時掃不到時，退回單張截圖 + OCR 辨識
+  const v = document.getElementById('video');
+  if (!v.videoWidth) return;
+  const guide = document.getElementById('guide');
+  const vw = v.videoWidth, vh = v.videoHeight;
+  const elW = v.clientWidth, elH = v.clientHeight;
+  const scale = Math.max(elW / vw, elH / vh);
+  const offX = (vw * scale - elW) / 2, offY = (vh * scale - elH) / 2;
+  const r = guide.getBoundingClientRect(), vr = v.getBoundingClientRect();
+  const sx = Math.max(0, (r.left - vr.left + offX) / scale);
+  const sy = Math.max(0, (r.top - vr.top + offY) / scale);
+  const sw = Math.min(vw - sx, r.width / scale);
+  const sh = Math.min(vh - sy, r.height / scale);
+  const outScale = Math.min(1, 1400 / sw);
+  const c = document.createElement('canvas');
+  c.width = Math.round(sw * outScale); c.height = Math.round(sh * outScale);
+  c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+
+  closeCameraUI();
+  await processCapturedImage(c);
+};
+
+/* ---------- 上傳照片模式 ---------- */
+document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = async () => {
+    const maxSide = 1400;
+    const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * sc);
+    c.height = Math.round(img.height * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    await processCapturedImage(c);
+  };
+  img.src = URL.createObjectURL(file);
+  e.target.value = '';
+};
+</script>
+</body>
+</html>
