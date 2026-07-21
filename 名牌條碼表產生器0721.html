@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>名牌條碼表產生器 · TAITRA 活動組</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root{--navy:#1f3a5f;--teal:#2f7d78;--paper:#f7f5ef;--ink:#1a2332;--soft:#5a6572;--line:#d9d4c7;--sel:#e2efda;--amber:#b7791f;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;padding:20px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:22px;color:var(--navy);font-weight:800;}
+  .sub{font-size:13px;color:var(--soft);margin:4px 0 18px;}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:10px;}
+  .bar input[type=text]{flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;}
+  button{cursor:pointer;border:none;border-radius:8px;font-size:14px;font-weight:700;padding:9px 16px;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-teal{background:var(--teal);color:#fff;}
+  .btn-ghost{background:#eee;color:var(--ink);}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+  .count{font-size:13px;color:var(--soft);margin-left:auto;}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;font-size:13px;}
+  th{background:var(--navy);color:#fff;padding:8px;text-align:left;font-weight:700;}
+  td{padding:6px 8px;border-top:1px solid var(--line);vertical-align:middle;}
+  tr.sel{background:var(--sel);}
+  tr.crow{background:#efe3f7;}
+  tr.crow.sel{background:#e4d3f0;}
+  tr.crow td.code{color:#7b3ea8;}
+  .seg-btn.seg-on{background:var(--navy);color:#fff;}
+  td.ck{text-align:center;width:44px;}
+  td.code{font-family:ui-monospace,monospace;font-weight:700;color:var(--navy);width:70px;}
+  input[type=checkbox]{width:18px;height:18px;cursor:pointer;}
+  .edit{width:100%;border:1px solid transparent;background:transparent;padding:3px 4px;border-radius:5px;font-size:13px;font-family:inherit;}
+  .edit:focus{border-color:var(--teal);background:#fff;outline:none;}
+  .note{font-size:12px;color:var(--amber);background:#fdf3dc;border-left:3px solid var(--amber);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:14px;}
+  .foot{margin-top:16px;font-size:12px;color:var(--soft);text-align:center;}
+  #bcstage{position:absolute;left:-9999px;top:-9999px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+    <div>
+      <h1>名牌條碼表產生器</h1>
+      <div class="sub">打勾要印的人 &rarr; 按「產生 Word」&rarr; 直接下載可編輯的 .docx（2 欄 &times; 8 列，每頁 16 人，左文右碼）</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button class="btn-ghost" style="padding:4px 9px;font-size:11px;" onclick="saveRoster()" title="把目前名單存成備份檔">⬇ 備份</button>
+      <button class="btn-ghost" style="padding:4px 9px;font-size:11px;" onclick="document.getElementById('imp').click()" title="從備份檔還原名單">⬆ 還原</button>
+      <input type="file" id="imp" style="display:none" accept=".json" onchange="importRoster(event)">
+    </div>
+  </div>
+
+  <div class="note">Word 在你自己的瀏覽器裡產生並下載，不經過其他系統。輸出即為 37.1&times;105mm 貼紙版（2&times;8=16格/頁、滿版對齊、文字留印表機安全內距、無格線）。姓名填中文&rarr;自動排「單位／名字 職稱」；填英文&rarr;自動排「單位／職稱／名字」。</div>
+
+  <div class="bar">
+    <input type="text" id="search" placeholder="搜尋 編號 / 單位 / 姓名…" oninput="render()">
+    <button class="btn-ghost btn-sm" onclick="selectAll(true)">全選</button>
+    <button class="btn-ghost btn-sm" onclick="selectAll(false)">全不選</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="bar" style="gap:6px;">
+    <span style="font-size:12px;color:var(--soft);">篩選：</span>
+    <button class="btn-ghost btn-sm seg-btn seg-on" data-seg="all" onclick="setSeg('all')">全部</button>
+    <button class="btn-ghost btn-sm seg-btn" data-seg="B" onclick="setSeg('B')">只看 B 段</button>
+    <button class="btn-ghost btn-sm seg-btn" data-seg="C" onclick="setSeg('C')">只看 C 段</button>
+    <span style="border-left:1px solid var(--line);height:20px;margin:0 4px;"></span>
+    <span style="font-size:12px;color:var(--soft);">新增：</span>
+    <button class="btn-ghost btn-sm" onclick="addRow('B')">＋ B 段</button>
+    <button class="btn-ghost btn-sm" style="color:#7b3ea8;" onclick="addRow('C')">＋ C 段</button>
+  </div>
+
+  <div class="bar">
+    <button class="btn-teal" onclick="genWord()">産生 Word（下載）</button>
+  </div>
+
+  <div class="bar" id="cloudbar">
+    <strong style="color:var(--navy);font-size:13px;">☁ 雲端(Firebase)</strong>
+    <span id="fbstatus" style="font-size:12px;color:var(--soft);">未連線</span>
+    <button class="btn-ghost btn-sm" onclick="openFbConfig()">設定連線</button>
+    <button class="btn-teal btn-sm" id="btn-fbload" onclick="fbLoad()" disabled>雲端讀取</button>
+    <button class="btn-primary btn-sm" id="btn-fbsave" onclick="fbSave()" disabled>存到雲端</button>
+    <span style="font-size:12px;color:var(--teal);margin-left:auto;">✓ 即時雙向同步（自動）</span>
+  </div>
+
+  <div id="fbConfigBox" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:13px;color:var(--soft);margin-bottom:8px;">貼上你自己的 Firebase 設定（Firebase Console &rarr; 專案設定 &rarr; 一般 &rarr; SDK 設定與配置 &rarr; 複製 firebaseConfig 物件），只需含 <code>databaseURL</code>。設定會存在這台瀏覽器，不會外傳。</div>
+    <textarea id="fbConfigText" style="width:100%;height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px;" placeholder='{
+  "apiKey": "…",
+  "authDomain": "your-proj.firebaseapp.com",
+  "databaseURL": "https://your-proj-default-rtdb.firebaseio.com",
+  "projectId": "your-proj"
+}'></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+      <input type="text" id="fbPath" placeholder="儲存路徑(節點名) 例如 vip_master" value="vip_master" style="flex:1;padding:7px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+      <button class="btn-teal btn-sm" onclick="connectFb()">連線並記住</button>
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('fbConfigBox').style.display='none'">收合</button>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th class="ck">印</th><th>編號</th><th>單位</th><th>職稱</th><th>姓名(中或英)</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div class="foot">TAITRA 活動組 · 名牌條碼表產生器　|　條碼格式 Code128</div>
+</div>
+<div id="bcstage"></div>
+
+<script>
+const INITIAL_ROSTER=[{"code": "B-001", "org": "澳洲辦事處", "title": "Representative", "name": "Mr. Robert Niel Fergusson"}, {"code": "B-002", "org": "駐台汶萊貿易旅遊代表處", "title": "Representative", "name": "Ms. Sia Ai Ching"}, {"code": "B-003", "org": "印度－台北協會", "title": "Director General", "name": "Mr. Ninad Satishchandra Deshpande"}, {"code": "B-004", "org": "駐台北印尼經濟貿易代表處", "title": "Representative", "name": "Mr. Arif Sulistiyo"}, {"code": "B-005", "org": "日本台灣交流協會—台北事務所", "title": "Chief Representative", "name": "Dr. Kazuyuki Katayama"}, {"code": "B-006", "org": "日本台灣交流協會—台北事務所", "title": "Deputy Representative", "name": "Mr. Gen Kawai"}, {"code": "B-007", "org": "馬來西亞友誼及貿易中心", "title": "President/ Representative", "name": "Mrs. Aznifah Isnariah Binti Abdul Ghani"}, {"code": "B-008", "org": "馬紹爾群島共和國大使館", "title": "", "name": "H.E. Ambassador Anjanette Kattil"}, {"code": "B-009", "org": "紐西蘭商工辦事處", "title": "Director", "name": "Mr. Christopher John Langley"}, {"code": "B-010", "org": "帛琉共和國大使館", "title": "Chargé d'Affaire", "name": "Mr. David Adams Orrukem"}, {"code": "B-011", "org": "馬尼拉經濟文化辦事處", "title": "Chairperson & Resident Representative", "name": "Ms. Corazon Hufano Avecilla"}, {"code": "B-012", "org": "駐臺北韓國代表部", "title": "Acting Representative", "name": "Mr. Koh Sang-Wook"}, {"code": "B-013", "org": "新加坡駐台北商務辦事處", "title": "Trade Representative", "name": "Ms. Teow Lee Foo"}, {"code": "B-014", "org": "泰國貿易經濟辦事處", "title": "Executive Director", "name": "Mr. Narong Boonsatheanwong"}, {"code": "B-015", "org": "吐瓦魯國大使館", "title": "H.E. Ambassador", "name": "Lily Tangisia Faavae"}, {"code": "B-016", "org": "駐台北越南經濟文化辦事處", "title": "Representative", "name": "Mr. Phan Kieu Chung"}, {"code": "B-017", "org": "駐台北以色列經濟文化辦事處", "title": "Representative", "name": "Mrs. Maya Yehudit Yaron"}, {"code": "B-018", "org": "約旦商務辦事處", "title": "Director", "name": "Ms. Ekram Hasan Fayyad Alsukkar"}, {"code": "B-019", "org": "駐台北烏蘭巴托貿易經濟代表處", "title": "Representative", "name": "Mr. Tumurbaatar Gankhuyag"}, {"code": "B-020", "org": "阿曼王國駐台北商務辦事處", "title": "Director", "name": "Mr. Mohammed Muslem Said Al-Baraami"}, {"code": "B-021", "org": "沙烏地阿拉伯商務辦事處", "title": "Representative", "name": "Mr. Mohammed Sadi A. Alghamdi"}, {"code": "B-022", "org": "駐台北土耳其貿易辦事處", "title": "Representative", "name": "Mr. Fikret Türkeş"}, {"code": "B-023", "org": "史瓦帝尼王國大使館", "title": "Chargé d'Affaires a.i.", "name": "Ms. Nontokozo Shongwe-Tsabedze"}, {"code": "B-024", "org": "奈及利亞駐台北商務辦事處", "title": "Acting Trade Commissioner", "name": "Mr. Relicx Tsempet Shiolban"}, {"code": "B-025", "org": "索馬利蘭共和國駐台灣代表處", "title": "Representative H.E. Ambassador", "name": "Mahmoud Adam Jama Galaal"}, {"code": "B-026", "org": "南非聯絡辦事處", "title": "Representative", "name": "Mr. Zakhele Samson Mnisi"}, {"code": "B-027", "org": "奧地利台北辦事處", "title": "Director", "name": "Mr. Christian Helbig"}, {"code": "B-028", "org": "奧地利商務代表辦事處", "title": "Director", "name": "Mr. Hermann Ortner"}, {"code": "B-029", "org": "比利時台北辦事處", "title": "Director", "name": "Mr. Matthieu Baudouin A. Branders"}, {"code": "B-030", "org": "捷克經濟文化辦事處", "title": "Representative", "name": "Mr. David Steinke"}, {"code": "B-031", "org": "丹麥商務辦事處", "title": "Director", "name": "Mr. Peter Sand"}, {"code": "B-032", "org": "歐洲經貿辦事處", "title": "Head of Office", "name": "Mr. Lutz Guellner"}, {"code": "B-033", "org": "芬蘭商務辦事處", "title": "Representative", "name": "Mr. Lauri Matti Raunio"}, {"code": "B-034", "org": "法國在台協會", "title": "Director", "name": "Mr. Franck Roger Paul Paris-Vilaceque"}, {"code": "B-035", "org": "德國在台協會", "title": "Director General", "name": "Mr. Karsten Tietz"}, {"code": "B-036", "org": "德國經濟辦事處", "title": "Chief Representative & Executive Director", "name": "Dr. Eva Langerbeck"}, {"code": "B-037", "org": "歌德學院（台北）德國文化中心", "title": "Director", "name": "Ms. Theresa Hümmer"}, {"code": "B-038", "org": "教廷大使館", "title": "Chargé d'Affaires a.i.", "name": "Rev. Monsignor Stefano Mazzotti"}, {"code": "B-039", "org": "匈牙利貿易辦事處", "title": "Representative", "name": "Ms. Tamara Vér"}, {"code": "B-040", "org": "義大利經濟貿易文化推廣辦事處", "title": "Representative", "name": "Mr. Marco Lombardi"}, {"code": "B-041", "org": "義大利經濟貿易文化推廣辦事處", "title": "台北貿易組 Trade Analyst", "name": "Ms. Lia W.Y. Pei (裴惟怡 貿易專員)"}, {"code": "B-042", "org": "立陶宛貿易代表處", "title": "Representative", "name": "Mr. Karolis Pilipauskas"}, {"code": "B-043", "org": "盧森堡台北辦事處", "title": "Executive Director", "name": "Mr. Lex Kaufhold"}, {"code": "B-044", "org": "荷蘭在台辦事處", "title": "Representative", "name": "Mr. Bastiaan Cornelis Maria Pulles"}, {"code": "B-045", "org": "波蘭臺北辦事處", "title": "Director", "name": "Mr. Janusz Henryk Bilski"}, {"code": "B-046", "org": "斯洛伐克經濟文化辦事處", "title": "Representative", "name": "Mrs. Lucia Langer"}, {"code": "B-047", "org": "西班牙商務辦事處", "title": "Director General", "name": "Mr. Germán Bejarano García"}, {"code": "B-048", "org": "瑞典貿易暨投資委員會台北辦事處", "title": "Representative", "name": "Ms. Margot Helena Elisabeth Reitberger"}, {"code": "B-049", "org": "瑞士商務辦事處", "title": "Director", "name": "Mrs. Claudia Fontana Tobiassen"}, {"code": "B-050", "org": "英國在台辦事處", "title": "Representative", "name": "Ms. Ruth Bradley-Jones"}, {"code": "B-051", "org": "加拿大駐台北貿易辦事處", "title": "Executive Director", "name": "Ms. Marie Louise Hannan"}, {"code": "B-052", "org": "美國在台協會—台北辦事處", "title": "Director", "name": "Mr. Raymond Greene III"}, {"code": "B-053", "org": "阿根廷商務文化辦事處", "title": "Director", "name": "Mr. Carlos Alberto Hernández"}, {"code": "B-054", "org": "貝里斯大使館", "title": "H.E. Ambassador", "name": "Katherine Vanessa Meighan"}, {"code": "B-055", "org": "巴西商務辦事處", "title": "Director", "name": "Mr. Luís Cláudio Villafañe Gomes Santos"}, {"code": "B-056", "org": "智利商務辦事處", "title": "Director", "name": "Mr. Fernando Mariano Schmidt Hernández"}, {"code": "B-057", "org": "瓜地馬拉共和國大使館", "title": "H.E. Ambassador", "name": "Luis Raúl Estévez López"}, {"code": "B-058", "org": "海地共和國大使館", "title": "H.E. Ambassador", "name": "Roudy Stanley Penn"}, {"code": "B-059", "org": "墨西哥商務簽證文件暨文化辦事處", "title": "Head of Office", "name": "Mr. Martin Torres Gutierrez Rubio"}, {"code": "B-060", "org": "巴拉圭共和國大使館", "title": "H.E. Ambassador", "name": "Darío Filártiga Ruiz Díaz"}, {"code": "B-061", "org": "秘魯駐臺北商務辦事處", "title": "Director", "name": "Mr. Fernando Manuel Albareda Del Castillo"}, {"code": "B-062", "org": "聖克里斯多福及尼維斯大使館", "title": "H.E. Ambassador", "name": "Donya Lynex Francis"}, {"code": "B-063", "org": "聖露西亞大使館", "title": "H.E. Ambassador", "name": "Robert Kennedy Lewis"}, {"code": "C-001", "org": "", "title": "", "name": ""}, {"code": "C-002", "org": "", "title": "", "name": ""}, {"code": "C-003", "org": "", "title": "", "name": ""}, {"code": "C-004", "org": "", "title": "", "name": ""}, {"code": "C-005", "org": "", "title": "", "name": ""}, {"code": "C-006", "org": "", "title": "", "name": ""}, {"code": "C-007", "org": "", "title": "", "name": ""}, {"code": "C-008", "org": "", "title": "", "name": ""}, {"code": "C-009", "org": "", "title": "", "name": ""}, {"code": "C-010", "org": "", "title": "", "name": ""}, {"code": "C-011", "org": "", "title": "", "name": ""}, {"code": "C-012", "org": "", "title": "", "name": ""}, {"code": "C-013", "org": "", "title": "", "name": ""}, {"code": "C-014", "org": "", "title": "", "name": ""}, {"code": "C-015", "org": "", "title": "", "name": ""}, {"code": "C-016", "org": "", "title": "", "name": ""}, {"code": "C-017", "org": "", "title": "", "name": ""}, {"code": "C-018", "org": "", "title": "", "name": ""}, {"code": "C-019", "org": "", "title": "", "name": ""}, {"code": "C-020", "org": "", "title": "", "name": ""}, {"code": "C-021", "org": "", "title": "", "name": ""}, {"code": "C-022", "org": "", "title": "", "name": ""}, {"code": "C-023", "org": "", "title": "", "name": ""}, {"code": "C-024", "org": "", "title": "", "name": ""}, {"code": "C-025", "org": "", "title": "", "name": ""}, {"code": "C-026", "org": "", "title": "", "name": ""}, {"code": "C-027", "org": "", "title": "", "name": ""}, {"code": "C-028", "org": "", "title": "", "name": ""}, {"code": "C-029", "org": "", "title": "", "name": ""}, {"code": "C-030", "org": "", "title": "", "name": ""}, {"code": "C-031", "org": "", "title": "", "name": ""}, {"code": "C-032", "org": "", "title": "", "name": ""}, {"code": "C-033", "org": "", "title": "", "name": ""}, {"code": "C-034", "org": "", "title": "", "name": ""}, {"code": "C-035", "org": "", "title": "", "name": ""}, {"code": "C-036", "org": "", "title": "", "name": ""}, {"code": "C-037", "org": "", "title": "", "name": ""}, {"code": "C-038", "org": "", "title": "", "name": ""}, {"code": "C-039", "org": "", "title": "", "name": ""}, {"code": "C-040", "org": "", "title": "", "name": ""}, {"code": "C-041", "org": "", "title": "", "name": ""}, {"code": "C-042", "org": "", "title": "", "name": ""}, {"code": "C-043", "org": "", "title": "", "name": ""}, {"code": "C-044", "org": "", "title": "", "name": ""}, {"code": "C-045", "org": "", "title": "", "name": ""}, {"code": "C-046", "org": "", "title": "", "name": ""}, {"code": "C-047", "org": "", "title": "", "name": ""}, {"code": "C-048", "org": "", "title": "", "name": ""}, {"code": "C-049", "org": "", "title": "", "name": ""}, {"code": "C-050", "org": "", "title": "", "name": ""}, {"code": "C-051", "org": "", "title": "", "name": ""}, {"code": "C-052", "org": "", "title": "", "name": ""}, {"code": "C-053", "org": "", "title": "", "name": ""}, {"code": "C-054", "org": "", "title": "", "name": ""}, {"code": "C-055", "org": "", "title": "", "name": ""}, {"code": "C-056", "org": "", "title": "", "name": ""}, {"code": "C-057", "org": "", "title": "", "name": ""}, {"code": "C-058", "org": "", "title": "", "name": ""}, {"code": "C-059", "org": "", "title": "", "name": ""}, {"code": "C-060", "org": "", "title": "", "name": ""}, {"code": "C-061", "org": "", "title": "", "name": ""}, {"code": "C-062", "org": "", "title": "", "name": ""}, {"code": "C-063", "org": "", "title": "", "name": ""}, {"code": "C-064", "org": "", "title": "", "name": ""}, {"code": "C-065", "org": "", "title": "", "name": ""}, {"code": "C-066", "org": "", "title": "", "name": ""}, {"code": "C-067", "org": "", "title": "", "name": ""}, {"code": "C-068", "org": "", "title": "", "name": ""}, {"code": "C-069", "org": "", "title": "", "name": ""}, {"code": "C-070", "org": "", "title": "", "name": ""}, {"code": "C-071", "org": "", "title": "", "name": ""}, {"code": "C-072", "org": "", "title": "", "name": ""}, {"code": "C-073", "org": "", "title": "", "name": ""}, {"code": "C-074", "org": "", "title": "", "name": ""}, {"code": "C-075", "org": "", "title": "", "name": ""}, {"code": "C-076", "org": "", "title": "", "name": ""}, {"code": "C-077", "org": "", "title": "", "name": ""}, {"code": "C-078", "org": "", "title": "", "name": ""}, {"code": "C-079", "org": "", "title": "", "name": ""}, {"code": "C-080", "org": "", "title": "", "name": ""}, {"code": "C-081", "org": "", "title": "", "name": ""}, {"code": "C-082", "org": "", "title": "", "name": ""}, {"code": "C-083", "org": "", "title": "", "name": ""}, {"code": "C-084", "org": "", "title": "", "name": ""}, {"code": "C-085", "org": "", "title": "", "name": ""}, {"code": "C-086", "org": "", "title": "", "name": ""}, {"code": "C-087", "org": "", "title": "", "name": ""}, {"code": "C-088", "org": "", "title": "", "name": ""}, {"code": "C-089", "org": "", "title": "", "name": ""}, {"code": "C-090", "org": "", "title": "", "name": ""}, {"code": "C-091", "org": "", "title": "", "name": ""}, {"code": "C-092", "org": "", "title": "", "name": ""}, {"code": "C-093", "org": "", "title": "", "name": ""}, {"code": "C-094", "org": "", "title": "", "name": ""}, {"code": "C-095", "org": "", "title": "", "name": ""}, {"code": "C-096", "org": "", "title": "", "name": ""}, {"code": "C-097", "org": "", "title": "", "name": ""}, {"code": "C-098", "org": "", "title": "", "name": ""}, {"code": "C-099", "org": "", "title": "", "name": ""}, {"code": "C-100", "org": "", "title": "", "name": ""}];
+
+let roster = INITIAL_ROSTER.map(r=>({...r, sel:true}));
+let seg='all';  // all | B | C
+
+function isCJK(s){ return /[\u4e00-\u9fff]/.test(s||''); }
+function isCcode(code){ return /^C/i.test((code||'').trim()); }
+function isBcode(code){ return /^B/i.test((code||'').trim()); }
+// 版型排法決定：C 開頭一律中文排法(單位/名字 職稱)；其餘看姓名語言
+function useChineseLayout(r){ return isCcode(r.code) || isCJK(r.name); }
+
+function setSeg(s){
+  seg=s;
+  document.querySelectorAll('.seg-btn').forEach(b=>{
+    b.classList.toggle('seg-on', b.dataset.seg===s);
+  });
+  render();
+}
+
+function render(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const tb=document.getElementById('tbody'); tb.innerHTML='';
+  let shown=0, seln=0;
+  roster.forEach((r,i)=>{
+    if(r.sel) seln++;
+    // 段別篩選
+    if(seg==='B' && !isBcode(r.code)) return;
+    if(seg==='C' && !isCcode(r.code)) return;
+    const hay=(r.code+' '+r.org+' '+r.title+' '+r.name).toLowerCase();
+    if(q && !hay.includes(q)) return;
+    shown++;
+    const tr=document.createElement('tr');
+    const cls=[]; if(r.sel) cls.push('sel'); if(isCcode(r.code)) cls.push('crow');
+    if(cls.length) tr.className=cls.join(' ');
+    tr.innerHTML=
+      '<td class="ck"><input type="checkbox" '+(r.sel?'checked':'')+' onchange="toggle('+i+',this.checked)"></td>'+
+      '<td class="code"><input class="edit" style="width:64px;font-family:ui-monospace,monospace;font-weight:700" value="'+esc(r.code)+'" onchange="upd('+i+',\'code\',this.value)"></td>'+
+      '<td><input class="edit" value="'+esc(r.org)+'" onchange="upd('+i+',\'org\',this.value)"></td>'+
+      '<td><input class="edit" value="'+esc(r.title)+'" onchange="upd('+i+',\'title\',this.value)"></td>'+
+      '<td><input class="edit" value="'+esc(r.name)+'" onchange="upd('+i+',\'name\',this.value)"></td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('count').textContent='已勾選 '+seln+' 人　/　顯示 '+shown+'　/　共 '+roster.length;
+}
+function esc(s){return (s||'').replace(/"/g,'&quot;');}
+function toggle(i,v){roster[i].sel=v;render();}
+function upd(i,k,v){roster[i][k]=v; if(k==='code'){render();} fbAutoSync();}
+function selectAll(v){roster.forEach(r=>{ if(seg==='B'&&!isBcode(r.code))return; if(seg==='C'&&!isCcode(r.code))return; r.sel=v;});render();}
+// 找某段最大號 +1，給下一個空號
+function nextCode(prefix){
+  let max=0;
+  roster.forEach(r=>{
+    const m=(r.code||'').match(new RegExp('^'+prefix+'-?(\\d+)$','i'));
+    if(m){ const n=parseInt(m[1],10); if(n>max) max=n; }
+  });
+  return prefix+'-'+String(max+1).padStart(3,'0');
+}
+function addRow(prefix){
+  prefix=(prefix||'C').toUpperCase();
+  roster.push({code:nextCode(prefix),org:'',title:'',name:'',sel:true});
+  render(); fbAutoSync();
+}
+
+function saveRoster(){
+  const data=roster.map(({sel,...r})=>r);
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  dl(blob,'名牌名單.json');
+}
+function importRoster(e){
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ const d=JSON.parse(rd.result); roster=d.map(r=>({...r,sel:true})); render(); }catch(err){ alert('JSON 讀取失敗：'+err); } };
+  rd.readAsText(f);
+}
+
+function barcodePng(code){
+  const c=document.createElement('canvas');
+  JsBarcode(c, code, {format:'CODE128', width:1.6, height:44, fontSize:13, margin:6, displayValue:true});
+  return c.toDataURL('image/png');
+}
+function dataUrlToU8(u){ const b=atob(u.split(',')[1]); const a=new Uint8Array(b.length); for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
+
+async function genWord(){
+  const picked=roster.filter(r=>r.sel);
+  if(picked.length===0){ alert('請先勾選要列印的人'); return; }
+  const {Document,Packer,Table,TableRow,TableCell,Paragraph,TextRun,ImageRun,WidthType,AlignmentType,VerticalAlign,BorderStyle}=docx;
+
+  // ===== 貼紙規格 37.1mm x 105mm, 2x8=16/頁, 滿版0邊界, 文字安全內距 =====
+  const COLS=2, PERPAGE=16;
+  const CELL_W=5954;          // 105mm in dxa (1mm=56.7dxa)
+  const ROW_H=2103;           // 37.1mm exact
+  const SAFE_LR=283, SAFE_TB=142;  // 文字安全內距: 左右5mm, 上下2.5mm
+  const noBorder={top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.NONE},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE},insideHorizontal:{style:BorderStyle.NONE},insideVertical:{style:BorderStyle.NONE}};
+
+  function textPara(text,halfpt,bold){
+    return new Paragraph({spacing:{after:0,before:0,line:280,lineRule:"exact"}, children:[new TextRun({text:text||'',size:halfpt,bold:!!bold,font:{ascii:"微軟正黑體",eastAsia:"微軟正黑體",hAnsi:"微軟正黑體"}})]});
+  }
+  function personCell(r){
+    let lines;
+    if(useChineseLayout(r)) lines=[[r.org,26,true],[((r.name||'')+' '+(r.title||'')).trim(),22,false]];
+    else lines=[[r.org,26,true],[r.title,18,false],[r.name,22,false]];
+    const leftKids=lines.filter(l=>l[0]).map(l=>textPara(l[0],l[1],l[2]));
+    const png=dataUrlToU8(barcodePng(r.code));
+    const bcPara=new Paragraph({alignment:AlignmentType.LEFT, spacing:{after:0,before:0}, children:[new ImageRun({data:png, transformation:{width:68,height:30}})]});
+    const inner=new Table({
+      width:{size:100,type:WidthType.PERCENTAGE},
+      borders:noBorder,
+      rows:[new TableRow({children:[
+        new TableCell({width:{size:70,type:WidthType.PERCENTAGE},borders:noBorder,verticalAlign:VerticalAlign.CENTER,children:leftKids.length?leftKids:[new Paragraph('')]}),
+        new TableCell({width:{size:30,type:WidthType.PERCENTAGE},borders:noBorder,verticalAlign:VerticalAlign.CENTER,children:[bcPara]})
+      ]})]
+    });
+    return new TableCell({
+      width:{size:CELL_W,type:WidthType.DXA},
+      borders:noBorder,
+      verticalAlign:VerticalAlign.CENTER,
+      margins:{top:SAFE_TB,bottom:SAFE_TB,left:SAFE_LR,right:SAFE_LR},
+      children:[inner]
+    });
+  }
+
+  const tables=[];
+  for(let pg=0; pg*PERPAGE<picked.length; pg++){
+    const chunk=picked.slice(pg*PERPAGE,(pg+1)*PERPAGE);
+    const rows=[];
+    for(let k=0;k<chunk.length;k+=COLS){
+      const cells=[personCell(chunk[k])];
+      if(chunk[k+1]) cells.push(personCell(chunk[k+1]));
+      else cells.push(new TableCell({width:{size:CELL_W,type:WidthType.DXA},borders:noBorder,children:[new Paragraph('')]}));
+      rows.push(new TableRow({height:{value:ROW_H,rule:"exact"},cantSplit:true,children:cells}));
+    }
+    tables.push(new Table({
+      width:{size:CELL_W*2,type:WidthType.DXA},
+      columnWidths:[CELL_W,CELL_W],
+      borders:noBorder,
+      rows
+    }));
+    if((pg+1)*PERPAGE<picked.length) tables.push(new Paragraph({pageBreakBefore:true,spacing:{after:0,before:0,line:1,lineRule:"exact"}}));
+  }
+
+  const doc=new Document({
+    sections:[{properties:{page:{size:{width:11906,height:16832},margin:{top:0,bottom:0,left:0,right:0,header:0,footer:0}}},children:tables}]
+  });
+  const blob=await Packer.toBlob(doc);
+  dl(blob,'名牌貼紙_37x105.docx');
+}
+
+function dl(blob,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+}
+
+/* ===== Firebase 即時雙向同步（用你自己的專案金鑰，讀寫都在你瀏覽器）===== */
+let fbDb=null, fbPath='vip_master', fbApp=null, fbRef=null;
+let myClientId='c'+Math.random().toString(36).slice(2)+Date.now();
+let ignoreNextEcho=false;
+let applyingRemote=false;
+
+function openFbConfig(){
+  const box=document.getElementById('fbConfigBox');
+  box.style.display = box.style.display==='none' ? 'block' : 'none';
+  const saved=localStorage.getItem('fbConfig'); if(saved) document.getElementById('fbConfigText').value=saved;
+  const sp=localStorage.getItem('fbPath'); if(sp){ document.getElementById('fbPath').value=sp; }
+}
+function parseCfg(raw){
+  try{ return JSON.parse(raw); }
+  catch(e){ return JSON.parse(raw.replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g,'$1"$2":').replace(/'/g,'"').replace(/,\s*}/g,'}')); }
+}
+function connectFb(silent){
+  let raw, cfg;
+  if(silent){ raw=localStorage.getItem('fbConfig'); if(!raw) return; }
+  else{ raw=document.getElementById('fbConfigText').value.trim(); if(!raw){ alert('請先貼上 firebaseConfig'); return; } }
+  fbPath=((silent?localStorage.getItem('fbPath'):document.getElementById('fbPath').value)||'vip_master').trim();
+  try{ cfg=parseCfg(raw); }
+  catch(e2){ if(!silent) alert('設定格式讀不懂，請直接複製 Firebase 給的 firebaseConfig 物件。\n'+e2); return; }
+  if(!cfg.databaseURL){ if(!silent) alert('設定裡缺 databaseURL，Realtime Database 需要這個欄位。'); return; }
+  try{
+    if(fbApp){ try{ fbApp.delete(); }catch(_){} }
+    fbApp=firebase.initializeApp(cfg, 'vipMasterApp_'+Date.now());
+    fbDb=firebase.database(fbApp);
+    localStorage.setItem('fbConfig', JSON.stringify(cfg,null,2));
+    localStorage.setItem('fbPath', fbPath);
+    document.getElementById('btn-fbload').disabled=false;
+    document.getElementById('btn-fbsave').disabled=false;
+    document.getElementById('fbConfigBox').style.display='none';
+    startRealtime();
+  }catch(e){ if(!silent) alert('連線失敗：'+(e.message||e)); }
+}
+function startRealtime(){
+  if(fbRef){ try{ fbRef.off(); }catch(_){} }
+  fbRef=fbDb.ref(fbPath);
+  setFbStatus('已連線（即時同步中）：'+fbPath, true);
+  fbRef.on('value', snap=>{
+    const v=snap.val();
+    if(!v || !v.list) return;
+    if(ignoreNextEcho && v.by===myClientId){ ignoreNextEcho=false; return; }
+    applyRemote(v.list);
+    setFbStatus('雲端已更新 '+new Date().toLocaleTimeString()+(v.by===myClientId?'（本機）':'（他人）'), true);
+  }, err=>{ setFbStatus('同步中斷：'+(err.message||err), false); });
+}
+function applyRemote(list){
+  const selByCode={}; roster.forEach(r=>{ selByCode[r.code]=r.sel; });
+  applyingRemote=true;
+  roster=list.map(r=>({...r, sel: (r.code in selByCode)? selByCode[r.code] : false }));
+  render();
+  applyingRemote=false;
+}
+function setFbStatus(txt, ok){
+  const el=document.getElementById('fbstatus');
+  el.textContent=txt; el.style.color= ok ? 'var(--teal)' : 'var(--soft)';
+}
+function fbSave(){
+  if(!fbDb){ alert('尚未連線雲端'); return; }
+  const data=roster.map(({sel,...r})=>r);
+  ignoreNextEcho=true;
+  fbDb.ref(fbPath).set({updatedAt:Date.now(), by:myClientId, list:data})
+    .then(()=>setFbStatus('已存到雲端 '+new Date().toLocaleTimeString(), true))
+    .catch(e=>{ ignoreNextEcho=false; setFbStatus('存檔失敗', false); alert('存檔失敗：'+(e.message||e)); });
+}
+function fbLoad(){
+  if(!fbDb){ alert('尚未連線雲端'); return; }
+  fbDb.ref(fbPath).get().then(snap=>{
+    const v=snap.val();
+    if(!v || !v.list){ alert('雲端這個節點還沒有名單資料'); return; }
+    applyRemote(v.list);
+    setFbStatus('已從雲端讀取（'+v.list.length+' 筆）', true);
+  }).catch(e=>{ alert('讀取失敗：'+(e.message||e)); });
+}
+let fbAutoTimer=null;
+function fbAutoSync(){
+  if(!fbDb || applyingRemote) return;
+  clearTimeout(fbAutoTimer);
+  fbAutoTimer=setTimeout(fbSave, 900);
+}
+(function(){
+  if(localStorage.getItem('fbConfig')){
+    setFbStatus('連線中…', false);
+    setTimeout(()=>connectFb(true), 400);
+  }
+})();
+
+render();
+</script>
+</body>
+</html>
