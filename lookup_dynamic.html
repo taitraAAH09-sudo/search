@@ -38,14 +38,14 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 #cam-overlay{position:fixed;inset:0;background:#000;z-index:98;display:none;}
 #cam-overlay.show{display:block;}
 #cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:78%;max-width:460px;aspect-ratio:4.2/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
+.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:82%;max-width:480px;aspect-ratio:2.5/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
 .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:26px;height:26px;border:4px solid #4ade80;}
 .cam-frame::before{left:-2px;top:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
 .cam-frame::after{right:-2px;bottom:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
 .scanline{position:absolute;left:5%;right:5%;height:2.5px;background:linear-gradient(90deg,transparent,#4ade80 30%,#4ade80 70%,transparent);box-shadow:0 0 10px #4ade80;animation:scanmove 2s ease-in-out infinite;}
 @keyframes scanmove{0%,100%{top:10%;}50%{top:86%;}}
-.cam-hint{position:absolute;left:0;right:0;top:calc(40% + 14vw);max-width:100%;text-align:center;color:#fff;font-size:14.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8);padding:0 20px;}
-@media (min-width:640px){.cam-hint{top:calc(40% + 120px);}}
+.cam-hint{position:absolute;left:0;right:0;top:calc(40% + 20vw);max-width:100%;text-align:center;color:#fff;font-size:14.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8);padding:0 20px;}
+@media (min-width:640px){.cam-hint{top:calc(40% + 150px);}}
 .cam-btns{position:absolute;bottom:36px;left:0;right:0;display:flex;gap:14px;justify-content:center;align-items:center;}
 .cam-shoot{padding:15px 30px;border:none;border-radius:999px;background:#4ade80;color:#0f1c2a;font-weight:800;font-size:16.5px;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(74,222,128,0.45);}
 .cam-shoot:active{transform:scale(0.96);}
