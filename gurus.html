@@ -218,6 +218,59 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
 .pw-input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(9,105,218,.1);}
 .pw-err{font-size:16.5px;color:var(--red);height:16px;margin-bottom:8px;}
 .pw-btns{display:flex;gap:8px;}
+
+/* ── 雙展模式（A展／B展）色塊 ── */
+:root,[data-theme="light"]{
+  --expoA:#0969da;--expoA-bg:#ddf4ff;--expoA-bd:#0969da;
+  --expoB:#bc4c00;--expoB-bg:#fff1e5;--expoB-bd:#bc4c00;
+}
+[data-theme="dark"]{
+  --expoA:#58a6ff;--expoA-bg:rgba(88,166,255,.14);--expoA-bd:#58a6ff;
+  --expoB:#ffa657;--expoB-bg:rgba(255,166,87,.14);--expoB-bd:#ffa657;
+}
+.expo-legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.expo-legend-item{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;
+  font-size:17px;font-weight:600;border:1px solid;white-space:nowrap;cursor:pointer;transition:all .15s;}
+.expo-legend-item.eA{background:var(--expoA-bg);color:var(--expoA);border-color:var(--expoA-bd);}
+.expo-legend-item.eB{background:var(--expoB-bg);color:var(--expoB);border-color:var(--expoB-bd);}
+.expo-legend-item.dim{opacity:.35;}
+.expo-swatch{width:14px;height:14px;border-radius:4px;flex-shrink:0;}
+.expo-legend-item.eA .expo-swatch{background:var(--expoA);}
+.expo-legend-item.eB .expo-swatch{background:var(--expoB);}
+
+/* 表格列左側色條 */
+tbody tr.row-eA td:first-child{box-shadow:inset 5px 0 0 var(--expoA);}
+tbody tr.row-eB td:first-child{box-shadow:inset 5px 0 0 var(--expoB);}
+tbody tr.row-eA{background:linear-gradient(90deg,var(--expoA-bg) 0%,transparent 55%);}
+tbody tr.row-eB{background:linear-gradient(90deg,var(--expoB-bg) 0%,transparent 55%);}
+tbody tr.row-eA.no-assign,tbody tr.row-eB.no-assign{background:var(--na-bg)!important;}
+
+/* 展別小標籤 */
+.expo-tag{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
+  border-radius:5px;font-size:14px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;
+  vertical-align:middle;padding:0 6px;white-space:nowrap;letter-spacing:.02em;}
+.expo-tag.eA{background:var(--expoA);}
+.expo-tag.eB{background:var(--expoB);}
+.expo-name{font-size:14.5px;color:var(--tx2);margin-left:5px;}
+th.expo-col{width:64px;}
+.card.card-eA{border-left:6px solid var(--expoA);}
+.card.card-eB{border-left:6px solid var(--expoB);}
+.dg-expo-mix{font-size:14.5px;color:var(--tx3);}
+.expo-abbr-in{width:76px;flex:none;text-align:center;font-weight:700;}
+/* 設定視窗 checkbox */
+.dual-box{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--bd);
+  border-radius:8px;background:var(--sf2);cursor:pointer;transition:all .15s;margin:4px 0 10px;}
+.dual-box:hover{border-color:var(--ac);}
+.dual-box.on{border-color:var(--ac);background:var(--ac-bg);}
+.dual-box input{width:19px;height:19px;cursor:pointer;accent-color:var(--ac);}
+.dual-box span{font-size:18px;font-weight:600;color:var(--tx);}
+/* 新增活動視窗 展別選擇 */
+.expo-pick-row{display:flex;gap:8px;}
+.expo-pick{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;
+  border-radius:8px;border:2px solid var(--bd);background:var(--bg);cursor:pointer;
+  font-size:18px;font-weight:600;color:var(--tx2);transition:all .15s;}
+.expo-pick.on.pA{border-color:var(--expoA);background:var(--expoA-bg);color:var(--expoA);}
+.expo-pick.on.pB{border-color:var(--expoB);background:var(--expoB-bg);color:var(--expoB);}
 </style>
 </head>
 <body>
@@ -236,7 +289,7 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
       <button class="btn" id="btn-settings" onclick="openSettings()" disabled><span>⚙️</span><span class="btn-label"> 展名／長官設定</span></button>
       <button class="btn btn-p" id="btn-add" onclick="openAdd()" disabled><span>＋</span><span class="btn-label"> 新增活動</span></button>
       <button class="btn" onclick="exportCSV()"><span>↓</span><span class="btn-label"> 匯出 CSV</span></button>
-      <button class="btn btn-g" onclick="exportXLSX()"><span>📊</span><span class="btn-label"> 下載 Excel</span></button>
+      <button class="btn btn-g" id="btn-xlsx" onclick="exportXLSX()"><span>📊</span><span class="btn-label" id="xlsx-label"> 下載 Excel</span></button>
     </div>
   </div>
   <div class="filters" id="filter-row">
@@ -246,6 +299,12 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
     <div class="chip on" data-p="" onclick="toggleP(this)">全部</div>
     <div id="person-chips" style="display:contents;"></div>
     <div class="sw-wrap on" id="sw-past" onclick="togglePast()"><div class="sw"></div><span id="sw-lbl">隱藏已過日期</span></div>
+  </div>
+  <div class="expo-legend" id="expo-legend" style="display:none;">
+    <span class="tag-row-label">展別：</span>
+    <div class="expo-legend-item eA" id="lg-A" onclick="toggleExpoFilter('A')"><span class="expo-tag eA" id="lg-A-tag">A</span><span id="lg-A-txt">A 展</span></div>
+    <div class="expo-legend-item eB" id="lg-B" onclick="toggleExpoFilter('B')"><span class="expo-tag eB" id="lg-B-tag">B</span><span id="lg-B-txt">B 展</span></div>
+    <span class="tag-hint" id="expo-hint">點色塊可只看該展</span>
   </div>
   <div class="tag-row" id="tag-row">
     <span class="tag-row-label">快速指派：</span>
@@ -279,6 +338,12 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
       </div>
       <div class="fg"><label>時間</label><input class="fi" id="ftv" placeholder="10:00-11:00"></div>
     </div>
+    <div class="fg" id="fg-expo" style="display:none;"><label>屬於哪一展</label>
+      <div class="expo-pick-row">
+        <div class="expo-pick pA on" id="pick-A" onclick="pickExpo('A')"><span class="expo-tag eA" id="pick-A-tag">A</span><span id="pick-A-txt">A 展</span></div>
+        <div class="expo-pick pB" id="pick-B" onclick="pickExpo('B')"><span class="expo-tag eB" id="pick-B-tag">B</span><span id="pick-B-txt">B 展</span></div>
+      </div>
+    </div>
     <div class="fg"><label>活動名稱</label><input class="fi" id="fev"></div>
     <div class="fg"><label>地點</label><input class="fi" id="flv"></div>
     <div class="fg"><label>出席人員</label>
@@ -303,6 +368,35 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
     <div class="fg"><label>頂部標籤（例如 TAITRA · 活動名稱）</label><input class="fi" id="set-eyebrow"></div>
     <div class="fg"><label>主標題</label><input class="fi" id="set-h1"></div>
     <div class="fg"><label>瀏覽器分頁標題</label><input class="fi" id="set-pagetitle"></div>
+
+    <div style="height:1px;background:var(--bd);margin:16px 0 12px;"></div>
+    <label class="dual-box" id="dual-box" for="set-dual">
+      <input type="checkbox" id="set-dual" onchange="onDualToggle()">
+      <span>🎪 當兩展同期，打勾我</span>
+    </label>
+    <div id="dual-fields" style="display:none;">
+      <div class="fg2">
+        <div class="fg">
+          <label style="color:var(--expoA)">■ A 展名稱</label>
+          <div style="display:flex;gap:6px;">
+            <input class="fi" id="set-expoA" placeholder="例如：2026 好好玩展" style="flex:1;">
+            <input class="fi expo-abbr-in" id="set-abbrA" placeholder="A" maxlength="4" title="小標籤（留白＝A）">
+          </div>
+        </div>
+        <div class="fg">
+          <label style="color:var(--expoB)">■ B 展名稱</label>
+          <div style="display:flex;gap:6px;">
+            <input class="fi" id="set-expoB" placeholder="例如：2026 醫療科技展" style="flex:1;">
+            <input class="fi expo-abbr-in" id="set-abbrB" placeholder="B" maxlength="4" title="小標籤（留白＝B）">
+          </div>
+        </div>
+      </div>
+      <div style="font-size:15.5px;color:var(--tx2);margin-bottom:6px;line-height:1.6;">
+        勾選後，新增／編輯活動時可選擇該筆屬於 A 展或 B 展；表格會以色塊區分（A＝藍、B＝橘），並可用上方圖例快速篩選。<br>
+        右側小框可自訂色塊上的文字（最多 4 字，例如「食品」「醫療」），留白則顯示 A／B。
+      </div>
+    </div>
+
     <div style="height:1px;background:var(--bd);margin:16px 0;"></div>
     <div class="fg"><label>長官欄位管理</label>
       <div style="font-size:16.5px;color:var(--tx2);margin-bottom:8px;">新增、刪除或修改長官職稱。修改職稱名稱不會影響既有活動的出席紀錄（系統用內部代碼對應，不是用顯示名稱）。</div>
@@ -337,7 +431,7 @@ td.p-cell.drag-over{outline:2px dashed var(--ac);outline-offset:-2px;background:
 <script type="module">
 
 /* ── PASSWORD GATE ── */
-const STAFF_PW = 'taitra2026';
+const STAFF_PW = '2870';
 let _pwAuthed = false, _pwCallback = null;
 function requirePw(fn){
   if(_pwAuthed){fn();return;}
@@ -456,6 +550,18 @@ let EVENT_EYEBROW = 'TAITRA · 活動出席管理';
 let EVENT_H1 = '處內主管出席一覽表';
 let EVENT_PAGETITLE = '處內主管一覽表';
 let settingsLoaded = false;
+// ★ 雙展模式
+let DUAL_MODE = false;
+let EXPO_A_NAME = 'A 展';
+let EXPO_B_NAME = 'B 展';
+let EXPO_A_ABBR = '';
+let EXPO_B_ABBR = '';
+let expoFilter = '';        // '' | 'A' | 'B'
+let draftExpo = 'A';        // 新增/編輯視窗當前選的展別
+function expoOf(a){ return a && a.expo === 'B' ? 'B' : 'A'; }
+function expoName(k){ return k==='B' ? (EXPO_B_NAME||'B 展') : (EXPO_A_NAME||'A 展'); }
+// 色塊上顯示的小標籤：有自訂就用自訂，沒有就用 A／B
+function expoAbbr(k){ return (k==='B' ? (EXPO_B_ABBR||'').trim() : (EXPO_A_ABBR||'').trim()) || k; }
 
 let ACT=[], editId=null, activeP='', hidePast=true;
 // ★ 關鍵：日期篩選狀態獨立維護，不依賴 DOM select 的 value
@@ -471,7 +577,53 @@ function applySettingsToUI(){
   document.getElementById('page-title').textContent = EVENT_PAGETITLE;
   document.title = EVENT_PAGETITLE;
   buildPersonChips();
+  applyExpoUI();
 }
+function applyExpoUI(){
+  const lg = document.getElementById('expo-legend');
+  if(!lg) return;
+  lg.style.display = DUAL_MODE ? 'flex' : 'none';
+  if(!DUAL_MODE){ expoFilter=''; updateXlsxLabel(); return; }
+  document.getElementById('lg-A-txt').textContent = expoName('A');
+  document.getElementById('lg-B-txt').textContent = expoName('B');
+  document.getElementById('lg-A-tag').textContent = expoAbbr('A');
+  document.getElementById('lg-B-tag').textContent = expoAbbr('B');
+  document.getElementById('lg-A').classList.toggle('dim', expoFilter==='B');
+  document.getElementById('lg-B').classList.toggle('dim', expoFilter==='A');
+  document.getElementById('expo-hint').textContent =
+    expoFilter ? ('目前只看：'+expoName(expoFilter)+'（再點一次取消）') : '點色塊可只看該展';
+  updateXlsxLabel();
+}
+function updateXlsxLabel(){
+  const el = document.getElementById('xlsx-label');
+  const btn = document.getElementById('btn-xlsx');
+  if(!el) return;
+  if(DUAL_MODE && expoFilter){
+    el.textContent = ' 下載 Excel（'+expoAbbr(expoFilter)+'）';
+    if(btn) btn.title = '只匯出 '+expoName(expoFilter);
+  }else if(DUAL_MODE){
+    el.textContent = ' 下載 Excel（兩展合併）';
+    if(btn) btn.title = '兩展合併匯出，含「展別」欄';
+  }else{
+    el.textContent = ' 下載 Excel';
+    if(btn) btn.title = '';
+  }
+}
+window.toggleExpoFilter = k=>{
+  expoFilter = (expoFilter===k) ? '' : k;
+  applyExpoUI();
+  render();
+};
+window.pickExpo = k=>{
+  draftExpo = k;
+  document.getElementById('pick-A').classList.toggle('on', k==='A');
+  document.getElementById('pick-B').classList.toggle('on', k==='B');
+};
+window.onDualToggle = ()=>{
+  const on = document.getElementById('set-dual').checked;
+  document.getElementById('dual-fields').style.display = on ? '' : 'none';
+  document.getElementById('dual-box').classList.toggle('on', on);
+};
 function buildPersonChips(){
   const box = document.getElementById('person-chips');
   box.innerHTML = PEOPLE.map(p=>
@@ -485,6 +637,11 @@ _roomUnsubs.push(onValue(SETTINGS_REF, snap=>{
     if(s.eyebrow) EVENT_EYEBROW = s.eyebrow;
     if(s.h1) EVENT_H1 = s.h1;
     if(s.pageTitle) EVENT_PAGETITLE = s.pageTitle;
+    DUAL_MODE = !!s.dualMode;
+    EXPO_A_NAME = s.expoA || 'A 展';
+    EXPO_B_NAME = s.expoB || 'B 展';
+    EXPO_A_ABBR = s.abbrA || '';
+    EXPO_B_ABBR = s.abbrB || '';
     if(s.people && typeof s.people === 'object'){
       const ids = Object.keys(s.people);
       if(ids.length){
@@ -511,6 +668,12 @@ function _openSettings(){
   document.getElementById('set-eyebrow').value = EVENT_EYEBROW;
   document.getElementById('set-h1').value = EVENT_H1;
   document.getElementById('set-pagetitle').value = EVENT_PAGETITLE;
+  document.getElementById('set-dual').checked = DUAL_MODE;
+  document.getElementById('set-expoA').value = (EXPO_A_NAME==='A 展'?'':EXPO_A_NAME);
+  document.getElementById('set-expoB').value = (EXPO_B_NAME==='B 展'?'':EXPO_B_NAME);
+  document.getElementById('set-abbrA').value = EXPO_A_ABBR;
+  document.getElementById('set-abbrB').value = EXPO_B_ABBR;
+  window.onDualToggle();
   renderPeopleList();
   document.getElementById('settings-modal').style.display='flex';
 }
@@ -557,8 +720,16 @@ window.saveSettings = async ()=>{
   const h1 = document.getElementById('set-h1').value.trim() || '出席一覽表';
   const pageTitle = document.getElementById('set-pagetitle').value.trim() || '活動出席管理';
   const peopleObj = {..._draftPeople};
+  const dualMode = document.getElementById('set-dual').checked;
+  const expoA = document.getElementById('set-expoA').value.trim() || 'A 展';
+  const expoB = document.getElementById('set-expoB').value.trim() || 'B 展';
+  const abbrA = document.getElementById('set-abbrA').value.trim().slice(0,4);
+  const abbrB = document.getElementById('set-abbrB').value.trim().slice(0,4);
+  if(dualMode && !document.getElementById('set-expoB').value.trim()){
+    return toast('請填寫 B 展名稱','err');
+  }
   try{
-    await set(SETTINGS_REF, { eyebrow, h1, pageTitle, people: peopleObj });
+    await set(SETTINGS_REF, { eyebrow, h1, pageTitle, people: peopleObj, dualMode, expoA, expoB, abbrA, abbrB });
     toast('✓ 設定已儲存','ok');
     closeSettings();
   }catch(e){ toast('✗ 儲存失敗：'+e.message,'err'); }
@@ -721,6 +892,7 @@ function render(){
   let src = ACT;
   if(filterDate) src = src.filter(a=>a.date===filterDate);
   if(activeP)    src = src.filter(a=>!!a[activeP]);
+  if(DUAL_MODE && expoFilter) src = src.filter(a=>expoOf(a)===expoFilter);
 
   const grouped={}, order=[];
   src.forEach(a=>{
@@ -739,7 +911,9 @@ function render(){
 
     const dRows = rows.map(a=>{
       const na = isNA(a);
-      return `<tr class="${st==='past'?'past':''}${na?' no-assign':''}">
+      const ek = expoOf(a);
+      return `<tr class="${st==='past'?'past':''}${na?' no-assign':''}${DUAL_MODE?' row-e'+ek:''}">
+        ${DUAL_MODE?`<td title="${esc(expoName(ek))}"><span class="expo-tag e${ek}">${esc(expoAbbr(ek))}</span></td>`:''}
         <td class="tm">${esc(a.time)}</td>
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl">${esc(a.loc)}</td>
@@ -758,9 +932,10 @@ function render(){
     const mCards = rows.map(a=>{
       const na=isNA(a);
       const badges = PEOPLE.filter(p=>a[p]).map(p=>`<span class="bdg bgr">${P_LABELS[p]}：${esc(a[p])}</span>`).join('');
-      return `<div class="card${st==='past'?' past':''}${na?' na-card':''}">
+      const ek = expoOf(a);
+      return `<div class="card${st==='past'?' past':''}${na?' na-card':''}${DUAL_MODE?' card-e'+ek:''}">
         <div class="card-top">
-          <div class="card-title">${esc(a.event)}${na?' <span class="na-badge">⚠️未指派</span>':''}</div>
+          <div class="card-title">${DUAL_MODE?`<span class="expo-tag e${ek}" title="${esc(expoName(ek))}">${esc(expoAbbr(ek))}</span> `:''}${esc(a.event)}${na?' <span class="na-badge">⚠️未指派</span>':''}</div>
           <div class="card-time">${esc(a.time)}</div>
         </div>
         ${a.loc?`<div class="card-loc">📍 ${esc(a.loc)}</div>`:''}
@@ -780,18 +955,24 @@ function render(){
       <span class="dg-date">${esc(date)}</span>
       <span class="dg-cnt">${rows.length} 項</span>
       <span class="dg-badge b-${st}">${bTxt}</span>
+      ${DUAL_MODE?(()=>{const na=rows.filter(r=>expoOf(r)==='A').length,nb=rows.length-na;
+        return `<span class="dg-expo-mix">
+          ${na?`<span class="expo-tag eA">${esc(expoAbbr('A'))}</span> ${na}`:''}${na&&nb?' ／ ':''}${nb?`<span class="expo-tag eB">${esc(expoAbbr('B'))}</span> ${nb}`:''}
+        </span>`;})():''}
       <span class="dg-arr" id="a-${gid}">▾</span>
     </div>
     <div id="${gid}">
       <div class="desk-tbl tbl-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:17.2px">
         <colgroup>
+          ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:86px"><col style="width:168px"><col style="width:112px">
           ${PEOPLE.map(()=>'<col style="width:64px">').join('')}
           <col style="width:66px"><col style="width:120px"><col style="width:58px">
           <col style="width:90px"><col style="width:46px">
         </colgroup>
         <thead><tr>
+          ${DUAL_MODE?'<th class="expo-col">展</th>':''}
           <th>時間</th><th class="tl">活動名稱</th><th class="tl">地點</th>
           ${PEOPLE.map(p=>`<th>${esc(P_LABELS[p]||p)}</th>`).join('')}
           <th>陪同</th><th class="tl">貴賓/主講人</th><th>主政單位</th><th>聯絡人</th><th></th>
@@ -812,6 +993,14 @@ function render(){
 
 /* ── MODAL ── */
 function buildModalPersonFields(){
+  const fgE = document.getElementById('fg-expo');
+  if(fgE){
+    fgE.style.display = DUAL_MODE ? '' : 'none';
+    document.getElementById('pick-A-txt').textContent = expoName('A');
+    document.getElementById('pick-B-txt').textContent = expoName('B');
+    document.getElementById('pick-A-tag').textContent = expoAbbr('A');
+    document.getElementById('pick-B-tag').textContent = expoAbbr('B');
+  }
   const pgrid = document.getElementById('pgrid-container');
   pgrid.innerHTML = PEOPLE.map(id=>
     `<div class="pck" data-k="${id}" onclick="tpck(this)">${esc(P_LABELS[id])}</div>`
@@ -837,6 +1026,7 @@ function _openAdd(){
   g('fdv').value=''; g('fdv-picker').value=''; g('fdv-preview').textContent='尚未選擇日期';
   PEOPLE.forEach(id=>{ const el=g('r_'+id); if(el) el.value=''; });
   document.querySelectorAll('.pck').forEach(e=>e.classList.remove('on'));
+  window.pickExpo(expoFilter || 'A');
   g('modal').style.display='flex';
 };
 window.openEdit=id=>requirePw(()=>_openEdit(id));
@@ -853,6 +1043,7 @@ function _openEdit(id){
   g('re').value=a.escort||''; g('fu').value=a.unit||'';
   g('fgi').value=a.guest||''; g('fc').value=a.contact||'';
   document.querySelectorAll('.pck').forEach(e=>e.classList.toggle('on',!!a[e.dataset.k]));
+  window.pickExpo(expoOf(a));
   g('modal').style.display='flex';
 };
 window.tpck = el=>el.classList.toggle('on');
@@ -870,6 +1061,7 @@ window.saveE = async()=>{
     event:ev, loc:g('flv').value.trim(),
     escort:g('re').value.trim(), unit:g('fu').value.trim(),
     guest:g('fgi').value.trim(), contact:g('fc').value.trim(),
+    expo: DUAL_MODE ? draftExpo : 'A',
     updatedAt:Date.now()
   };
   PEOPLE.forEach(id=>{ entry[id] = pr(id); });
@@ -891,11 +1083,14 @@ async function _delE(id){
 
 /* ── EXPORT ── */
 window.exportCSV = ()=>{
-  const h=['日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓/主講人','主政單位','聯絡人'];
-  const rows=ACT.map(a=>[a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const XPO = DUAL_MODE ? expoFilter : '';
+  const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
+  const DM = (DUAL_MODE && !XPO);
+  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓/主講人','主政單位','聯絡人'];
+  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  const a=document.createElement('a'); a.href=url; a.download=(EVENT_H1||'出席一覽表').replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
+  const a=document.createElement('a'); a.href=url; a.download=((XPO?expoName(XPO):(EVENT_H1||'出席一覽表'))).replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
   URL.revokeObjectURL(url);
 };
 
@@ -929,19 +1124,30 @@ window.exportXLSX = async ()=>{
     const BORDER={top:thin,left:thin,bottom:thin,right:thin};
     const wb=new ExcelJS.Workbook();
     wb.created=new Date();
-    const sheetName=(EVENT_H1||'出席一覽表').replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'出席一覽';
+
+    // ★ 依照目前選的展別決定匯出範圍：
+    //   有選 A 或 B → 只匯出該展、且不顯示「展別」欄（標題已註明）
+    //   沒選（兩個都看） → 全部一起匯出、保留「展別」欄
+    const XPO = DUAL_MODE ? expoFilter : '';
+    const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
+    if(!SRC.length){ toast('✗ 沒有可匯出的資料','err'); return; }
+    const titleText = (EVENT_PAGETITLE||EVENT_H1) + (XPO ? '｜'+expoName(XPO) : '');
+
+    const sheetName=((XPO?expoName(XPO):((EVENT_H1||'出席一覽表')+(DUAL_MODE?'（兩展合併）':'')))).replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'出席一覽';
     const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:3}]});
 
-    const nP=PEOPLE.length, totalCols=4+nP+4;
-    const widths=[12,12,34,24, ...PEOPLE.map(()=>10), 14,18,10,22];
+    const DM = (DUAL_MODE && !XPO) ? 1 : 0;
+    const nP=PEOPLE.length, totalCols=4+nP+4+DM;
+    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 14,18,10,22];
+    const XA={font:'FF1F4E79',fill:'FFDDF0FF'}, XB={font:'FF8A3800',fill:'FFFFE9D6'};
     ws.columns=widths.map(w=>({width:w}));
 
     // Row 1：標題
     ws.mergeCells(1,1,1,totalCols);
     const t1=ws.getCell(1,1);
-    t1.value=EVENT_PAGETITLE||EVENT_H1;
+    t1.value=titleText;
     t1.font={name:FONT,size:14,bold:true,color:{argb:'FFFFFFFF'}};
-    t1.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E79'}};
+    t1.fill={type:'pattern',pattern:'solid',fgColor:{argb: XPO==='B' ? 'FF8A3800' : 'FF1F4E79'}};
     t1.alignment={horizontal:'center',vertical:'middle'};
     ws.getRow(1).height=30;
 
@@ -953,13 +1159,13 @@ window.exportXLSX = async ()=>{
     [totalCols-1,totalCols].forEach(c=>{ ws.getCell(2,c).font={name:FONT,size:10}; });
 
     // Row 3：表頭（動態長官欄位）
-    const heads=['日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓/主講人','主政單位','聯絡人'];
+    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓/主講人','主政單位','聯絡人'];
     const hr=ws.getRow(3);
     heads.forEach((h,i)=>{
       const c=hr.getCell(i+1);
       c.value=h;
       c.font={name:FONT,size:10,bold:true,color:{argb:'FFFFFFFF'}};
-      c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2E75B6'}};
+      c.fill={type:'pattern',pattern:'solid',fgColor:{argb: XPO==='B' ? 'FFC16B2E' : 'FF2E75B6'}};
       c.alignment={horizontal:'center',vertical:'middle',wrapText:true};
       c.border=BORDER;
     });
@@ -967,31 +1173,35 @@ window.exportXLSX = async ()=>{
 
     // 資料列：依日期分組、日期欄直向合併、群組交替底色
     const grouped={}, order=[];
-    ACT.forEach(a=>{ if(!grouped[a.date]){grouped[a.date]=[];order.push(a.date);} grouped[a.date].push(a); });
+    SRC.forEach(a=>{ if(!grouped[a.date]){grouped[a.date]=[];order.push(a.date);} grouped[a.date].push(a); });
 
     let r=4;
     order.forEach((date,gi)=>{
-      const rows=grouped[date];
+      const rows=grouped[date].slice();
+      // 合併匯出時，同一天內先排 A 展再排 B 展，方便閱讀
+      if(DM) rows.sort((x,y)=>expoOf(x).localeCompare(expoOf(y)));
       const groupFill=gi%2===0?'FFEBF3FB':'FFFFFFFF';
       const startR=r;
       rows.forEach(a=>{
-        const vals=[date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.escort||'',a.guest||'',a.unit||'',a.contact||''];
+        const ek=expoOf(a);
+        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.escort||'',a.guest||'',a.unit||'',a.contact||''];
         const row=ws.getRow(r);
         vals.forEach((v,i)=>{
           const c=row.getCell(i+1);
           c.value=v;
-          const isPerson=i>=4&&i<4+nP;
-          const roleStyle=isPerson?xlsRoleStyle(v):null;
-          c.font={name:FONT,size:10,color:roleStyle?{argb:roleStyle.font}:undefined};
+          const isExpo=DM&&i===0;
+          const isPerson=i>=4+DM&&i<4+DM+nP;
+          const roleStyle=isPerson?xlsRoleStyle(v):(isExpo?(ek==='B'?XB:XA):null);
+          c.font={name:FONT,size:10,bold:isExpo,color:roleStyle?{argb:roleStyle.font}:undefined};
           c.fill={type:'pattern',pattern:'solid',fgColor:{argb:roleStyle?roleStyle.fill:groupFill}};
-          const centerCols=(i===0||i===1||isPerson);
-          c.alignment={horizontal:centerCols?'center':'left',vertical:i===0?'middle':'top',wrapText:i!==1};
+          const centerCols=(i===0+DM||i===1+DM||isPerson||isExpo);
+          c.alignment={horizontal:centerCols?'center':'left',vertical:(i===0+DM)?'middle':'top',wrapText:i!==1+DM};
           c.border=BORDER;
         });
         row.height=30;
         r++;
       });
-      if(rows.length>1) ws.mergeCells(startR,1,r-1,1);
+      if(rows.length>1 && !DM) ws.mergeCells(startR,1,r-1,1);
     });
 
     const buf=await wb.xlsx.writeBuffer();
@@ -1000,10 +1210,10 @@ window.exportXLSX = async ()=>{
     const a=document.createElement('a');
     const d=todayStr().replace(/-/g,'');
     a.href=url;
-    a.download=(EVENT_H1||'出席一覽表').replace(/[\\/:*?"<>|]/g,'')+'-'+d+'.xlsx';
+    a.download=((XPO?expoName(XPO):(EVENT_H1||'出席一覽表'))).replace(/[\\/:*?"<>|]/g,'')+'-'+d+'.xlsx';
     a.click();
     URL.revokeObjectURL(url);
-    toast('✓ Excel 已下載','ok');
+    toast('✓ Excel 已下載'+(XPO?('（僅 '+expoName(XPO)+'）'):(DUAL_MODE?'（兩展合併）':'')),'ok');
   }catch(e){ toast('✗ '+e.message,'err'); }
 };
 
