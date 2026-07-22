@@ -332,7 +332,7 @@ th.expo-col{width:64px;}
     <h2 id="mt">新增活動</h2>
     <div class="fg2">
       <div class="fg"><label>日期</label>
-        <input class="fi" id="fdv-picker" type="date" onchange="onDatePickerChange()">
+        <input class="fi" id="fdv-picker" type="date" min="2000-01-01" max="2099-12-31" onchange="onDatePickerChange()" oninput="onDatePickerChange()">
         <div style="font-size:16.5px;color:var(--tx2);margin-top:3px;" id="fdv-preview">尚未選擇日期</div>
         <input type="hidden" id="fdv">
       </div>
@@ -830,6 +830,14 @@ window.onDateChange = ()=>{
 /* ── UTILS ── */
 const WEEKDAY_CN = ['日','一','二','三','四','五','六'];
 // yyyy-mm-dd → "6月2日(二)" 格式，自動代入星期幾
+// ★ 檢查 yyyy-mm-dd 的年份確實是 4 碼且在 2000–2099
+function validYear(v){
+  const m = /^(\d+)-(\d{2})-(\d{2})$/.exec(v||'');
+  if(!m) return false;
+  if(m[1].length !== 4) return false;
+  const y = parseInt(m[1],10);
+  return y>=2000 && y<=2099;
+}
 function isoToLabel(iso){
   if(!iso) return '';
   const d = new Date(iso+'T00:00:00');
@@ -1012,8 +1020,15 @@ function buildModalPersonFields(){
   ).join('');
 }
 window.onDatePickerChange = ()=>{
-  const v = document.getElementById('fdv-picker').value; // yyyy-mm-dd
+  const el = document.getElementById('fdv-picker');
+  const v = el.value; // yyyy-mm-dd
   if(!v){ document.getElementById('fdv').value=''; document.getElementById('fdv-preview').textContent='尚未選擇日期'; return; }
+  // ★ 年份只接受 4 碼（2000–2099），避免打成 208888 這種輸入
+  if(!validYear(v)){
+    document.getElementById('fdv').value='';
+    document.getElementById('fdv-preview').innerHTML='<span style="color:var(--red)">年份請輸入 4 碼（2000–2099）</span>';
+    return;
+  }
   const label = isoToLabel(v);
   document.getElementById('fdv').value = label;
   document.getElementById('fdv-preview').textContent = '將儲存為：' + label;
@@ -1050,6 +1065,8 @@ window.tpck = el=>el.classList.toggle('on');
 window.closeM = ()=>g('modal').style.display='none';
 window.saveE = async()=>{
   const ev=g('fev').value.trim(); if(!ev){alert('請填寫活動名稱');return;}
+  const rawDate = g('fdv-picker').value;
+  if(rawDate && !validYear(rawDate)){ alert('日期的年份請輸入 4 碼（2000–2099）'); return; }
   const pr=(id)=>{
     const pck = document.querySelector('.pck[data-k="'+id+'"]');
     if(!pck || !pck.classList.contains('on')) return '';
