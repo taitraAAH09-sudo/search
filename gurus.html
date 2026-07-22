@@ -257,6 +257,24 @@ th.expo-col{width:64px;}
 .card.card-eB{border-left:6px solid var(--expoB);}
 .dg-expo-mix{font-size:14.5px;color:var(--tx3);}
 .expo-abbr-in{width:76px;flex:none;text-align:center;font-weight:700;}
+
+/* ── 長官欄位排序 ── */
+.p-row{display:flex;gap:6px;align-items:center;padding:3px 4px;border-radius:8px;
+  border:1px solid transparent;background:transparent;transition:background .12s,border-color .12s;}
+.p-row:hover{background:var(--sf2);}
+.p-row.p-dragging{opacity:.45;border-color:var(--ac);background:var(--ac-bg);}
+.p-row.p-over-top{box-shadow:inset 0 3px 0 var(--ac);}
+.p-row.p-over-bottom{box-shadow:inset 0 -3px 0 var(--ac);}
+.p-handle{cursor:grab;user-select:none;color:var(--tx3);font-size:20px;line-height:1;
+  padding:0 2px;flex-shrink:0;letter-spacing:-1px;}
+.p-handle:active{cursor:grabbing;}
+.p-row:hover .p-handle{color:var(--ac);}
+.p-num{font-family:'DM Mono',monospace;font-size:14px;color:var(--tx3);width:20px;
+  text-align:center;flex-shrink:0;}
+.p-moves{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.p-moves .ab{width:22px;height:15px;font-size:11px;border-radius:3px;}
+.p-moves .ab:disabled{opacity:.25;cursor:not-allowed;}
+.p-hint{font-size:15px;color:var(--tx3);margin-bottom:7px;}
 /* 設定視窗 checkbox */
 .dual-box{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--bd);
   border-radius:8px;background:var(--sf2);cursor:pointer;transition:all .15s;margin:4px 0 10px;}
@@ -400,6 +418,7 @@ th.expo-col{width:64px;}
     <div style="height:1px;background:var(--bd);margin:16px 0;"></div>
     <div class="fg"><label>長官欄位管理</label>
       <div style="font-size:16.5px;color:var(--tx2);margin-bottom:8px;">新增、刪除或修改長官職稱。修改職稱名稱不會影響既有活動的出席紀錄（系統用內部代碼對應，不是用顯示名稱）。</div>
+      <div class="p-hint">↕ 按住左側 <strong>⠿</strong> 可拖曳調整順序，或用 ▲▼ 上下移動；順序會套用到表格欄位、新增視窗與匯出檔案。</div>
       <div id="people-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:6px;">
         <input class="fi" id="new-person-label" placeholder="新長官職稱，例如「林副處長」" style="flex:1;">
@@ -643,7 +662,13 @@ _roomUnsubs.push(onValue(SETTINGS_REF, snap=>{
     EXPO_A_ABBR = s.abbrA || '';
     EXPO_B_ABBR = s.abbrB || '';
     if(s.people && typeof s.people === 'object'){
-      const ids = Object.keys(s.people);
+      let ids = Object.keys(s.people);
+      // ★ 依照儲存的順序排列（Firebase 物件的鍵順序不保證，所以另存 peopleOrder）
+      if(Array.isArray(s.peopleOrder) && s.peopleOrder.length){
+        const known = s.peopleOrder.filter(id=>Object.prototype.hasOwnProperty.call(s.people,id));
+        const extra = ids.filter(id=>!known.includes(id));
+        ids = known.concat(extra);
+      }
       if(ids.length){
         PEOPLE = ids;
         P_LABELS = {};
@@ -680,46 +705,126 @@ function _openSettings(){
 window.closeSettings = ()=>{ document.getElementById('settings-modal').style.display='none'; };
 
 // 編輯中的長官清單暫存（尚未儲存），格式 {id: label}
-let _draftPeople = null;
+// ★ 改用陣列保存順序：[{id,label}, ...]，才能拖曳排序
+let _draftPeople = [];
 function renderPeopleList(){
-  _draftPeople = {};
-  PEOPLE.forEach(id=>{ _draftPeople[id] = P_LABELS[id]; });
+  _draftPeople = PEOPLE.map(id=>({ id, label: P_LABELS[id] || '' }));
   drawPeopleList();
 }
+function draftIndex(id){ return _draftPeople.findIndex(p=>p.id===id); }
 function drawPeopleList(){
   const box = document.getElementById('people-list');
-  const ids = Object.keys(_draftPeople);
-  if(!ids.length){
+  if(!_draftPeople.length){
     box.innerHTML = '<div style="font-size:16.5px;color:var(--tx3);">目前沒有任何長官欄位，請在下方新增。</div>';
     return;
   }
-  box.innerHTML = ids.map(id=>`
-    <div style="display:flex;gap:6px;align-items:center;">
-      <input class="fi" data-pid="${id}" value="${esc(_draftPeople[id])}" oninput="renamePerson('${id}', this.value)" style="flex:1;">
-      <button class="ab dl" onclick="removePerson('${id}')" title="刪除">✕</button>
+  const last = _draftPeople.length - 1;
+  box.innerHTML = _draftPeople.map((p,i)=>`
+    <div class="p-row" data-pid="${p.id}" data-idx="${i}"
+         ondragstart="pRowDragStart(event)" ondragover="pRowDragOver(event)"
+         ondragleave="pRowDragLeave(event)" ondrop="pRowDrop(event)" ondragend="pRowDragEnd(event)">
+      <span class="p-handle" title="按住拖曳可調整順序"
+            onmousedown="pHandleDown(event)" ontouchstart="pHandleDown(event)">⠿</span>
+      <span class="p-num">${i+1}</span>
+      <input class="fi" data-pid="${p.id}" value="${esc(p.label)}" oninput="renamePerson('${p.id}', this.value)" style="flex:1;">
+      <div class="p-moves">
+        <button class="ab" onclick="movePerson('${p.id}',-1)" title="上移" ${i===0?'disabled':''}>▲</button>
+        <button class="ab" onclick="movePerson('${p.id}',1)" title="下移" ${i===last?'disabled':''}>▼</button>
+      </div>
+      <button class="ab dl" onclick="removePerson('${p.id}')" title="刪除">✕</button>
     </div>
   `).join('');
 }
-window.renamePerson = (id, val)=>{ _draftPeople[id] = val; };
+window.renamePerson = (id, val)=>{
+  const i = draftIndex(id);
+  if(i>=0) _draftPeople[i].label = val;
+};
 window.removePerson = (id)=>{
-  if(!confirm('確定刪除「'+(_draftPeople[id]||id)+'」這個長官欄位嗎？\n（已儲存活動中此長官的出席紀錄不會被刪除，只是日後不再顯示這個選項）')) return;
-  delete _draftPeople[id];
+  const i = draftIndex(id);
+  if(i<0) return;
+  if(!confirm('確定刪除「'+(_draftPeople[i].label||id)+'」這個長官欄位嗎？\n（已儲存活動中此長官的出席紀錄不會被刪除，只是日後不再顯示這個選項）')) return;
+  _draftPeople.splice(i,1);
   drawPeopleList();
 };
 window.addPerson = ()=>{
   const inp = document.getElementById('new-person-label');
   const label = inp.value.trim();
   if(!label) return toast('請輸入長官職稱','err');
-  const id = genPersonKey();
-  _draftPeople[id] = label;
+  _draftPeople.push({ id: genPersonKey(), label });
   inp.value = '';
   drawPeopleList();
+};
+/* ── 長官排序：上下箭頭 ── */
+window.movePerson = (id, dir)=>{
+  const i = draftIndex(id);
+  if(i<0) return;
+  const j = i + dir;
+  if(j<0 || j>=_draftPeople.length) return;
+  const [row] = _draftPeople.splice(i,1);
+  _draftPeople.splice(j,0,row);
+  drawPeopleList();
+};
+/* ── 長官排序：拖曳 ── */
+let _pDragId = null;
+// 只有按住左邊的 ⠿ 把手才開啟拖曳，這樣輸入框仍可正常選字
+window.pHandleDown = e=>{
+  const row = e.currentTarget.closest('.p-row');
+  if(row) row.setAttribute('draggable','true');
+};
+window.pRowDragStart = e=>{
+  const row = e.currentTarget;
+  if(row.getAttribute('draggable') !== 'true'){ e.preventDefault(); return; }
+  _pDragId = row.dataset.pid;
+  e.dataTransfer.effectAllowed = 'move';
+  try{ e.dataTransfer.setData('text/plain', _pDragId); }catch(_){}
+  row.classList.add('p-dragging');
+};
+window.pRowDragOver = e=>{
+  if(!_pDragId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const row = e.currentTarget;
+  if(row.dataset.pid === _pDragId) return;
+  const r = row.getBoundingClientRect();
+  const after = (e.clientY - r.top) > r.height/2;
+  row.classList.remove('p-over-top','p-over-bottom');
+  row.classList.add(after ? 'p-over-bottom' : 'p-over-top');
+};
+window.pRowDragLeave = e=>{
+  e.currentTarget.classList.remove('p-over-top','p-over-bottom');
+};
+window.pRowDrop = e=>{
+  e.preventDefault();
+  const row = e.currentTarget;
+  row.classList.remove('p-over-top','p-over-bottom');
+  const targetId = row.dataset.pid;
+  if(!_pDragId || targetId === _pDragId) return;
+  const from = draftIndex(_pDragId);
+  let to = draftIndex(targetId);
+  if(from<0 || to<0) return;
+  const r = row.getBoundingClientRect();
+  const after = (e.clientY - r.top) > r.height/2;
+  const [moved] = _draftPeople.splice(from,1);
+  to = draftIndex(targetId);
+  _draftPeople.splice(after ? to+1 : to, 0, moved);
+  _pDragId = null;
+  drawPeopleList();
+};
+window.pRowDragEnd = ()=>{
+  _pDragId = null;
+  document.querySelectorAll('.p-row').forEach(r=>{
+    r.classList.remove('p-dragging','p-over-top','p-over-bottom');
+    r.removeAttribute('draggable');
+  });
 };
 window.saveSettings = async ()=>{
   const eyebrow = document.getElementById('set-eyebrow').value.trim() || 'TAITRA · 活動出席管理';
   const h1 = document.getElementById('set-h1').value.trim() || '出席一覽表';
   const pageTitle = document.getElementById('set-pagetitle').value.trim() || '活動出席管理';
-  const peopleObj = {..._draftPeople};
+  const validPeople = _draftPeople.filter(p=>(p.label||'').trim());
+  const peopleObj = {};
+  validPeople.forEach(p=>{ peopleObj[p.id] = p.label.trim(); });
+  const peopleOrder = validPeople.map(p=>p.id);
   const dualMode = document.getElementById('set-dual').checked;
   const expoA = document.getElementById('set-expoA').value.trim() || 'A 展';
   const expoB = document.getElementById('set-expoB').value.trim() || 'B 展';
@@ -729,7 +834,7 @@ window.saveSettings = async ()=>{
     return toast('請填寫 B 展名稱','err');
   }
   try{
-    await set(SETTINGS_REF, { eyebrow, h1, pageTitle, people: peopleObj, dualMode, expoA, expoB, abbrA, abbrB });
+    await set(SETTINGS_REF, { eyebrow, h1, pageTitle, people: peopleObj, peopleOrder, dualMode, expoA, expoB, abbrA, abbrB });
     toast('✓ 設定已儲存','ok');
     closeSettings();
   }catch(e){ toast('✗ 儲存失敗：'+e.message,'err'); }
