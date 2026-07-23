@@ -73,7 +73,10 @@ select.chip:focus{outline:none;border-color:var(--ac);}
 .fb-dot.err{background:var(--red);}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-.dg-head{display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--bd2);background:var(--sf3);cursor:pointer;user-select:none;transition:background .1s;}
+/* 每一天＝一張卡片：用留白分隔（不加分隔線，避免線條過多顯得雜亂） */
+.day-block{margin-bottom:20px;border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--sf);box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.day-block:last-child{margin-bottom:0;}
+.dg-head{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--sf3);cursor:pointer;user-select:none;transition:background .1s;}
 .dg-head:hover{background:var(--sf2);}
 .dg-date{font-family:'DM Mono',monospace;font-size:19.5px;font-weight:700;color:var(--ac);}
 .dg-cnt{font-size:16.5px;color:var(--tx3);background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:1px 7px;}
@@ -164,7 +167,8 @@ textarea.fi{resize:vertical;min-height:48px;}
   h1{font-size:22.5px;}
   .btn-label{display:none;}
   .sbar{padding:6px 14px;gap:10px;}
-  .dg-head{padding:7px 14px;}
+  .dg-head{padding:9px 14px;}
+  .day-block{margin-bottom:14px;border-radius:10px;}
   .import-panel{margin:10px 14px;}
   .desk-tbl{display:none!important;}
   .mob-cards{display:block!important;}
@@ -1064,14 +1068,11 @@ function render(){
     }).join('');
 
     html += `
+    <div class="day-block">
     <div class="dg-head" onclick="toggleGroup('${gid}')">
       <span class="dg-date">${esc(date)}</span>
       <span class="dg-cnt">${rows.length} 項</span>
-      <span class="dg-badge b-${st}">${bTxt}</span>
-      ${DUAL_MODE?(()=>{const na=rows.filter(r=>expoOf(r)==='A').length,nb=rows.length-na;
-        return `<span class="dg-expo-mix">
-          ${na?`<span class="expo-tag eA">${esc(expoAbbr('A'))}</span> ${na}`:''}${na&&nb?' ／ ':''}${nb?`<span class="expo-tag eB">${esc(expoAbbr('B'))}</span> ${nb}`:''}
-        </span>`;})():''}
+      ${st==='today'?`<span class="dg-badge b-today">${bTxt}</span>`:''}
       <span class="dg-arr" id="a-${gid}">▾</span>
     </div>
     <div id="${gid}">
@@ -1094,6 +1095,7 @@ function render(){
         </table>
       </div>
       <div class="mob-cards">${mCards}</div>
+    </div>
     </div>`;
   });
 
