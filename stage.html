@@ -492,6 +492,14 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="diag" style="display:none; position:fixed; left:12px; bottom:12px; z-index:120;
+     max-width:520px; background:#1c2b3a; color:#fff; padding:13px 15px; border-radius:10px;
+     font-size:12.5px; line-height:1.6; box-shadow:0 8px 30px rgba(0,0,0,.35);">
+  <div style="font-weight:800; margin-bottom:6px;">🔌 連線診斷</div>
+  <div id="diag-body"></div>
+  <button id="diag-close" style="margin-top:9px; font-size:12px; padding:6px 12px; border-radius:6px;
+     border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff; cursor:pointer; font-weight:700;">關閉</button>
+</div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, update, remove, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -2028,12 +2036,38 @@ try{ bindStage(); }
 catch(e){ console.error('bindStage 失敗', e); $('sync-status').textContent='✗ 啟動失敗（請看主控台）'; }
 
 /* 連線逾時提示：8 秒還沒收到 Firebase 回應就告訴使用者，不要一直卡「連線中…」 */
-setTimeout(()=>{
+function showDiag(html){
+  const d=$('diag'); if(!d) return;
+  $('diag-body').innerHTML = html;
+  d.style.display='block';
+}
+$('diag-close').addEventListener('click', ()=>$('diag').style.display='none');
+
+/* 直接測一次讀取，把真正的錯誤顯示在畫面上（不用開 F12） */
+setTimeout(async ()=>{
   const el=$('sync-status');
-  if(el && el.textContent.indexOf('連線中')>=0){
-    el.textContent='✗ 連線逾時（檢查網路或 Firebase 規則）';
-    el.style.color='var(--danger)';
+  if(!el || el.textContent.indexOf('連線中')<0) return;
+  el.textContent='✗ 連線逾時';
+  el.style.color='var(--danger)';
+  let msg='';
+  try{
+    const { get } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
+    await get(ref(db, ROOT));
+    msg = '讀取測試<b style="color:#7bd88f;">成功</b>，但即時監聽沒有回應。<br>'
+        + '可能是瀏覽器擋掉 WebSocket 長連線（防火牆／公司網路）。<br>'
+        + '建議換手機熱點或其他網路再試一次。';
+  }catch(e){
+    const code = (e && (e.code||e.message)) || String(e);
+    if(/permission|PERMISSION/i.test(code)){
+      msg = '<b style="color:#ff9a9a;">PERMISSION_DENIED</b>：Firebase 規則擋住了 <code>stageTool</code> 節點。<br><br>'
+          + '請到 Firebase 主控台 → Realtime Database → 規則，確認 <code>stageTool</code> 有讀寫權限。'
+          + '（你的 <code>agendaTool</code> 可以用，代表規則是逐節點授權的。）';
+    } else {
+      msg = '錯誤代碼：<b style="color:#ff9a9a;">'+esc(code)+'</b><br><br>'
+          + '若含 network / fetch，代表網路或防火牆擋掉 Firebase。';
+    }
   }
+  showDiag(msg + '<br><br><span style="opacity:.7;">資料庫：gurus-cfa66 ／ 節點：stageTool</span>');
 }, 8000);
 
 /* 先畫一次空的三格，Firebase 回應後再更新 */
