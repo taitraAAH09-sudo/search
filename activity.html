@@ -458,6 +458,7 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
     <b id="dc-title">🪑 圓桌細節圖</b>
     <span class="dc-status" id="dc-status"></span>
     <button class="dc-btn jpg" onclick="dcExportJPG()">⬇ 匯出 JPG</button>
+    <button class="dc-btn jpg" onclick="dcExportPPT()" style="background:#C0392B;">⬇ 匯出 PPT</button>
     <button class="dc-btn close" onclick="closeDetailChart()">✕ 關閉</button>
   </div>
   <div class="dc-body" id="dc-body"></div>
@@ -2636,6 +2637,139 @@ function dcBuildCard(card, tCode) {
     el.appendChild(resizeHandle);
     return el;
 }
+
+// ── 匯出 PPT（橫式 16:9，每頁最多 3 桌；每個名牌都是可編輯文字框）──
+let _pptxLoading = null;
+function dcLoadPptx() {
+    if (window.PptxGenJS) return Promise.resolve();
+    if (_pptxLoading) return _pptxLoading;
+    _pptxLoading = new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+        s.onload = res;
+        s.onerror = () => rej(new Error('PPT 元件載入失敗，請確認網路'));
+        document.head.appendChild(s);
+    });
+    return _pptxLoading;
+}
+window.dcExportPPT = async function () {
+    const boards = Array.from(document.querySelectorAll('#dc-body .dc-board'));
+    if (boards.length === 0) { toast('沒有可匯出的內容', 'ter'); return; }
+    try { await dcLoadPptx(); } catch (e) { toast(e.message, 'ter'); return; }
+
+    const eventName = dcEventName();
+    const FONT = 'Microsoft JhengHei';
+    const NAVY = '1D3A6E', INK = '13315C', ORANGE = 'F5A623', YELLOW = 'FFF200';
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'W16x9', width: 13.333, height: 7.5 });
+    pptx.layout = 'W16x9';
+
+    const PER = 3;                      // 每頁最多三桌（與 JPG 一致）
+    const PX = 1 / 96;                  // px → 英吋
+    const pages = Math.ceil(boards.length / PER);
+
+    for (let pg = 0; pg < pages; pg++) {
+        const group = boards.slice(pg * PER, pg * PER + PER);
+        const slide = pptx.addSlide();
+
+        // 頁首深藍標題列
+        slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.62, fill: { color: '132742' }, line: { color: '132742' } });
+        slide.addText(eventName + '－主桌位置圖' + (pages > 1 ? `（${pg + 1}/${pages}）` : ''), {
+            x: 0, y: 0, w: 13.333, h: 0.62, align: 'center', valign: 'middle',
+            fontSize: 20, bold: true, color: 'FFFFFF', fontFace: FONT
+        });
+
+        // 依桌數分欄置中；整體縮放到單頁可容納
+        const n = group.length;
+        const scale = Math.min((13.333 - 0.6) / (n * DC_BOARD_W * PX + (n - 1) * 0.25), (7.5 - 1.5) / (DC_BOARD_H * PX));
+        const bw = DC_BOARD_W * PX * scale, bh = DC_BOARD_H * PX * scale, gap = 0.25;
+        const totalW = n * bw + (n - 1) * gap;
+        const startX = (13.333 - totalW) / 2;
+        const topY = 1.05;
+
+        group.forEach((board, gi) => {
+            const tCode = board.dataset.tcode;
+            const ox = startX + gi * (bw + gap);
+            const cxAbs = ox + bw / 2, cyAbs = topY + bh / 2;
+
+            // 桌名
+            slide.addText(dcTableLabel(tCode), {
+                x: ox, y: topY - 0.42, w: bw, h: 0.36, align: 'center', valign: 'middle',
+                fontSize: Number(Math.max(9, 15 * scale).toFixed(1)), bold: true, color: INK, fontFace: FONT
+            });
+            // 圓桌
+            const dia = DC_CIRCLE_R * 2 * PX * scale;
+            slide.addShape(pptx.ShapeType.ellipse, {
+                x: cxAbs - dia / 2, y: cyAbs - dia / 2, w: dia, h: dia,
+                fill: { color: 'FFFFFF' }, line: { color: NAVY, width: 4 }
+            });
+            slide.addText(dcTableLabel(tCode), {
+                x: cxAbs - dia / 2, y: cyAbs - 0.22, w: dia, h: 0.44, align: 'center', valign: 'middle',
+                fontSize: Number(Math.max(9, 16 * scale).toFixed(1)), bold: true, color: '9AA9C4', fontFace: FONT
+            });
+
+            // 名牌：每張都是獨立文字框（進 PPT 可點開改字、可拖曳）
+            board.querySelectorAll('.dc-card').forEach(el => {
+                const w = el.offsetWidth * PX * scale, h = el.offsetHeight * PX * scale;
+                const cx = ox + parseFloat(el.style.left) * PX * scale;
+                const cy = topY + parseFloat(el.style.top) * PX * scale;
+                const isEmpty = el.classList.contains('empty');
+                const text = isEmpty ? '' : (el.querySelector('span') ? el.querySelector('span').textContent : '');
+                // 字級＝基準字 × 整體縮放；字多再自動遞減，確保不溢出名牌框
+                const baseFs = 11 * scale;
+                const cap = Math.max(6, Math.min(baseFs, (w * h * 96 * 96 * 1.05) / Math.max(1, text.length) / 30));
+                const fs = Math.max(6, Math.min(baseFs, cap));
+                slide.addText(text, {
+                    x: cx - w / 2, y: cy - h / 2, w: w, h: h,
+                    align: 'center', valign: 'middle', wrap: true, shrinkText: true,
+                    fontSize: Number(fs.toFixed(1)), bold: true, color: INK, fontFace: FONT,
+                    margin: 1, lineSpacingMultiple: 0.85,
+                    fill: { color: 'FFFFFF' },
+                    line: isEmpty ? { color: 'B9C2D0', width: 1, dashType: 'dash' } : { color: NAVY, width: 1.75 }
+                });
+
+                // 序位徽章（照畫面實際位置，含手動微調）
+                const badge = el.querySelector('.dc-badge');
+                if (badge) {
+                    const bx = cx - w / 2 + parseFloat(badge.style.left) * PX * scale;
+                    const by = cy - h / 2 + parseFloat(badge.style.top) * PX * scale;
+                    const bs = 26 * PX * scale;
+                    slide.addText(badge.textContent, {
+                        x: bx, y: by, w: bs, h: bs, align: 'center', valign: 'middle',
+                        fontSize: Number(Math.max(6, 10 * scale).toFixed(1)), bold: true, color: 'FFFFFF', fontFace: FONT,
+                        margin: 0,
+                        fill: { color: ORANGE }, line: { color: ORANGE, width: 0.5 }
+                    });
+                }
+                // 主位／主賓黃色標籤
+                const tag = el.querySelector('.dc-tag');
+                if (tag && !tag.classList.contains('dc-tag-hidden')) {
+                    const ddx = cxAbs - cx, ddy = cyAbs - cy;
+                    const dl = Math.hypot(ddx, ddy) || 1, ux = ddx / dl, uy = ddy / dl;
+                    const tEdge = Math.min(
+                        Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9,
+                        Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
+                    );
+                    const off = tEdge + (24 + (badge ? 16 : 0)) * PX * scale;
+                    const tw = 0.66 * scale, th = 0.24 * scale;
+                    slide.addText(tag.textContent, {
+                        x: cx + ux * off - tw / 2, y: cy + uy * off - th / 2, w: tw, h: th,
+                        align: 'center', valign: 'middle',
+                        fontSize: Number(Math.max(6, 10 * scale).toFixed(1)), bold: true,
+                        color: '111111', fontFace: FONT, margin: 0,
+                        fill: { color: YELLOW }, line: { color: 'D9C900', width: 0.75 }
+                    });
+                }
+            });
+        });
+    }
+
+    const now = new Date();
+    const ts = (now.getMonth() + 1) + '' + now.getDate() + '_' + now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
+    const safeLabel = eventName.replace(/[\\/:*?"<>|]/g, '').substring(0, 20);
+    await pptx.writeFile({ fileName: safeLabel + '_主桌位置圖_' + ts + '.pptx' });
+    toast('✅ PPT 匯出完成！每個名牌都可在 PowerPoint 內編輯', 'tok');
+};
 
 // ── 匯出 JPG（所見即所得）──
 window.dcExportJPG = function () {
