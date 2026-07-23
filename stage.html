@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>大會舞台一覽表</title>
-<meta name="build" content="v9-slots-inline">
+<meta name="build" content="v11-init">
 <style>
   :root{
     --paper:#f7f4ee; --paper-line:#ddd5c5; --ink:#22303c;
@@ -198,7 +198,7 @@
       <div class="eyebrow" id="ui-en">TENTATIVE STAGE EVENT SCHEDULE</div>
       <h1 id="ui-zh">大會舞台一覽表</h1>
       <div class="sub">時段 × 日期網格排程．時段／分類／舞台／欄位全部可自由編輯．全隊即時同步
-        <span style="font-size:11px;color:#b98a2f;font-weight:800;margin-left:6px;">build v9</span></div>
+        <span style="font-size:11px;color:#b98a2f;font-weight:800;margin-left:6px;">build v11</span></div>
       <div class="filebar" id="slots-list"><span style="font-size:12px;color:#999;">工作檔載入中…</span></div>
     </div>
     <div class="dl-panel">
@@ -2032,8 +2032,33 @@ function bindStage(){
     render();
   }, err=>{ console.error(err); render(); }));
 }
+/* 首次使用：stageTool 節點在資料庫裡還不存在，
+   先寫入預設舞台清單，讓 Firebase 有東西可回，監聽才會被觸發。 */
+async function ensureInit(){
+  try{
+    const { get } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
+    const snap = await get(ref(db, ROOT+'/stageList'));
+    if(!snap.exists()){
+      await set(ref(db, ROOT+'/stageList'), DEF_STAGES);
+      await set(ref(db, SBASE()+'/settings'), {
+        times: DEF_TIMES, cats: DEF_CATS,
+        titleZh: '大會舞台一覽表',
+        titleEn: 'Tentative Stage Event Schedule',
+        updatedAt: Date.now()
+      });
+      console.log('已初始化 stageTool 節點');
+    }
+  }catch(e){
+    console.error('初始化失敗', e);
+    const el=$('sync-status');
+    if(el){ el.textContent='✗ 無法寫入資料庫：'+(e.code||e.message||e); el.style.color='var(--danger)'; }
+  }
+}
+
 try{ bindStage(); }
 catch(e){ console.error('bindStage 失敗', e); $('sync-status').textContent='✗ 啟動失敗（請看主控台）'; }
+
+ensureInit();
 
 /* 連線逾時提示：8 秒還沒收到 Firebase 回應就告訴使用者，不要一直卡「連線中…」 */
 function showDiag(html){
@@ -2068,7 +2093,7 @@ setTimeout(async ()=>{
     }
   }
   showDiag(msg + '<br><br><span style="opacity:.7;">資料庫：gurus-cfa66 ／ 節點：stageTool</span>');
-}, 8000);
+}, 5000);
 
 /* 先畫一次空的三格，Firebase 回應後再更新 */
 renderSlots();
