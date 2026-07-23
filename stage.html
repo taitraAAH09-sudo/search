@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>大會舞台一覽表</title>
+<meta name="build" content="v9-slots-inline">
 <style>
   :root{
     --paper:#f7f4ee; --paper-line:#ddd5c5; --ink:#22303c;
@@ -40,7 +41,7 @@
   .card{ background:#fff; border:1px solid var(--paper-line); border-radius:10px; padding:18px 20px; margin-top:14px; }
 
   /* ── 舞台切換列 ── */
-  .filebar{ display:flex; gap:9px; margin-top:11px; flex-wrap:wrap; align-items:center; }
+  .filebar{ display:flex; flex-direction:column; gap:6px; margin-top:11px; align-items:flex-start; }
   .stagetab.add{ background:#fff; border-color:var(--gold); color:var(--gold); font-weight:800; }
   .stagetab.add:hover{ background:var(--gold); color:#fff; }
   .stagebar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:14px 0 4px; }
@@ -165,15 +166,15 @@
   .pick.armed{ background:var(--gold); border-color:var(--gold); color:#fff; }
   .kvchip{ width:30px; height:30px; border-radius:6px; border:1px solid rgba(0,0,0,.18); cursor:pointer; }
   .kvchip:hover{ outline:2px solid var(--gold); outline-offset:2px; }
-  .slotrow{ display:flex; align-items:center; gap:5px; }
-  .slotrow .sbtn{ font-size:11.5px; font-weight:800; padding:7px 9px; border-radius:6px;
+  .slotrow{ display:flex; align-items:center; gap:6px; }
+  .slotrow .sbtn{ font-size:12px; font-weight:800; padding:7px 11px; border-radius:6px;
         border:1.5px solid var(--paper-line); background:#fff; cursor:pointer; white-space:nowrap; }
   .slotrow .s-save{ color:var(--navy); }
   .slotrow .s-save:hover{ border-color:var(--gold); }
   .slotrow .s-load{ color:var(--ok); }
   .slotrow .s-load:hover{ border-color:var(--ok); }
   .slotrow .s-load:disabled{ color:#bbb; cursor:not-allowed; border-color:#eee; }
-  .slotrow input.s-name{ width:104px; font-family:inherit; font-size:12px; padding:6px 8px;
+  .slotrow input.s-name{ width:190px; font-family:inherit; font-size:12.5px; padding:7px 9px;
         border:1px solid var(--paper-line); border-radius:5px; background:#fff; }
   .slotdot{ width:9px; height:9px; border-radius:50%; background:#d8d2c4; flex-shrink:0; }
   .slotdot.on{ background:var(--danger); }
@@ -196,11 +197,9 @@
     <div>
       <div class="eyebrow" id="ui-en">TENTATIVE STAGE EVENT SCHEDULE</div>
       <h1 id="ui-zh">大會舞台一覽表</h1>
-      <div class="sub">時段 × 日期網格排程．時段／分類／舞台／欄位全部可自由編輯．全隊即時同步</div>
-      <div class="filebar" id="slots-list"></div>
-      <div class="filebar" style="margin-top:7px;">
-        <button class="btn btn--ghost btn--logout" id="btn-del-all">🗑 刪除全部</button>
-      </div>
+      <div class="sub">時段 × 日期網格排程．時段／分類／舞台／欄位全部可自由編輯．全隊即時同步
+        <span style="font-size:11px;color:#b98a2f;font-weight:800;margin-left:6px;">build v9</span></div>
+      <div class="filebar" id="slots-list"><span style="font-size:12px;color:#999;">工作檔載入中…</span></div>
     </div>
     <div class="dl-panel">
       <div class="dl-grid" id="dl-grid">
@@ -1173,14 +1172,7 @@ function snapshot(){
   };
 }
 
-$('btn-del-all').addEventListener('click', ()=>requirePw(async ()=>{
-  const nm = effStages()[STAGE]?.name || STAGE;
-  if(!confirm(`確定刪除舞台「${nm}」的全部內容？\n（活動、時段、日期、分類、配色都會清空）`)) return;
-  if(!confirm('再確認一次：這個動作無法復原，所有同事看到的資料也會一起消失。')) return;
-  if(!confirm('最後確認：真的要全部刪除嗎？建議先按「💾 存檔」備份。')) return;
-  try{ await remove(ref(db, SBASE())); toast('✓ 已全部刪除'); }
-  catch(e){ toast('✗ 刪除失敗：'+e.message); }
-}));
+
 
 
 
@@ -1189,6 +1181,7 @@ const SLOT_N = 3;
 let SLOTS = {};
 
 function renderSlots(){
+ try{
   const box = $('slots-list');
   if(!box) return;
   box.innerHTML='';
@@ -1203,7 +1196,10 @@ function renderSlots(){
       <span class="slotdot ${sl?'on':''}" title="${sl?'已有資料':'空的'}"></span>
       <button class="s-del" ${sl?'':'disabled'}>✕</button>`;
 
-    r.querySelector('.s-save').addEventListener('click', ()=>requirePw(async ()=>{
+    const _bSave=r.querySelector('.s-save'), _bLoad=r.querySelector('.s-load'),
+          _bName=r.querySelector('.s-name'), _bDel=r.querySelector('.s-del');
+    if(!_bSave||!_bLoad||!_bName||!_bDel){ box.appendChild(r); continue; }
+    _bSave.addEventListener('click', ()=>requirePw(async ()=>{
       const nm = r.querySelector('.s-name').value.trim();
       if(sl && !confirm(`第 ${i} 格已經有「${sl.name||'未命名'}」的資料，確定覆蓋？`)) return;
       try{
@@ -1214,7 +1210,7 @@ function renderSlots(){
       }catch(e){ toast('✗ 存檔失敗：'+e.message); }
     }));
 
-    r.querySelector('.s-load').addEventListener('click', ()=>requirePw(async ()=>{
+    _bLoad.addEventListener('click', ()=>requirePw(async ()=>{
       if(!sl) return;
       const n = Object.keys(sl.data?.activities||{}).length;
       const t = sl.savedAt ? new Date(sl.savedAt).toLocaleString('zh-TW') : '';
@@ -1226,14 +1222,14 @@ function renderSlots(){
       }catch(e){ toast('✗ 讀檔失敗：'+e.message); }
     }));
 
-    r.querySelector('.s-name').addEventListener('blur', async e=>{
+    _bName.addEventListener('blur', async e=>{
       if(!SLOTS[key]) return;
       const v=e.target.value.trim();
       if(v===(SLOTS[key].name||'')) return;
       try{ await update(ref(db, ROOT+'/slots/'+key), { name:v }); }catch(_){}
     });
 
-    r.querySelector('.s-del').addEventListener('click', ()=>requirePw(async ()=>{
+    _bDel.addEventListener('click', ()=>requirePw(async ()=>{
       if(!sl) return;
       if(!confirm(`確定清除第 ${i} 格「${sl.name||'未命名'}」？`)) return;
       try{ await remove(ref(db, ROOT+'/slots/'+key)); toast(`✓ 第 ${i} 格已清除`); }
@@ -1242,7 +1238,11 @@ function renderSlots(){
 
     box.appendChild(r);
   }
+ }catch(e){ console.error('renderSlots 失敗', e); }
 }
+
+/* 開頁立刻畫出三格，不等 Firebase、不受後續錯誤影響 */
+renderSlots();
 
 /* ── 依 KV 色票推薦整組配色 ──
    規則：最深色當標題底，第二色當漸層；地點列用標題色再壓深；
@@ -1975,6 +1975,7 @@ $('btn-img-bi').addEventListener('click',()=>buildLongImage('bi').catch(e=>toast
 
 /* ── 即時同步 ── */
 onValue(ref(db, ROOT+'/stageList'), snap=>{
+ try{
   const v = snap.val();
   STAGES = v || null;
   /* 目前選的舞台已經不存在（被刪除或換裝置）→ 退回第一個可用舞台 */
@@ -1990,7 +1991,8 @@ onValue(ref(db, ROOT+'/stageList'), snap=>{
   }
   renderStageBar();
   render();
-}, err=>{ console.error(err); renderStageBar(); render(); });
+ }catch(e){ console.error('stageList 監聽失敗', e); }
+}, err=>{ console.error('stageList 讀取失敗', err); renderStageBar(); render(); });
 
 function bindStage(){
   _unsubs.forEach(u=>{ try{u();}catch(e){} });
@@ -2022,11 +2024,22 @@ function bindStage(){
     render();
   }, err=>{ console.error(err); render(); }));
 }
-bindStage();
+try{ bindStage(); }
+catch(e){ console.error('bindStage 失敗', e); $('sync-status').textContent='✗ 啟動失敗（請看主控台）'; }
+
+/* 連線逾時提示：8 秒還沒收到 Firebase 回應就告訴使用者，不要一直卡「連線中…」 */
+setTimeout(()=>{
+  const el=$('sync-status');
+  if(el && el.textContent.indexOf('連線中')>=0){
+    el.textContent='✗ 連線逾時（檢查網路或 Firebase 規則）';
+    el.style.color='var(--danger)';
+  }
+}, 8000);
 
 /* 先畫一次空的三格，Firebase 回應後再更新 */
 renderSlots();
 onValue(ref(db, ROOT+'/slots'), snap=>{
+ try{
   SLOTS = snap.val() || {};
   /* 一次性清理：格數從 5 縮成 3，把超出的舊格子從 Firebase 移除以釋放容量 */
   Object.keys(SLOTS).forEach(k=>{
@@ -2038,7 +2051,8 @@ onValue(ref(db, ROOT+'/slots'), snap=>{
     }
   });
   renderSlots();
-}, err=>{ console.error(err); renderSlots(); });
+ }catch(e){ console.error('slots 監聽失敗', e); }
+}, err=>{ console.error('slots 讀取失敗', err); renderSlots(); });
 
 </script>
 </body>
