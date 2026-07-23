@@ -140,6 +140,12 @@
         <button class="btn dl-btn" id="btn-img-en">🖼 英文長圖</button>
         <button class="btn dl-btn" id="btn-img-bi">🖼 雙語長圖</button>
       </div>
+      <div style="display:flex; gap:6px; margin-top:7px;">
+        <button class="btn dl-btn" id="btn-kv" style="flex:1;">🎨 KV PDF</button>
+        <button class="btn dl-btn" id="btn-kv-reset" style="width:74px;" title="恢復預設深藍配色">↺ 預設</button>
+      </div>
+      <input type="file" id="kv-input" accept=".pdf,image/*" style="display:none">
+      <div id="kv-preview" style="display:none; margin-top:6px; align-items:center; gap:6px; font-size:11.5px; color:var(--navy-light);"></div>
       <button class="btn btn--ghost" id="btn-hide-toolbar" style="width:100%; margin-top:8px;">隱藏選項</button>
     </div>
   </div>
@@ -844,6 +850,104 @@ $('import-input').addEventListener('change', async function(){
 });
 
 renderChips();
+/* ── 🎨 KV 配色：上傳 KV 的 PDF/圖片，自動抽出主色套到長圖 ──
+   單色 → 取代原本深藍；雙色以上 → 標題列與日期橫幅做柔和漸層。
+   色票存 Firebase（跟著 Room 走），全隊共用。 */
+let KV_COLORS = null;   // [ '#rrggbb', ... ] 由深到淺，最多 3 色
+const luma = hex => { const c = hex.replace('#',''); const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16); return (0.299*r+0.587*g+0.114*b)/255; };
+const toHex = (r,g,b) => '#' + [r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const mixHex = (a,b,t) => { const p=h=>[1,3,5].map(i=>parseInt(h.replace('#','').substr(i-1,2),16)); const A=p(a),B=p(b); return toHex(A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t, A[2]+(B[2]-A[2])*t); };
+const darken = (hex,t) => mixHex(hex,'#000000',t);
+const lighten = (hex,t) => mixHex(hex,'#ffffff',t);
+
+/* 從畫布抽主色：色相分桶統計，濾掉接近白/黑/灰的像素 */
+function extractPalette(canvas, maxColors){
+  const ctx = canvas.getContext('2d');
+  const { width:w, height:h } = canvas;
+  const d = ctx.getImageData(0,0,w,h).data;
+  const buckets = {};
+  for (let i=0;i<d.length;i+=4*4){                    // 每 4 像素取樣一次
+    const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
+    if (a<200) continue;
+    const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+    const sat=mx===0?0:(mx-mn)/mx, val=mx/255;
+    if (val>0.95 && sat<0.12) continue;               // 近白（背景）
+    if (val<0.08) continue;                           // 近黑
+    if (sat<0.10 && val>0.75) continue;               // 淺灰
+    const key = [Math.round(r/28), Math.round(g/28), Math.round(b/28)].join(',');
+    (buckets[key] ||= {n:0,r:0,g:0,b:0});
+    const t=buckets[key]; t.n++; t.r+=r; t.g+=g; t.b+=b;
+  }
+  let list = Object.values(buckets).filter(t=>t.n>30)
+    .sort((a,b)=>b.n-a.n)
+    .map(t=>toHex(t.r/t.n, t.g/t.n, t.b/t.n));
+  // 去除太相近的顏色
+  const out=[];
+  list.forEach(c=>{
+    if (out.every(o=>{
+      const p=h=>[1,3,5].map(i=>parseInt(h.replace('#','').substr(i-1,2),16));
+      const A=p(c),B=p(o);
+      return Math.hypot(A[0]-B[0],A[1]-B[1],A[2]-B[2])>70;
+    })) out.push(c);
+  });
+  return out.slice(0, maxColors||3).sort((a,b)=>luma(a)-luma(b)); // 深→淺
+}
+async function kvLoadFile(file){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  if (ext==='pdf'){
+    if (!window.pdfjsLib){
+      await new Promise((res,rej)=>{ const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload=res; s.onerror=()=>rej(new Error('PDF 元件載入失敗')); document.head.appendChild(s); });
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    const page=await pdf.getPage(1);
+    const vp=page.getViewport({scale:1});
+    const sc=Math.min(1, 900/Math.max(vp.width,vp.height));
+    const v2=page.getViewport({scale:sc});
+    const cv=document.createElement('canvas'); cv.width=v2.width; cv.height=v2.height;
+    await page.render({canvasContext:cv.getContext('2d'), viewport:v2}).promise;
+    return cv;
+  }
+  return await new Promise(res=>{
+    const im=new Image();
+    im.onload=()=>{ const sc=Math.min(1,900/Math.max(im.width,im.height));
+      const cv=document.createElement('canvas'); cv.width=im.width*sc; cv.height=im.height*sc;
+      cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height); URL.revokeObjectURL(im.src); res(cv); };
+    im.src=URL.createObjectURL(file);
+  });
+}
+function renderKvPreview(){
+  const box=$('kv-preview');
+  if (!KV_COLORS || !KV_COLORS.length){ box.style.display='none'; return; }
+  box.style.display='flex';
+  box.innerHTML='目前配色：' + KV_COLORS.map(c=>
+    `<span style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.15);background:${c};display:inline-block;"></span>`
+  ).join('');
+}
+$('btn-kv').addEventListener('click', () => requirePw(() => $('kv-input').click()));
+$('kv-input').addEventListener('change', async function(){
+  const file=this.files[0]; this.value='';
+  if(!file) return;
+  try{
+    toast('分析 KV 色彩中…');
+    const cv=await kvLoadFile(file);
+    const pal=extractPalette(cv,3);
+    if(!pal.length){ alert('這份 KV 抽不到明顯的色塊（可能整張偏白），請改用色彩較明確的版本'); return; }
+    KV_COLORS=pal;
+    await update(SET_REF,{ kvColors: pal, updatedAt: Date.now() });
+    renderKvPreview();
+    toast(`✓ 已套用 ${pal.length} 色配色，重新下載長圖即可看到`);
+  }catch(e){ alert('讀取失敗：'+(e.message||e)); }
+});
+$('btn-kv-reset').addEventListener('click', () => requirePw(async () => {
+  KV_COLORS=null;
+  try{ await update(SET_REF,{ kvColors: null, updatedAt: Date.now() }); }catch(e){}
+  renderKvPreview();
+  toast('✓ 已恢復預設深藍配色');
+}));
+
 /* ── 🖼 長圖匯出：整份日程一張連續 PNG，不斷頁、無表頭標籤、無 Show Day 標籤 ── */
 function buildLongImage(mode){
   const days = groupedDays();
@@ -853,7 +957,28 @@ function buildLongImage(mode){
   const COL = [110, 430, 200, 250, 170];           // 時間/活動/主辦/地點/聯絡
   const COL_X = []; let cx0 = PAD;
   COL.forEach(w => { COL_X.push(cx0); cx0 += w; });
-  const NAVY = '#1c2b3a', GOLD = '#b98a2f', INK = '#22303c', SUB = '#3c5570';
+  // 配色：有 KV 色票就用，否則維持預設深藍
+  const kv = (KV_COLORS && KV_COLORS.length) ? KV_COLORS : null;
+  const NAVY = kv ? kv[0] : '#1c2b3a';
+  const BAND2 = kv ? (kv[1] || lighten(kv[0], 0.18)) : null;            // 漸層第二色
+  const BAND3 = kv && kv[2] ? kv[2] : null;
+  const onBand = luma(NAVY) > 0.62 ? '#1a1a1a' : '#ffffff';             // 深底白字／淺底黑字
+  const ACC = kv ? (luma(NAVY) > 0.62 ? darken(NAVY, 0.45) : lighten(kv[kv.length-1] || NAVY, 0.55)) : '#d8b25f';
+  const PAPER = kv ? lighten(kv[kv.length-1] || NAVY, 0.93) : '#f7f4ee';
+  const ROWALT = kv ? lighten(kv[kv.length-1] || NAVY, 0.965) : '#fffdf8';
+  const LINE = kv ? lighten(kv[0], 0.82) : '#e6ddc9';
+  const GOLD = '#b98a2f', INK = '#22303c', SUB = '#3c5570';
+  // 單色→實心；雙色以上→柔和漸層
+  function bandFill(x, y, w, h){
+    if (kv && (BAND2 || BAND3)){
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, NAVY);
+      if (BAND3){ g.addColorStop(0.5, BAND2); g.addColorStop(1, BAND3); }
+      else g.addColorStop(1, BAND2);
+      return g;
+    }
+    return NAVY;
+  }
   const FONT_ZH = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
   const FONT_EN = '"Times New Roman",Times,serif';
 
@@ -911,11 +1036,11 @@ function buildLongImage(mode){
   cv.width = W * SC; cv.height = totalH * SC;
   const ctx = cv.getContext('2d');
   ctx.scale(SC, SC);
-  ctx.fillStyle = '#f7f4ee'; ctx.fillRect(0, 0, W, totalH);
+  ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, totalH);
   ctx.textBaseline = 'middle';
 
   // 標題
-  ctx.fillStyle = NAVY; ctx.fillRect(0, 0, W, H_TITLE);
+  ctx.fillStyle = bandFill(0, 0, W, H_TITLE); ctx.fillRect(0, 0, W, H_TITLE);
   ctx.textAlign = 'center';
   const tz = (TITLE_ZH && TITLE_ZH !== '活動日程表') ? TITLE_ZH : '';
   const te = (TITLE_EN && TITLE_EN !== 'EVENT SCHEDULE') ? TITLE_EN : '';
@@ -923,32 +1048,32 @@ function buildLongImage(mode){
   const tSubTxt = mode === 'zh' ? '研討會/活動日程表'
               : mode === 'en' ? 'Event Schedule'
               : '研討會/活動日程表　Event Schedule';
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 30px ' + FONT_ZH;
+  ctx.fillStyle = onBand; ctx.font = 'bold 30px ' + FONT_ZH;
   ctx.fillText(tMain || tSubTxt, W / 2, tMain ? 38 : H_TITLE / 2);
-  if (tMain){ ctx.fillStyle = '#d8b25f'; ctx.font = '17px ' + FONT_ZH; ctx.fillText(tSubTxt, W / 2, 70); }
+  if (tMain){ ctx.fillStyle = ACC; ctx.font = '17px ' + FONT_ZH; ctx.fillText(tSubTxt, W / 2, 70); }
 
   let y = H_TITLE + PAD / 2;
   blocks.forEach(({day, rows}) => {
     // 日期橫幅（不含 Show Day 標籤）
-    ctx.fillStyle = NAVY;
+    ctx.fillStyle = bandFill(PAD - 12, y, W - (PAD - 12) * 2, H_DAY - 8);
     ctx.fillRect(PAD - 12, y, W - (PAD - 12) * 2, H_DAY - 8);
-    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = 'bold 20px ' + FONT_ZH;
+    ctx.textAlign = 'left'; ctx.fillStyle = onBand; ctx.font = 'bold 20px ' + FONT_ZH;
     const dZh = dateZh(day.date), dEn = dateEn(day.date);
     if (mode === 'en'){ ctx.fillText(dEn, PAD + 6, y + (H_DAY - 8) / 2); }
     else {
       ctx.fillText(dZh, PAD + 6, y + (H_DAY - 8) / 2);
       if (mode === 'bi'){
         const wZh = ctx.measureText(dZh).width;
-        ctx.fillStyle = '#d8b25f'; ctx.font = '15px ' + FONT_EN;
+        ctx.fillStyle = ACC; ctx.font = '15px ' + FONT_EN;
         ctx.fillText(dEn, PAD + 6 + wZh + 16, y + (H_DAY - 8) / 2 + 1);
       }
     }
     y += H_DAY;
 
     rows.forEach((r, ri) => {
-      ctx.fillStyle = ri % 2 ? '#fffdf8' : '#ffffff';
+      ctx.fillStyle = ri % 2 ? ROWALT : '#ffffff';
       ctx.fillRect(PAD - 12, y, W - (PAD - 12) * 2, r.h);
-      ctx.strokeStyle = '#e6ddc9'; ctx.lineWidth = 1;
+      ctx.strokeStyle = LINE; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(PAD - 12, y + r.h); ctx.lineTo(W - PAD + 12, y + r.h); ctx.stroke();
 
       r.cells.forEach((lines, ci) => {
@@ -957,7 +1082,7 @@ function buildLongImage(mode){
         const bx = isTime ? COL_X[ci] + COL[ci] / 2 : COL_X[ci] + 10;
         let ly = y + ROW_PAD + LINE_H / 2;
         lines.forEach(ln => {
-          ctx.fillStyle = isTime ? NAVY : ln.c;
+          ctx.fillStyle = isTime ? (luma(NAVY) > 0.62 ? darken(NAVY, 0.55) : NAVY) : ln.c;
           ctx.font = (isTime ? 'bold ' : (ci === 1 ? 'bold ' : '')) + ln.s + 'px ' + ln.f;
           ctx.fillText(ln.t, bx, ly);
           ly += LINE_H;
@@ -1006,6 +1131,8 @@ function bindRoom(){
     TITLE_ZH = s.titleZh || '活動日程表';
     TITLE_EN = s.titleEn || 'EVENT SCHEDULE';
     FIRST_DAY = s.firstDay || '';
+    KV_COLORS = Array.isArray(s.kvColors) ? s.kvColors : (s.kvColors ? Object.values(s.kvColors) : null);
+    renderKvPreview();
     DAY_LABELS = s.dayLabels || {};
     const toArr = v => v == null ? null : (Array.isArray(v) ? v : Object.values(v));
     ORG_CHIPS = toArr(s.orgChips);
