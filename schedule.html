@@ -17,6 +17,17 @@
   h1{ margin:4px 0 2px; font-size:26px; color:var(--navy); letter-spacing:0.04em; }
   .sub{ font-size:13px; color:var(--navy-light); }
   .toolbar{ display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 6px; align-items:center; }
+  .titlerow{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  /* 右上角下載面板：Word 三種在上、長圖三種在下，2列×3欄 */
+  .dl-panel{ flex-shrink:0; }
+  .dl-grid{ display:grid; grid-template-columns:repeat(3, minmax(112px, 1fr)); gap:7px;
+            background:#fff; border:1px solid var(--paper-line); border-radius:10px; padding:9px; }
+  .dl-btn{ font-size:12.5px; padding:9px 8px; white-space:nowrap; }
+  @media (max-width:760px){
+    .dl-panel{ width:100%; margin-top:12px; }
+    .dl-grid{ grid-template-columns:repeat(3, 1fr); }
+    .dl-btn{ font-size:11.5px; padding:8px 4px; }
+  }
   .btn{ font-family:inherit; font-size:13.5px; font-weight:700; padding:10px 16px; border-radius:6px;
         border:1.5px solid var(--paper-line); background:#fff; color:var(--navy); cursor:pointer; }
   .btn:hover{ border-color:var(--gold); }
@@ -120,7 +131,17 @@
       <h1 id="ui-zh">活動日程表</h1>
       <div class="sub">研討會／活動日程一覽 · 依日期與時間自動排序 · 中英文自動拆分 · 團隊即時同步</div>
     </div>
-    <button class="btn btn--ghost" id="btn-hide-toolbar">隱藏選項</button>
+    <div class="dl-panel" id="dl-panel">
+      <div class="dl-grid" id="dl-grid">
+        <button class="btn dl-btn" id="btn-dl-zh">📄 下載中文版</button>
+        <button class="btn dl-btn" id="btn-dl-en">📄 下載英文版</button>
+        <button class="btn dl-btn" id="btn-dl-bi">📄 下載雙語版</button>
+        <button class="btn dl-btn" id="btn-img-zh">🖼 中文長圖</button>
+        <button class="btn dl-btn" id="btn-img-en">🖼 英文長圖</button>
+        <button class="btn dl-btn" id="btn-img-bi">🖼 雙語長圖</button>
+      </div>
+      <button class="btn btn--ghost" id="btn-hide-toolbar" style="width:100%; margin-top:8px;">隱藏選項</button>
+    </div>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -130,9 +151,6 @@
     <button class="btn" id="btn-import">📂 匯入 Excel</button>
     <input type="file" id="import-input" accept=".xlsx,.xls,.csv" style="display:none">
     <button class="btn" id="btn-settings">⚙ 展名設定(中英)</button>
-    <button class="btn" id="btn-dl-zh">📄 下載中文版</button>
-    <button class="btn" id="btn-dl-en">📄 下載英文版</button>
-    <button class="btn" id="btn-dl-bi">📄 下載雙語版</button>
     <button class="btn btn--danger" id="btn-clear">🗑 清空全部資料</button>
     <button class="btn btn--ghost btn--logout" id="btn-logout">🔓 登出</button>
     <span class="sync" id="sync-status">● 連線中…</span>
@@ -469,6 +487,7 @@ $('btn-logout').addEventListener('click', doLogout);
 function applyToolbarVisibility(){
   const hidden = localStorage.getItem('schedToolbarHidden') === '1';
   $('toolbar').style.display = hidden ? 'none' : 'flex';
+  $('dl-grid').style.display = hidden ? 'none' : 'grid';   // 六顆下載鈕一起收合
   $('btn-hide-toolbar').textContent = hidden ? '顯示選項' : '隱藏選項';
 }
 $('btn-hide-toolbar').addEventListener('click', () => {
@@ -825,6 +844,146 @@ $('import-input').addEventListener('change', async function(){
 });
 
 renderChips();
+/* ── 🖼 長圖匯出：整份日程一張連續 PNG，不斷頁、無表頭標籤、無 Show Day 標籤 ── */
+function buildLongImage(mode){
+  const days = groupedDays();
+  if (days.length === 0) { alert('還沒有活動可以下載'); return; }
+
+  const W = 1240, PAD = 40;
+  const COL = [110, 430, 200, 250, 170];           // 時間/活動/主辦/地點/聯絡
+  const COL_X = []; let cx0 = PAD;
+  COL.forEach(w => { COL_X.push(cx0); cx0 += w; });
+  const NAVY = '#1c2b3a', GOLD = '#b98a2f', INK = '#22303c', SUB = '#3c5570';
+  const FONT_ZH = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
+  const FONT_EN = '"Times New Roman",Times,serif';
+
+  const meas = document.createElement('canvas').getContext('2d');
+  function wrap(text, maxW, size, font){
+    meas.font = size + 'px ' + font;
+    const out = [];
+    String(text||'').split('\n').forEach(seg => {
+      let cur = '';
+      for (const ch of seg){
+        if (meas.measureText(cur + ch).width > maxW && cur){ out.push(cur); cur = ch; }
+        else cur += ch;
+      }
+      out.push(cur);
+    });
+    return out.filter(l => l !== '' || out.length === 1);
+  }
+  // 每格內容：依語言取中/英/雙語，回傳 [{text,font,size,color}] 行陣列
+  function cellLines(pair, maxW, base){
+    const L = [];
+    const zh = pair.zh || (mode === 'en' ? '' : pair.en);
+    const en = pair.en || (mode === 'zh' ? '' : pair.zh);
+    if (mode !== 'en' && zh) wrap(zh, maxW, base, FONT_ZH).forEach(t => L.push({t, f: FONT_ZH, s: base, c: INK}));
+    if (mode !== 'zh' && en) wrap(en, maxW, base - 2, FONT_EN).forEach(t => L.push({t, f: FONT_EN, s: base - 2, c: SUB}));
+    return L;
+  }
+
+  // ── 先量測總高度 ──
+  const H_TITLE = 96, H_DAY = 52, ROW_PAD = 14, LINE_H = 24;
+  const blocks = [];
+  let totalH = H_TITLE + PAD;
+  days.forEach(day => {
+    const rows = [];
+    day.items.forEach(a => {
+      const cells = [
+        [{t: a.time || '', f: FONT_ZH, s: 17, c: NAVY}],
+        cellLines(splitZhEn(a.name), COL[1] - 24, 17),
+        cellLines(splitZhEn(a.org), COL[2] - 24, 15),
+        cellLines(splitZhEn(a.venue), COL[3] - 24, 15),
+        cellLines(splitZhEn(a.contact), COL[4] - 24, 15)
+      ];
+      const maxLines = Math.max(...cells.map(c => c.length), 1);
+      const h = maxLines * LINE_H + ROW_PAD * 2;
+      rows.push({cells, h});
+    });
+    const blockH = H_DAY + rows.reduce((s, r) => s + r.h, 0);
+    blocks.push({day, rows, blockH});
+    totalH += blockH + 18;
+  });
+  totalH += PAD;
+
+  // ── 繪製 ──
+  const SC = 2;
+  const cv = document.createElement('canvas');
+  cv.width = W * SC; cv.height = totalH * SC;
+  const ctx = cv.getContext('2d');
+  ctx.scale(SC, SC);
+  ctx.fillStyle = '#f7f4ee'; ctx.fillRect(0, 0, W, totalH);
+  ctx.textBaseline = 'middle';
+
+  // 標題
+  ctx.fillStyle = NAVY; ctx.fillRect(0, 0, W, H_TITLE);
+  ctx.textAlign = 'center';
+  const tz = (TITLE_ZH && TITLE_ZH !== '活動日程表') ? TITLE_ZH : '';
+  const te = (TITLE_EN && TITLE_EN !== 'EVENT SCHEDULE') ? TITLE_EN : '';
+  const tMain = mode === 'en' ? (te || tz) : (tz || te);
+  const tSubTxt = mode === 'zh' ? '研討會/活動日程表'
+              : mode === 'en' ? 'Event Schedule'
+              : '研討會/活動日程表　Event Schedule';
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 30px ' + FONT_ZH;
+  ctx.fillText(tMain || tSubTxt, W / 2, tMain ? 38 : H_TITLE / 2);
+  if (tMain){ ctx.fillStyle = '#d8b25f'; ctx.font = '17px ' + FONT_ZH; ctx.fillText(tSubTxt, W / 2, 70); }
+
+  let y = H_TITLE + PAD / 2;
+  blocks.forEach(({day, rows}) => {
+    // 日期橫幅（不含 Show Day 標籤）
+    ctx.fillStyle = NAVY;
+    ctx.fillRect(PAD - 12, y, W - (PAD - 12) * 2, H_DAY - 8);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = 'bold 20px ' + FONT_ZH;
+    const dZh = dateZh(day.date), dEn = dateEn(day.date);
+    if (mode === 'en'){ ctx.fillText(dEn, PAD + 6, y + (H_DAY - 8) / 2); }
+    else {
+      ctx.fillText(dZh, PAD + 6, y + (H_DAY - 8) / 2);
+      if (mode === 'bi'){
+        const wZh = ctx.measureText(dZh).width;
+        ctx.fillStyle = '#d8b25f'; ctx.font = '15px ' + FONT_EN;
+        ctx.fillText(dEn, PAD + 6 + wZh + 16, y + (H_DAY - 8) / 2 + 1);
+      }
+    }
+    y += H_DAY;
+
+    rows.forEach((r, ri) => {
+      ctx.fillStyle = ri % 2 ? '#fffdf8' : '#ffffff';
+      ctx.fillRect(PAD - 12, y, W - (PAD - 12) * 2, r.h);
+      ctx.strokeStyle = '#e6ddc9'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD - 12, y + r.h); ctx.lineTo(W - PAD + 12, y + r.h); ctx.stroke();
+
+      r.cells.forEach((lines, ci) => {
+        const isTime = ci === 0;
+        ctx.textAlign = isTime ? 'center' : 'left';
+        const bx = isTime ? COL_X[ci] + COL[ci] / 2 : COL_X[ci] + 10;
+        let ly = y + ROW_PAD + LINE_H / 2;
+        lines.forEach(ln => {
+          ctx.fillStyle = isTime ? NAVY : ln.c;
+          ctx.font = (isTime ? 'bold ' : (ci === 1 ? 'bold ' : '')) + ln.s + 'px ' + ln.f;
+          ctx.fillText(ln.t, bx, ly);
+          ly += LINE_H;
+        });
+      });
+      y += r.h;
+    });
+    y += 18;
+  });
+
+  const now = new Date();
+  const ts = `${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  const suffix = {zh:'中文', en:'英文', bi:'雙語'}[mode];
+  cv.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = `活動日程表_長圖_${suffix}_${ts}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('✓ 長圖已下載');
+  }, 'image/png');
+}
+$('btn-img-zh').addEventListener('click', () => buildLongImage('zh'));
+$('btn-img-en').addEventListener('click', () => buildLongImage('en'));
+$('btn-img-bi').addEventListener('click', () => buildLongImage('bi'));
+
 $('btn-dl-zh').addEventListener('click', () => buildWord('zh'));
 $('btn-dl-en').addEventListener('click', () => buildWord('en'));
 $('btn-dl-bi').addEventListener('click', () => buildWord('bi'));
