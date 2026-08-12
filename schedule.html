@@ -57,10 +57,12 @@
   .t-time{ white-space:nowrap; font-weight:800; color:var(--navy); width:110px; }
   .zh-line{ font-weight:700; }
   .en-line{ color:var(--navy-light); font-size:12.5px; font-family:"Times New Roman","Segoe UI",serif; }
-  .rowbtns{ white-space:nowrap; width:96px; text-align:right; }
-  .mini{ font-size:12px; padding:5px 9px; border-radius:5px; border:1px solid var(--paper-line); background:#fff; cursor:pointer; font-weight:700; color:var(--navy); }
+  .rowbtns{ white-space:normal; width:160px; text-align:right; }
+  .mini{ font-size:12px; padding:5px 9px; border-radius:5px; border:1px solid var(--paper-line); background:#fff; cursor:pointer; font-weight:700; color:var(--navy); margin:2px 0 2px 4px; display:inline-block; }
   .mini:hover{ border-color:var(--gold); }
   .mini--del{ color:var(--danger); }
+  .mini--copy{ color:var(--navy); }
+  .mini--copy:hover{ border-color:var(--navy); background:#f5f7fa; }
   .empty{ padding:36px 10px; text-align:center; color:var(--navy-light); font-size:14px; }
 
   /* modal */
@@ -181,7 +183,10 @@
       </div>
       <input type="file" id="kv-input" accept=".pdf,image/*" style="display:none">
       <button class="btn btn--ghost" id="btn-replay-tour" style="width:100%; margin-top:7px; color:var(--danger); border-style:dashed;">❓ 再看一次操作說明</button>
-      <div id="kv-preview" style="display:none; margin-top:6px; align-items:center; gap:6px; font-size:11.5px; color:var(--navy-light);"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px;">
+        <div id="kv-preview" style="display:none; align-items:center; gap:6px; font-size:11.5px; color:var(--navy-light);"></div>
+        <span id="app-version" style="margin-left:auto; font-size:11.5px; font-weight:700; color:var(--navy-light); background:rgba(30,58,95,.08); border:1px solid rgba(30,58,95,.18); border-radius:999px; padding:2px 9px;"></span>
+      </div>
       <button class="btn btn--ghost" id="btn-hide-toolbar" style="width:100%; margin-top:8px;">隱藏選項</button>
     </div>
   </div>
@@ -232,6 +237,22 @@
     <div class="m-actions">
       <button class="btn" id="act-cancel">取消</button>
       <button class="btn btn--primary" id="act-save">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 複製活動到其他日期（可一次多天） -->
+<div class="mask" id="mask-copy">
+  <div class="modal">
+    <h2>複製活動到其他日期</h2>
+    <div class="datepreview" id="copy-src" style="margin-bottom:4px;"></div>
+    <div class="f-label">勾選要複製到的日期（時間、名稱、主辦、地點、備註都會一起複製）</div>
+    <div id="copy-days" style="display:flex; flex-direction:column; gap:6px; max-height:230px; overflow:auto; padding:4px 2px;"></div>
+    <div class="f-label" style="margin-top:12px;">要複製到清單外的日期？直接補打（一行一個，可填 20260901 或 0901）</div>
+    <textarea class="f-ta" id="copy-extra" rows="2" placeholder="例如：&#10;20260918&#10;0919"></textarea>
+    <div class="m-actions">
+      <button class="btn" id="copy-cancel">取消</button>
+      <button class="btn btn--primary" id="copy-ok">複製</button>
     </div>
   </div>
 </div>
@@ -319,6 +340,10 @@ let DAY_LABELS = {};    // 各日期的自訂標籤，覆蓋自動判斷
 let editId = null;
 
 const $ = id => document.getElementById(id);
+/* ── 版本號：每次改版把數字 +1（V1 → V2 → V3…）──
+   顯示在「目前配色」那一列右邊 */
+const APP_VERSION = 'V1';
+{ const _v = $('app-version'); if(_v) _v.textContent = APP_VERSION; }
 const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 const nl2br = s => esc(s).replace(/\n/g, '<br>');
 
@@ -477,7 +502,7 @@ function render(){
     tb.className = 'agenda';
     tb.innerHTML = `
       <tr class="hdr"><th style="width:110px;">時間 Time</th><th>活動 Event</th><th style="width:16%;">主辦 Organizer</th>
-          <th style="width:20%;">地點 Venue</th><th style="width:18%;">聯絡人/備註</th><th style="width:96px;"></th></tr>`;
+          <th style="width:20%;">地點 Venue</th><th style="width:18%;">聯絡人/備註</th><th style="width:160px;"></th></tr>`;
     day.items.forEach(a => {
       const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
       const cell = p => `${p.zh ? `<div class="zh-line">${nl2br(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2br(p.en)}</div>` : ''}`;
@@ -485,6 +510,7 @@ function render(){
       const c_og = cell(og), c_vn = cell(vn), c_ct = cell(ct);
       const rowBtnsHtml = isLoggedIn()
         ? `<button class="mini" data-edit="${a.id}">編輯</button>
+           <button class="mini mini--copy" data-copy="${a.id}" title="複製到其他日期（可一次多天）">複製</button>
            <button class="mini mini--del" data-del="${a.id}">刪除</button>`
         : '';
       tr.innerHTML = `
@@ -500,6 +526,7 @@ function render(){
   });
 
   list.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => requirePw(() => openAct(b.dataset.edit))));
+  list.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => requirePw(() => openCopy(b.dataset.copy))));
   list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => requirePw(async () => {
     const a = ACT[b.dataset.del];
     if (!confirm(`確定刪除「${(a && a.name || '').split('\n')[0]}」？`)) return;
@@ -578,6 +605,62 @@ $('act-save').addEventListener('click', async () => {
     $('mask-act').classList.remove('show');
     toast('✓ 已儲存並同步');
   } catch (e) { toast('✗ 儲存失敗：' + e.message); }
+});
+
+/* ── 複製活動到其他日期（可一次多天）──
+   針對「同名活動連續好幾天、同時段」的情況：一鍵把整筆活動複製到多個日期。 */
+let copySrcId = null;
+function addDaysIso(iso, n){
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+}
+function openCopy(id){
+  const a = ACT[id];
+  if(!a) return;
+  copySrcId = id;
+  const first = (a.name || '').split('\n')[0];
+  $('copy-src').innerHTML = `來源：<b>${esc(first)}</b>　${esc(a.time || '（未填時間）')}　—　原本在 ${dateZh(a.date)}`;
+  $('copy-extra').value = '';
+  // 列出來源日期之後連續 7 天當勾選清單
+  const box = $('copy-days');
+  box.innerHTML = '';
+  for(let i=1;i<=7;i++){
+    const d = addDaysIso(a.date, i);
+    // 這天是否已有同名同時段的活動？有的話預設不重複建立
+    const dup = Object.values(ACT).some(x => x.date === d && (x.name||'') === (a.name||'') && (x.time||'') === (a.time||''));
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex; align-items:center; gap:9px; font-size:14px; cursor:pointer; padding:5px 8px; border:1px solid var(--line); border-radius:8px;' + (dup ? 'opacity:.55;' : '');
+    row.innerHTML = `<input type="checkbox" value="${d}" ${dup ? 'disabled' : ''} style="width:17px;height:17px;">
+                     <span>${dateZh(d)}　<span style="color:var(--navy-light);font-size:12.5px;">${dateEn(d)}</span></span>
+                     ${dup ? '<span style="margin-left:auto;color:var(--danger);font-size:12px;">已有同活動</span>' : ''}`;
+    box.appendChild(row);
+  }
+  $('mask-copy').classList.add('show');
+}
+$('copy-cancel').addEventListener('click', () => $('mask-copy').classList.remove('show'));
+$('copy-ok').addEventListener('click', async () => {
+  const a = ACT[copySrcId];
+  if(!a){ $('mask-copy').classList.remove('show'); return; }
+  const dates = new Set();
+  $('copy-days').querySelectorAll('input[type=checkbox]:checked').forEach(c => dates.add(c.value));
+  ($('copy-extra').value || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(s => {
+    const iso = parseDateCell(s);
+    if(iso) dates.add(iso);
+  });
+  if(dates.size === 0){ alert('請至少勾選或填一個日期'); return; }
+  try{
+    let n = 0;
+    for(const d of dates){
+      await push(ACT_REF, {
+        date: d, time: a.time || '', name: a.name || '', org: a.org || '',
+        venue: a.venue || '', contact: a.contact || '', updatedAt: Date.now()
+      });
+      n++;
+    }
+    $('mask-copy').classList.remove('show');
+    toast(`✓ 已複製到 ${n} 天`);
+  }catch(e){ toast('✗ 複製失敗：' + e.message); }
 });
 
 /* ── 快速鍵（主辦單位/地點）：可新增、可刪除，存 Firebase 全隊共用 ── */
