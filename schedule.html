@@ -357,7 +357,7 @@ let editId = null;
 const $ = id => document.getElementById(id);
 /* ── 版本號：每次改版把數字 +1（V1 → V2 → V3…）──
    顯示在「目前配色」那一列右邊 */
-const APP_VERSION = 'V7';
+const APP_VERSION = 'V8';
 { const _v = $('app-version'); if(_v) _v.textContent = APP_VERSION; }
 const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 const nl2br = s => esc(s).replace(/\n/g, '<br>');
@@ -1295,13 +1295,13 @@ function buildLongImage(mode){
   days.forEach(day => {
     const rows = [];
     day.items.forEach(a => {
-      const langTxt = (Array.isArray(a.lang) && a.lang.length) ? a.lang.join(' ') : '';
+      const langArr = (Array.isArray(a.lang) && a.lang.length) ? a.lang : [];
       const cells = [
         [{t: a.time || '', f: FONT_ZH, s: 17, c: NAVY}],
         cellLines(splitZhEn(a.name), COL[1] - 32, 17),
         cellLines(splitZhEn(a.org), COL[2] - 32, 15),
         cellLines(splitZhEn(a.venue), COL[3] - 32, 15),
-        langTxt ? [{t: langTxt, f: FONT_ZH, s: 14, c: NAVY}] : [],
+        langArr.map(lg => ({t: lg, f: FONT_ZH, s: 13, c: NAVY, box: true})),   // 語言：逐個帶外框、直向堆疊
         cellLines(splitZhEn(a.contact), COL[5] - 32, 15)
       ];
       const maxLines = Math.max(...cells.map(c => c.length), 1);
@@ -1366,9 +1366,34 @@ function buildLongImage(mode){
         const bx = isTime ? COL_X[ci] + COL[ci] / 2 : COL_X[ci] + 14;
         let ly = y + ROW_PAD + LINE_H / 2;
         lines.forEach(ln => {
-          ctx.fillStyle = isTime ? (luma(NAVY) > 0.62 ? darken(NAVY, 0.55) : NAVY) : ln.c;
-          ctx.font = (isTime ? 'bold ' : (ci === 1 ? 'bold ' : '')) + ln.s + 'px ' + ln.f;
-          ctx.fillText(ln.t, bx, ly);
+          if (ln.box){
+            // 語言小標籤：畫圓角外框 + 置中文字
+            ctx.font = 'bold ' + ln.s + 'px ' + ln.f;
+            const tw = ctx.measureText(ln.t).width;
+            const padX = 8, padY = 4;
+            const bw = tw + padX * 2, bh = ln.s + padY * 2;
+            const boxX = COL_X[ci] + 12, boxY = ly - bh / 2;
+            const rr = 5;
+            ctx.beginPath();
+            ctx.moveTo(boxX + rr, boxY);
+            ctx.arcTo(boxX + bw, boxY, boxX + bw, boxY + bh, rr);
+            ctx.arcTo(boxX + bw, boxY + bh, boxX, boxY + bh, rr);
+            ctx.arcTo(boxX, boxY + bh, boxX, boxY, rr);
+            ctx.arcTo(boxX, boxY, boxX + bw, boxY, rr);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(30,58,95,0.08)';
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = luma(NAVY) > 0.62 ? darken(NAVY, 0.35) : NAVY;
+            ctx.stroke();
+            ctx.textAlign = 'left';
+            ctx.fillStyle = luma(NAVY) > 0.62 ? darken(NAVY, 0.45) : NAVY;
+            ctx.fillText(ln.t, boxX + padX, ly);
+          } else {
+            ctx.fillStyle = isTime ? (luma(NAVY) > 0.62 ? darken(NAVY, 0.55) : NAVY) : ln.c;
+            ctx.font = (isTime ? 'bold ' : (ci === 1 ? 'bold ' : '')) + ln.s + 'px ' + ln.f;
+            ctx.fillText(ln.t, bx, ly);
+          }
           ly += LINE_H;
         });
       });
