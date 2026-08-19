@@ -52,7 +52,7 @@
   table.agenda{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--paper-line); border-top:none; }
   table.agenda th{ background:#efe9dc; font-size:12.5px; letter-spacing:0.06em; color:var(--navy);
                    padding:8px 10px; border-bottom:1px solid var(--paper-line); text-align:left; }
-  table.agenda td{ padding:10px; border-bottom:1px solid #eee6d6; font-size:13.5px; vertical-align:top; }
+  table.agenda td{ padding:10px; border-bottom:1px solid #eee6d6; font-size:13.5px; vertical-align:top; word-break:keep-all; overflow-wrap:break-word; }
   table.agenda tr:last-child td{ border-bottom:none; }
   .t-time{ white-space:nowrap; font-weight:800; color:var(--navy); width:110px; }
   .zh-line{ font-weight:700; }
@@ -63,6 +63,13 @@
   .mini--del{ color:var(--danger); }
   .mini--copy{ color:var(--navy); }
   .mini--copy:hover{ border-color:var(--navy); background:#f5f7fa; }
+  .langpick{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--navy);
+             border:1px solid var(--paper-line); border-radius:999px; padding:6px 12px; cursor:pointer; user-select:none; }
+  .langpick input{ width:16px; height:16px; cursor:pointer; }
+  .langpick:has(input:checked){ border-color:var(--gold); background:rgba(216,178,95,.14); }
+  .lang-tags{ margin-top:4px; }
+  .lang-tag{ display:inline-block; font-size:11px; font-weight:700; color:var(--navy); background:rgba(30,58,95,.09);
+             border:1px solid rgba(30,58,95,.2); border-radius:4px; padding:1px 6px; margin:1px 3px 1px 0; }
   .empty{ padding:36px 10px; text-align:center; color:var(--navy-light); font-size:14px; }
 
   /* modal */
@@ -231,6 +238,14 @@
     <textarea class="f-ta" id="f-venue" rows="2" placeholder="例如：台北南港展覽館1館4樓402會議室 Meeting Room 402, 4F, TaiNEX 1"></textarea>
     <div class="chips" id="chips-venue"></div>
 
+    <div class="f-label">語言（可複選）</div>
+    <div class="chips" id="f-lang" style="gap:8px;">
+      <label class="langpick"><input type="checkbox" value="CH">中文 CH</label>
+      <label class="langpick"><input type="checkbox" value="JP">日文 JP</label>
+      <label class="langpick"><input type="checkbox" value="EN">英文 EN</label>
+      <label class="langpick"><input type="checkbox" value="KR">韓文 KR</label>
+    </div>
+
     <div class="f-label">聯絡人／備註（電話、分機這種中英通用的行，兩個語言版本都會保留）</div>
     <textarea class="f-ta" id="f-contact" rows="3" placeholder="例如：&#10;王小明先生 Mr. Kevin Wang&#10;+886-2-2725-5200 #1234&#10;By Invitation Only"></textarea>
 
@@ -342,10 +357,20 @@ let editId = null;
 const $ = id => document.getElementById(id);
 /* ── 版本號：每次改版把數字 +1（V1 → V2 → V3…）──
    顯示在「目前配色」那一列右邊 */
-const APP_VERSION = 'V1';
+const APP_VERSION = 'V7';
 { const _v = $('app-version'); if(_v) _v.textContent = APP_VERSION; }
 const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 const nl2br = s => esc(s).replace(/\n/g, '<br>');
+// 聯絡人：把「電話／分機」這種一長串的號碼包成不換行，避免 +886-2-...#2615 被拆行
+function nl2brContact(s){
+  return esc(s || '').split('\n').map(line => {
+    // 一行內若含有電話/分機特徵（+、多個-、#、數字很多），整行不換行
+    if (/[#＃]|\+\d|\d[\d\-\u2013\u2014\s]{5,}/.test(line)) {
+      return `<span style="white-space:nowrap;">${line}</span>`;
+    }
+    return line;
+  }).join('<br>');
+}
 
 /* ── 工作人員密碼驗證：新增活動／展名設定／清空全部資料 ──
    驗證成功後同一瀏覽器分頁內免重複輸入（關閉分頁後重新驗證） */
@@ -390,13 +415,19 @@ function toast(msg){
    單行混打（中文接英文）→ 從最後一個中文字切開。 */
 const hasCJK = t => /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/.test(t);
 const hasLatin = t => /[A-Za-z]/.test(t);
+// 視為「中文側」的標點：全形＋半形括號、書名號、破折號等（避免尾巴的 ) 》 被當英文切走）
+const CJK_PUNCT = '，、。：；！？（）「」『』【】《》〈〉〔〕｛｝()［］\\[\\]{}—－～〜·… ';
+const _cjkOrPunct = new RegExp('[\\u4e00-\\u9fff\\u3400-\\u4dbf\\uf900-\\ufaff' +
+  '\\uFF0C\\u3001\\u3002\\uFF1A\\uFF1B\\uFF01\\uFF1F\\uFF08\\uFF09\\u300C\\u300D\\u300E\\u300F\\u3010\\u3011\\u300A\\u300B\\u3008\\u3009\\u3014\\u3015\\uFF5B\\uFF5D\\uFF3B\\uFF3D()\\[\\]{}\\u2014\\uFF0D\\u301C\\uFF5E\\u00B7\\u2026]');
 function splitOneLine(t){
   let lastCJK = -1;
   for (let i = 0; i < t.length; i++) {
-    if (/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff，、。：；！？（）「」『』【】]/.test(t[i])) lastCJK = i;
+    if (_cjkOrPunct.test(t[i])) lastCJK = i;
   }
-  const zh = t.slice(0, lastCJK + 1).trim();
-  const en = t.slice(lastCJK + 1).replace(/^[\s\/\-–—:：,，·]+/, '').trim();
+  let zh = t.slice(0, lastCJK + 1).trim();
+  let en = t.slice(lastCJK + 1).replace(/^[\s\/\-–—:：,，·]+/, '').trim();
+  // 若切出來的「英文」其實沒有半形英文字母（只是括號或符號），退回中文側，別自作聰明斷行
+  if (en && !hasLatin(en)) { zh = (zh + en).trim(); en = ''; }
   return { zh, en };
 }
 function splitZhEn(raw){
@@ -501,13 +532,16 @@ function render(){
     const tb = document.createElement('table');
     tb.className = 'agenda';
     tb.innerHTML = `
-      <tr class="hdr"><th style="width:110px;">時間 Time</th><th>活動 Event</th><th style="width:16%;">主辦 Organizer</th>
-          <th style="width:20%;">地點 Venue</th><th style="width:18%;">聯絡人/備註</th><th style="width:160px;"></th></tr>`;
+      <tr class="hdr"><th style="width:98px;">時間 Time</th><th style="width:24%;">活動 Event</th><th style="width:19%;">主辦 Organizer</th>
+          <th style="width:22%;">地點 Venue</th><th style="width:60px;">語言 Lang</th><th style="width:15%;">聯絡人/備註</th><th style="width:150px;"></th></tr>`;
     day.items.forEach(a => {
       const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
       const cell = p => `${p.zh ? `<div class="zh-line">${nl2br(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2br(p.en)}</div>` : ''}`;
+      const cellContact = p => `${p.zh ? `<div class="zh-line">${nl2brContact(p.zh)}</div>` : ''}${p.en ? `<div class="en-line">${nl2brContact(p.en)}</div>` : ''}`;
+      const langHtml = (Array.isArray(a.lang) && a.lang.length)
+        ? `<div class="lang-tags">${a.lang.map(x => `<span class="lang-tag">${esc(x)}</span>`).join('')}</div>` : '';
       const tr = document.createElement('tr');
-      const c_og = cell(og), c_vn = cell(vn), c_ct = cell(ct);
+      const c_og = cell(og), c_vn = cell(vn), c_ct = cellContact(ct);
       const rowBtnsHtml = isLoggedIn()
         ? `<button class="mini" data-edit="${a.id}">編輯</button>
            <button class="mini mini--copy" data-copy="${a.id}" title="複製到其他日期（可一次多天）">複製</button>
@@ -518,6 +552,7 @@ function render(){
         <td>${cell(nm)}</td>
         <td${c_og ? ' data-l="主辦"' : ''}>${c_og}</td>
         <td${c_vn ? ' data-l="地點"' : ''}>${c_vn}</td>
+        <td${langHtml ? ' data-l="語言"' : ''}>${langHtml}</td>
         <td${c_ct ? ' data-l="聯絡"' : ''}>${c_ct}</td>
         <td class="rowbtns">${rowBtnsHtml}</td>`;
       tb.appendChild(tr);
@@ -546,6 +581,9 @@ function openAct(id){
   $('f-org').value = a.org || '';
   $('f-venue').value = a.venue || '';
   $('f-contact').value = a.contact || '';
+  // 語言複選：a.lang 存成陣列（例如 ['CH','EN']）
+  const langs = Array.isArray(a.lang) ? a.lang : [];
+  $('f-lang').querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = langs.includes(c.value); });
   updateDatePreview(); updateNamePreview();
   $('mask-act').classList.add('show');
 }
@@ -588,6 +626,8 @@ $('pw-ok').addEventListener('click', pwSubmit);
 $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') pwSubmit(); });
 $('act-cancel').addEventListener('click', () => $('mask-act').classList.remove('show'));
 $('act-save').addEventListener('click', async () => {
+  const langs = [];
+  $('f-lang').querySelectorAll('input[type=checkbox]:checked').forEach(c => langs.push(c.value));
   const data = {
     date: $('f-date').value,
     time: normTime($('f-time').value.trim()),
@@ -595,6 +635,7 @@ $('act-save').addEventListener('click', async () => {
     org: $('f-org').value.trim(),
     venue: $('f-venue').value.trim(),
     contact: $('f-contact').value.trim(),
+    lang: langs.length ? langs : null,   // 沒選就存 null（Firebase 會移除該欄）
     updatedAt: Date.now()
   };
   if (!data.date) { alert('請選日期'); return; }
@@ -652,10 +693,10 @@ $('copy-ok').addEventListener('click', async () => {
   try{
     let n = 0;
     for(const d of dates){
-      await push(ACT_REF, {
-        date: d, time: a.time || '', name: a.name || '', org: a.org || '',
-        venue: a.venue || '', contact: a.contact || '', updatedAt: Date.now()
-      });
+      const rec = { date: d, time: a.time || '', name: a.name || '', org: a.org || '',
+        venue: a.venue || '', contact: a.contact || '', updatedAt: Date.now() };
+      if(Array.isArray(a.lang) && a.lang.length) rec.lang = a.lang;
+      await push(ACT_REF, rec);
       n++;
     }
     $('mask-copy').classList.remove('show');
@@ -793,9 +834,9 @@ function buildWord(mode){
   const days = groupedDays();
   if (days.length === 0) { alert('還沒有活動可以下載'); return; }
   const heads = {
-    zh: ['時間', '活動', '主辦單位', '地點', '聯絡人/備註'],
-    en: ['Time', 'Event', 'Organizer', 'Venue', 'Contact Person/Remarks'],
-    bi: ['時間\nTime', '活動\nEvent', '主辦單位\nOrganizer', '地點\nVenue', '聯絡人/備註\nContact Person/Remarks']
+    zh: ['時間', '活動', '主辦單位', '地點', '語言', '聯絡人/備註'],
+    en: ['Time', 'Event', 'Organizer', 'Venue', 'Lang', 'Contact Person/Remarks'],
+    bi: ['時間\nTime', '活動\nEvent', '主辦單位\nOrganizer', '地點\nVenue', '語言\nLang', '聯絡人/備註\nContact Person/Remarks']
   }[mode];
   const dayHead = d => {
     const dd = dayDescriptor(d.date, d.dayNo);
@@ -817,18 +858,20 @@ function buildWord(mode){
 
   const td = `border:1px solid #000; padding:6px 8px; vertical-align:top; font-size:11pt; font-family:${KAI};`;
   let rows = `<tr>${heads.map((h, i) =>
-    `<td style="${td} background:#cccccc; text-align:center; font-weight:bold; font-size:12pt; width:${['2.6cm','6.2cm','3.2cm','3.8cm','3.4cm'][i]};">${nl2br(h)}</td>`
+    `<td style="${td} background:#cccccc; text-align:center; font-weight:bold; font-size:12pt; width:${['2.4cm','5.6cm','3.0cm','3.4cm','1.6cm','3.2cm'][i]};">${nl2br(h)}</td>`
   ).join('')}</tr>`;
 
   days.forEach(day => {
-    rows += `<tr><td colspan="5" style="${td} background:#e8e0cf; font-weight:bold; text-align:center; font-size:12pt;">${nl2br(dayHead(day))}</td></tr>`;
+    rows += `<tr><td colspan="6" style="${td} background:#e8e0cf; font-weight:bold; text-align:center; font-size:12pt;">${nl2br(dayHead(day))}</td></tr>`;
     day.items.forEach(a => {
       const nm = splitZhEn(a.name), og = splitZhEn(a.org), vn = splitZhEn(a.venue), ct = splitZhEn(a.contact);
+      const langTxt = (Array.isArray(a.lang) && a.lang.length) ? a.lang.join('、') : '';
       rows += `<tr>
         <td style="${td} text-align:center; white-space:nowrap;">${esc(a.time || '')}</td>
         <td style="${td}">${langCell(nm, mode)}</td>
         <td style="${td} text-align:center;">${langCell(og, mode)}</td>
         <td style="${td}">${langCell(vn, mode)}</td>
+        <td style="${td} text-align:center; white-space:nowrap;">${esc(langTxt)}</td>
         <td style="${td}">${langCell(ct, mode)}</td>
       </tr>`;
     });
@@ -919,8 +962,16 @@ const IMPORT_KEYS={
   name:['活動','event','名稱','議程','主題','研討','課程','內容'],
   org:['主辦','organizer','單位'],
   venue:['地點','venue','場地','location','會議室'],
+  lang:['語言','lang','language'],
   contact:['聯絡','contact','備註','窗口','remark']
 };
+// 把 "CH、EN" / "CH,EN" / "ch en" 這種轉成 ['CH','EN']（只收 CH/JP/EN/KR）
+function parseLangCell(s){
+  const up = String(s||'').toUpperCase();
+  const out = [];
+  ['CH','JP','EN','KR'].forEach(x=>{ if(up.includes(x)) out.push(x); });
+  return out;
+}
 function detectHeader(rows){
   for(let i=0;i<Math.min(rows.length,12);i++){
     const map={};
@@ -978,7 +1029,7 @@ $('import-input').addEventListener('change', async function(){
       if(hdr){
         const g=k=>hdr.map[k]!==undefined?cells[hdr.map[k]]:'';
         const rowDate=hdr.map.date!==undefined?parseDateCell(raw[hdr.map.date]):null;
-        it={date:rowDate||curDate, time:g('time'), name:g('name'), org:g('org'), venue:g('venue'), contact:g('contact')};
+        it={date:rowDate||curDate, time:g('time'), name:g('name'), org:g('org'), venue:g('venue'), contact:g('contact'), lang:parseLangCell(g('lang'))};
         if(rowDate) curDate=rowDate;
       }else{
         it=guessRow(cells);
@@ -1000,7 +1051,9 @@ $('import-input').addEventListener('change', async function(){
     const preview=items.slice(0,4).map(x=>`${x.date} ${x.time||''}｜${x.name.slice(0,18)}`).join('\n');
     if(!confirm(`解析模式：${hdr?'標題列比對':'逐格特徵猜測'}\n共解析到 ${items.length} 筆活動，例如：\n${preview}${items.length>4?'\n…':''}\n\n確定全部匯入到 Room ${ROOM}？`)) return;
     for(const it of items){
-      await push(ACT_REF,{date:it.date,time:normTime(it.time),name:it.name,org:it.org||'',venue:it.venue||'',contact:it.contact||'',updatedAt:Date.now()});
+      const rec={date:it.date,time:normTime(it.time),name:it.name,org:it.org||'',venue:it.venue||'',contact:it.contact||'',updatedAt:Date.now()};
+      if(Array.isArray(it.lang) && it.lang.length) rec.lang=it.lang;
+      await push(ACT_REF,rec);
     }
     toast(`✓ 已匯入 ${items.length} 筆活動`);
   }catch(e){ alert('匯入失敗：'+(e.message||e)); }
@@ -1016,22 +1069,22 @@ $('import-input').addEventListener('change', async function(){
 $('btn-export-blank').addEventListener('click', async () => {
   try{
     await loadXLSX();
-    const header = ['日期 Date','時間 Time','活動 Event','主辦 Organizer','地點 Venue','聯絡人/備註 Contact'];
-    const guide  = ['↓開頭0直接打，例 0901','↓例 0900-1200','↓中英打一起，會自動拆','↓中英打一起','↓中英打一起','↓例如 Bobo#2882'];
+    const header = ['日期 Date','時間 Time','活動 Event','主辦 Organizer','地點 Venue','語言 Lang','聯絡人/備註 Contact'];
+    const guide  = ['↓開頭0直接打，例 0901','↓例 0900-1200','↓中英打一起，會自動拆','↓中英打一起','↓中英打一起','↓CH/JP/EN/KR 可多選，用、隔開','↓例如 Bobo#2882'];
     const sample = [
-      ['20260901','0900-1200','開幕典禮Opening Ceremony','外貿協會TAITRA','台北南港展覽館1館4樓大會舞台Main Stage, 4F, TaiNEX 1','Bobo#2882'],
-      ['0901','1400-1540','能源實驗室Energy Lab','外貿協會TAITRA','台北南港展覽館1館1樓K區能源實驗室舞台Energy Lab Stage, K Area, 1F, TaiNEX 1','Bobo#2882']
+      ['20260901','0900-1200','開幕典禮Opening Ceremony','外貿協會TAITRA','台北南港展覽館1館4樓大會舞台Main Stage, 4F, TaiNEX 1','CH、EN','Bobo#2882'],
+      ['0901','1400-1540','能源實驗室Energy Lab','外貿協會TAITRA','台北南港展覽館1館1樓K區能源實驗室舞台Energy Lab Stage, K Area, 1F, TaiNEX 1','CH','Bobo#2882']
     ];
     const BLANK_ROWS = 40;                       // 預留 40 列空白給使用者填
     const aoa = [header, guide, ...sample];
-    for(let i=0;i<BLANK_ROWS;i++) aoa.push(['','','','','','']);
+    for(let i=0;i<BLANK_ROWS;i++) aoa.push(['','','','','','','']);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
     // ── 關鍵：把每一格都當「文字」，日期／時間欄位強制文字格式 ──
     //   這樣 0901、0900-1200 開頭的 0 不會被 Excel 吃掉，也不會被當成數字右對齊。
     const nRows = aoa.length;
     for(let r=0;r<nRows;r++){
-      for(let c=0;c<6;c++){
+      for(let c=0;c<7;c++){
         const addr = XLSX.utils.encode_cell({r,c});
         let cell = ws[addr];
         if(!cell){ cell = ws[addr] = {t:'s', v:''}; }
@@ -1041,7 +1094,7 @@ $('btn-export-blank').addEventListener('click', async () => {
         cell.z = '@';                            // 顯示格式：文字
       }
     }
-    ws['!cols'] = [{wch:18},{wch:15},{wch:40},{wch:26},{wch:44},{wch:16}];
+    ws['!cols'] = [{wch:18},{wch:15},{wch:40},{wch:26},{wch:44},{wch:14},{wch:16}];
     // 凍結前兩列（標題＋提示），凍結第一欄，讓長表好填
     ws['!freeze'] = { xSplit: 0, ySplit: 2 };
     const wb = XLSX.utils.book_new();
@@ -1157,8 +1210,8 @@ function buildLongImage(mode){
   const days = groupedDays();
   if (days.length === 0) { alert('還沒有活動可以下載'); return; }
 
-  const W = 1240, PAD = 40;
-  const COL = [110, 430, 200, 250, 170];           // 時間/活動/主辦/地點/聯絡
+  const W = 1480, PAD = 40;
+  const COL = [96, 452, 226, 286, 54, 286];        // 時間/活動/主辦/地點/語言/聯絡（活動加寬→主辦整塊往右；欄間留白靠 wrap 的 -32 與 inset 14）
   const COL_X = []; let cx0 = PAD;
   COL.forEach(w => { COL_X.push(cx0); cx0 += w; });
   // 配色：有 KV 色票就用，否則維持預設深藍
@@ -1187,24 +1240,49 @@ function buildLongImage(mode){
   const FONT_EN = '"Times New Roman",Times,serif';
 
   const meas = document.createElement('canvas').getContext('2d');
+  // 換行：先照你自己打的換行（\n）分段；每段太長才折。
+  // 英文/數字盡量在「空白（單字邊界）」斷，不會把 Machinery 拆成 Machiner|y；
+  // 中文沒有空白，維持逐字折。
   function wrap(text, maxW, size, font){
     meas.font = size + 'px ' + font;
     const out = [];
+    const fits = s => meas.measureText(s).width <= maxW;
     String(text||'').split('\n').forEach(seg => {
+      if (fits(seg)) { out.push(seg); return; }
+      // 用空白切成 token（保留中間空白概念），一個個往上加
+      const tokens = seg.split(/(\s+)/);   // 保留空白分隔
       let cur = '';
-      for (const ch of seg){
-        if (meas.measureText(cur + ch).width > maxW && cur){ out.push(cur); cur = ch; }
-        else cur += ch;
+      const pushCur = () => { if (cur.trim() !== '' || cur === seg) out.push(cur.replace(/\s+$/,'')); cur = ''; };
+      for (let token of tokens){
+        if (token === '') continue;
+        // 空白：能接就接，接不下就換行
+        if (/^\s+$/.test(token)){ if (fits(cur + token)) cur += token; continue; }
+        // 單一 token 就已經比整欄還寬（超長英文字或一整串中文）→ 逐字折
+        if (!fits(token)){
+          if (cur){ pushCur(); }
+          let piece = '';
+          for (const ch of token){
+            if (!fits(piece + ch) && piece){ out.push(piece); piece = ch; }
+            else piece += ch;
+          }
+          cur = piece;
+          continue;
+        }
+        // 一般情況：試著把 token 接到目前這行
+        if (fits(cur + token)) cur += token;
+        else { pushCur(); cur = token; }
       }
-      out.push(cur);
+      if (cur !== '') out.push(cur.replace(/\s+$/,''));
     });
     return out.filter(l => l !== '' || out.length === 1);
   }
   // 每格內容：依語言取中/英/雙語，回傳 [{text,font,size,color}] 行陣列
   function cellLines(pair, maxW, base){
     const L = [];
-    const zh = pair.zh || (mode === 'en' ? '' : pair.en);
-    const en = pair.en || (mode === 'zh' ? '' : pair.zh);
+    // 雙語模式：有什麼顯示什麼，不互相退回（避免只有單一語言時重複顯示兩次）
+    // 單語模式：該語言沒有內容時，退回另一語言，避免整格空白
+    const zh = mode === 'bi' ? pair.zh : (pair.zh || (mode === 'en' ? '' : pair.en));
+    const en = mode === 'bi' ? pair.en : (pair.en || (mode === 'zh' ? '' : pair.zh));
     if (mode !== 'en' && zh) wrap(zh, maxW, base, FONT_ZH).forEach(t => L.push({t, f: FONT_ZH, s: base, c: INK}));
     if (mode !== 'zh' && en) wrap(en, maxW, base - 2, FONT_EN).forEach(t => L.push({t, f: FONT_EN, s: base - 2, c: SUB}));
     return L;
@@ -1217,12 +1295,14 @@ function buildLongImage(mode){
   days.forEach(day => {
     const rows = [];
     day.items.forEach(a => {
+      const langTxt = (Array.isArray(a.lang) && a.lang.length) ? a.lang.join(' ') : '';
       const cells = [
         [{t: a.time || '', f: FONT_ZH, s: 17, c: NAVY}],
-        cellLines(splitZhEn(a.name), COL[1] - 24, 17),
-        cellLines(splitZhEn(a.org), COL[2] - 24, 15),
-        cellLines(splitZhEn(a.venue), COL[3] - 24, 15),
-        cellLines(splitZhEn(a.contact), COL[4] - 24, 15)
+        cellLines(splitZhEn(a.name), COL[1] - 32, 17),
+        cellLines(splitZhEn(a.org), COL[2] - 32, 15),
+        cellLines(splitZhEn(a.venue), COL[3] - 32, 15),
+        langTxt ? [{t: langTxt, f: FONT_ZH, s: 14, c: NAVY}] : [],
+        cellLines(splitZhEn(a.contact), COL[5] - 32, 15)
       ];
       const maxLines = Math.max(...cells.map(c => c.length), 1);
       const h = maxLines * LINE_H + ROW_PAD * 2;
@@ -1283,7 +1363,7 @@ function buildLongImage(mode){
       r.cells.forEach((lines, ci) => {
         const isTime = ci === 0;
         ctx.textAlign = isTime ? 'center' : 'left';
-        const bx = isTime ? COL_X[ci] + COL[ci] / 2 : COL_X[ci] + 10;
+        const bx = isTime ? COL_X[ci] + COL[ci] / 2 : COL_X[ci] + 14;
         let ly = y + ROW_PAD + LINE_H / 2;
         lines.forEach(ln => {
           ctx.fillStyle = isTime ? (luma(NAVY) > 0.62 ? darken(NAVY, 0.55) : NAVY) : ln.c;
