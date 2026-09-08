@@ -113,6 +113,7 @@ tbody tr.no-assign:hover{filter:brightness(.97);}
 .bgr{background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);}
 .bpu{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(130,80,223,.25);}
 .btl{background:var(--teal-bg);color:var(--teal);border:1px solid rgba(27,122,110,.25);}
+.brd{background:var(--red-bg);color:var(--red);border:1px solid rgba(207,34,46,.25);}
 
 .ra{display:flex;gap:3px;justify-content:center;opacity:0;transition:opacity .15s;}
 tbody tr:hover .ra{opacity:1;}
@@ -198,6 +199,7 @@ textarea.fi{resize:vertical;min-height:48px;}
 .drag-tag.t-speech{background:var(--green-bg);color:var(--green);border-color:rgba(26,127,55,.4);}
 .drag-tag.t-watch{background:var(--ac-bg);color:var(--ac);border-color:rgba(9,105,218,.4);}
 .drag-tag.t-escort{background:var(--purple-bg);color:var(--purple);border-color:rgba(130,80,223,.4);}
+.drag-tag.t-travel{background:var(--red-bg);color:var(--red);border-color:rgba(207,34,46,.4);}
 .drag-tag.t-clear{background:var(--sf2);color:var(--tx2);border-color:var(--bd);}
 .drag-tag:hover{transform:translateY(-1px);box-shadow:var(--shadow);}
 .drag-tag.locked{opacity:.4;cursor:pointer;filter:grayscale(.4);}
@@ -333,6 +335,7 @@ th.expo-col{width:64px;}
     <div class="drag-tag t-speech locked" data-tag="出席/致詞">出席/致詞</div>
     <div class="drag-tag t-watch locked" data-tag="出席/觀禮">出席/觀禮</div>
     <div class="drag-tag t-escort locked" data-tag="陪同">陪同</div>
+    <div class="drag-tag t-travel locked" data-tag="出差">出差</div>
     <div class="drag-tag t-clear locked" data-tag="">✕ 清除</div>
     <span class="tag-hint" id="tag-hint">🔒 點標籤輸入密碼解鎖，即可拖曳到下方長官格子</span>
   </div>
@@ -979,7 +982,7 @@ function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function isNA(a){ return !PEOPLE.some(p=>a[p]) && !a.escort; }
 function bdg(t){
   if(!t) return `<span style="color:var(--tx3);font-size:15px">—</span>`;
-  const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bgr',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
+  const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bgr',出差:'brd',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
   const k=Object.keys(m).find(k=>t.includes(k));
   return `<span class="bdg ${m[k]||'bbl'}">${esc(t)}</span>`;
 }
@@ -1235,6 +1238,7 @@ function xlsRoleStyle(t){
   if(!t) return null;
   if(t.includes('致詞')||t.includes('揭幕')) return {font:'FF375623',fill:'FFE2EFDA'};   // 綠
   if(t.includes('陪同'))                       return {font:'FF404040',fill:'FFF2F2F2'}; // 灰
+  if(t.includes('出差'))                       return {font:'FF9B2226',fill:'FFFCE4E4'}; // 紅
   if(t.includes('彩排')||t.includes('受訪'))   return {font:'FF7F6000',fill:'FFFFF2CC'}; // 琥珀
   if(t.includes('接')||t.includes('致意'))     return {font:'FF5B2E91',fill:'FFEDE3F7'}; // 紫
   return {font:'FF1F4E79',fill:'FFDEEAF1'};                                             // 藍（出席/觀禮/主持…）
