@@ -89,7 +89,7 @@ select.chip:focus{outline:none;border-color:var(--ac);}
 
 .tbl-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:17.2px;}
-.desk-tbl table{table-layout:fixed;min-width:1080px;}
+.desk-tbl table{table-layout:fixed;min-width:1130px;}
 .desk-tbl td.ev,.desk-tbl td.lo,.desk-tbl td.sm{word-break:break-word;white-space:normal;}
 thead th{background:var(--sf2);color:var(--tx2);font-size:14.2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:8px 6px;text-align:center;border-bottom:2px solid var(--bd);white-space:nowrap;}
 th.tl,td.tl{text-align:left!important;}
@@ -987,6 +987,7 @@ function bdg(t){
   return `<span class="bdg ${m[k]||'bbl'}">${esc(t)}</span>`;
 }
 function g(id){ return document.getElementById(id); }
+function pname(s){ return esc(s||'').replace(/ /g,'&nbsp;'); }
 
 /* ── FILTERS ── */
 window.toggleP = el=>{
@@ -1038,10 +1039,10 @@ function render(){
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
-        <td class="sm">${esc(a.escort||'—')}</td>
-        <td class="sm tl">${esc(a.guest||'—')}</td>
+        <td class="sm">${pname(a.escort)||'—'}</td>
+        <td class="sm tl">${pname(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
-        <td class="sm">${esc(a.contact||'—')}</td>
+        <td class="sm">${pname(a.contact)||'—'}</td>
         <td><div class="ra">
           <button class="ab" onclick="openEdit('${a.id}')" title="編輯">✎</button>
           <button class="ab dl" onclick="delE('${a.id}')" title="刪除">✕</button>
@@ -1085,7 +1086,7 @@ function render(){
           ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:86px"><col style="width:168px"><col style="width:112px">
           ${PEOPLE.map(()=>'<col style="width:64px">').join('')}
-          <col style="width:66px"><col style="width:120px"><col style="width:58px">
+          <col style="width:66px"><col style="width:170px"><col style="width:58px">
           <col style="width:90px"><col style="width:46px">
         </colgroup>
         <thead><tr>
