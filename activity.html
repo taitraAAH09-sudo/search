@@ -1899,7 +1899,7 @@ window.doExport = async function() {
 
     const ws = wb.addWorksheet('席次圖');
 
-    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（逐字由上往下排列，適合紙本席次卡）\n取消＝橫書（一般 Excel 閱讀方式）');
+    const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（文字由上至下排列＋@微軟正黑體，中文正立、英文橫躺）\n取消＝橫書（一般 Excel 閱讀方式）');
 
     function toVerticalRichText(str, baseSize) {
         if (!str) return null;
@@ -2000,11 +2000,11 @@ window.doExport = async function() {
                 nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
 
                 if (useVertical) {
-                    // 使用 Excel 原生「垂直文字」(vertText)，等同工具列的「垂直文字」按鈕，
-                    // 儲存格內容保持完整字串，不再逐字插入換行
+                    // Excel「文字由上至下排列」(textRotation=180，ExcelJS 寫 -90) ＋ 直式字型「@微軟正黑體」：
+                    // 中文字會轉回正向由上往下讀，英文維持橫躺；多行時第一行在最右、往左排
                     nameCell.value = fullName;
-                    nameCell.font = { name:'微軟正黑體', size:12, bold:true };
-                    nameCell.alignment = { horizontal:'center', vertical:'top', textRotation:'vertical' };
+                    nameCell.font = { name:'@微軟正黑體', size:12, bold:true };
+                    nameCell.alignment = { horizontal:'center', vertical:'top', textRotation:-90, wrapText:true };
                 } else {
                     nameCell.value = fullName;
                     nameCell.font = { name:'微軟正黑體', size:13, bold:true };
