@@ -154,6 +154,16 @@ body.theater .seat.se:not(.filled){border-color:rgba(249,168,212,.45);}
 body.theater .seat.checked-in{background:#334155!important;border-color:#475569!important;color:#94A3B8!important;text-shadow:none;}
 body.theater .seat.checked-in::after{content:"✓";font-size:13px;font-weight:900;color:#4ADE80;top:2px;right:4px;}
 body.theater .round-table-center{background:#1E293B;border-color:#334155;color:#CBD5E1;}
+body.theater{overflow-x:hidden;}
+body.theater #vr{width:max-content;min-width:0;margin:0 auto;}
+body.theater .vrow,body.theater .zone-header-row{min-width:0!important;}
+/* 縮放按鈕 */
+.th-zoom{display:none;position:fixed;top:14px;right:18px;z-index:90;align-items:center;gap:2px;background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:blur(6px);}
+body.theater .th-zoom{display:flex;}
+.th-zoom button{border:none;background:transparent;color:#E2E8F0;font-size:13px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;min-width:58px;}
+.th-zoom button:hover:not(:disabled){background:rgba(255,255,255,.12);}
+.th-zoom button:disabled{opacity:.3;cursor:default;}
+.th-zoom .th-zv{min-width:64px;color:#FDE047;font-variant-numeric:tabular-nums;border-left:1px solid rgba(255,255,255,.1);border-right:1px solid rgba(255,255,255,.1);border-radius:0;}
 /* 搜尋亮燈 */
 body.th-searching .seat:not(.th-hit){opacity:.18;filter:saturate(.3);}
 body.th-searching .seat:not(.th-hit):hover{opacity:.6;}
@@ -522,6 +532,11 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div id="vr"></div>
 </div>
 
+<div class="th-zoom" id="th-zoom">
+  <button type="button" id="th-zminus" onclick="stepTheaterZoom(-1)" title="縮小 10%（快捷鍵 -）">−10%</button>
+  <button type="button" class="th-zv" id="th-zv" onclick="setTheaterZoom(1)" title="回到符合螢幕（快捷鍵 0）">100%</button>
+  <button type="button" id="th-zplus" onclick="stepTheaterZoom(1)" title="放大 10%（快捷鍵 +）">+10%</button>
+</div>
 <div class="th-dock" id="th-dock">
   <div class="th-search">
     <div class="th-sbox">
@@ -1103,6 +1118,7 @@ function buildRoundVenue(keys, wrap) {
     wrap.appendChild(rowWrap);
 }
 
+let theaterZoom = 1; // 劇院模式縮放倍率，100% = 剛好符合螢幕
 function buildGridVenue(keys, wrap) {
     document.querySelector('.stage').textContent = 'STAGE / 舞台 (方陣排座模式)';
     let maxRow = 0; const zoneSet = new Set(), maxSeatPerZone = {};
@@ -1123,10 +1139,13 @@ function buildGridVenue(keys, wrap) {
     const isTheater = document.body.classList.contains('theater');
     const seatGap = isTheater ? 4 : 0; // 劇院模式座位之間留縫
     const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1) - seatGap * (totalCols - zones.length)) / totalCols);
-    const seatW = Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
+    const seatW = isTheater
+        ? Math.max(24, Math.floor(Math.max(calculatedSeatW, 44) * theaterZoom))
+        : Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
     const seatH = isTheater
-        ? Math.max(40, Math.min(96, Math.floor((window.innerHeight - 300) / Math.max(maxRow,1)) - 5))
-        : 0; // 劇院模式：座位加高填滿畫面
+        ? Math.max(22, Math.floor(Math.max(40, Math.min(96, Math.floor((window.innerHeight - 300) / Math.max(maxRow,1)) - 5)) * theaterZoom))
+        : 0;
+    const seatFont = isTheater ? Math.max(9, Math.min(24, Math.round((seatH / theaterZoom >= 60 ? 15 : 14) * theaterZoom))) : 0; // 劇院模式：座位加高填滿畫面
 
     const hdr = document.createElement('div'); hdr.className = 'zone-header-row';
     let hdrHTML = `<div style="width:${rowLabelW}px;flex-shrink:0;"></div>`;
@@ -1147,7 +1166,7 @@ function buildGridVenue(keys, wrap) {
                 const code = `${z}${r}-${s}`;
                 const el = document.createElement('div');
                 const colorClass = ['sa', 'sb', 'sc', 'sd', 'se'][i % 5];
-                el.className = `seat ${colorClass}`; el.style.width = seatW + 'px'; if (seatH) { el.style.height = seatH + 'px'; el.style.fontSize = (seatH >= 60 ? 15 : 14) + 'px'; } el.id = 's-' + code; el.dataset.id = code; el.title = code;
+                el.className = `seat ${colorClass}`; el.style.width = seatW + 'px'; if (seatH) { el.style.height = seatH + 'px'; el.style.fontSize = seatFont + 'px'; } el.id = 's-' + code; el.dataset.id = code; el.title = code;
                 if (!keys.includes(code)) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; } 
                 else attachSeatEvents(el, code);
                 zoneDiv.appendChild(el);
@@ -1314,6 +1333,7 @@ window.enterTheater=function(){
   closeModal();
   document.body.classList.add('theater');
   window.scrollTo(0,0);
+  loadTheaterZoom(); applyTheaterZoom();
   const el=document.documentElement;
   if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
   rebuildForTheater();
@@ -1322,6 +1342,7 @@ window.exitTheater=function(){
   if(!document.body.classList.contains('theater')) return;
   closeModal();
   document.body.classList.remove('theater','th-searching');
+  document.getElementById('vr').style.zoom='';
   document.querySelectorAll('.seat.th-hit').forEach(el=>el.classList.remove('th-hit'));
   const m=document.querySelector('#modal-bg .modal'); m.style.left=''; m.style.top='';
   if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{});
@@ -1333,6 +1354,41 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||e.defaultPrevented||!document.body.classList.contains('theater')) return;
   if(document.getElementById('modal-bg').classList.contains('show')) closeModal(); else exitTheater();
 });
+// ── 🔎 劇院模式縮放：每次 ±10%，範圍 50%～200%，每個活動各自記住 ──
+const TH_ZMIN=0.5, TH_ZMAX=2;
+function zoomKey(){ return 'theaterZoom:'+PROJECT_ID; }
+function loadTheaterZoom(){
+  let z=1; try{ z=parseFloat(localStorage.getItem(zoomKey()))||1; }catch(e){}
+  theaterZoom=Math.min(TH_ZMAX,Math.max(TH_ZMIN,z));
+}
+function paintZoomUI(){
+  const pct=Math.round(theaterZoom*100);
+  document.getElementById('th-zv').textContent=pct+'%';
+  document.getElementById('th-zminus').disabled=theaterZoom<=TH_ZMIN+1e-6;
+  document.getElementById('th-zplus').disabled=theaterZoom>=TH_ZMAX-1e-6;
+}
+function applyTheaterZoom(){
+  const vr=document.getElementById('vr');
+  const th=document.body.classList.contains('theater');
+  // 圓桌模式座位是固定像素，用 CSS zoom 整體縮放；方陣模式直接重算格子大小（字才不會糊）
+  vr.style.zoom=(th&&layoutMode==='round'&&theaterZoom!==1)?theaterZoom:'';
+  paintZoomUI();
+}
+window.setTheaterZoom=function(z){
+  theaterZoom=Math.min(TH_ZMAX,Math.max(TH_ZMIN,Math.round(z*10)/10));
+  try{ localStorage.setItem(zoomKey(),theaterZoom); }catch(e){}
+  applyTheaterZoom();
+  if(Object.keys(seatMap).length){ buildVenue(Object.keys(seatMap)); refreshAll(); }
+};
+window.stepTheaterZoom=function(d){ setTheaterZoom(theaterZoom+d*0.1); };
+document.addEventListener('keydown',e=>{
+  if(!document.body.classList.contains('theater')||e.ctrlKey||e.metaKey||e.altKey) return;
+  const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable)) return;
+  if(e.key==='+'||e.key==='='){ e.preventDefault(); stepTheaterZoom(1); }
+  else if(e.key==='-'||e.key==='_'){ e.preventDefault(); stepTheaterZoom(-1); }
+  else if(e.key==='0'){ e.preventDefault(); setTheaterZoom(1); }
+});
+
 // ── 🔍 劇院模式搜尋：符合的座位亮燈，其餘變暗 ──
 let thHits=[];
 function applyTheaterSearch(){
@@ -1764,7 +1820,8 @@ function locateSeat(code){
   const el0=document.getElementById('s-'+code);
   if(!el0) return;
   // inline:'center' 讓座位圖的「橫向捲動」也自動捲到目標（手機上B區在畫面外時必要）
-  el0.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+  const thMode=document.body.classList.contains('theater');
+  el0.scrollIntoView({behavior:'smooth', block:thMode?'nearest':'center', inline:thMode?'nearest':'center'});
   const pin=document.createElement('div');
   pin.className='seat-pin';
   pin.textContent='📍';
