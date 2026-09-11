@@ -130,6 +130,26 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 .mn-edit button{flex:none;padding:6px 10px;border-radius:6px;border:1px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;}
 .mn-edit .mn-ok{background:#2563EB;border-color:#2563EB;color:#fff;}
 .mn-edit .mn-ok:hover{background:#1D4ED8;}
+/* ── 🎬 劇院模式 ── */
+.btn-theater{background:#111827;color:#FDE68A;border-color:#111827;font-size:13px;padding:8px 18px;font-weight:700;letter-spacing:.5px;}
+.btn-theater:hover{background:#000;color:#FEF3C7;}
+body.theater{padding:10px;background:#E5E7EB;}
+body.theater #main-title,body.theater #header-sub,body.theater .top,body.theater .pbar,body.theater #ptxt,body.theater .legend,body.theater .panel{display:none!important;}
+body.theater .venue{margin:0;min-height:calc(100vh - 20px);border:none;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+body.theater .stage{font-size:13px;font-weight:700;color:#6B7280;background:linear-gradient(180deg,#F3F4F6,#fff);padding:8px;margin-bottom:10px;}
+.theater-bar{display:none;position:fixed;top:14px;right:18px;z-index:90;align-items:center;gap:10px;background:rgba(17,24,39,.88);color:#fff;padding:6px 8px 6px 14px;border-radius:99px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+body.theater .theater-bar{display:flex;}
+.theater-bar b{color:#FDE68A;font-weight:700;}
+.theater-bar button{border:none;background:#fff;color:#111;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;}
+.theater-bar button:hover{background:#FDE68A;}
+/* 劇院模式的座位視窗：不遮背景、可拖曳、點其他格子直接切換 */
+body.theater #modal-bg{background:transparent;pointer-events:none;display:none;}
+body.theater #modal-bg.show{display:block;}
+body.theater #modal-bg .modal{pointer-events:auto;position:fixed;width:380px;max-width:calc(100vw - 20px);max-height:calc(100vh - 20px);overflow-y:auto;border-radius:14px;padding:6px 16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);}
+body.theater #modal-bg .modal-handle{width:100%;height:auto;background:none;margin:0 0 6px;padding:6px 0 4px;cursor:move;touch-action:none;display:flex;justify-content:center;}
+body.theater #modal-bg .modal-handle::before{content:"";width:44px;height:5px;border-radius:3px;background:#CBD5E1;}
+body.theater #modal-bg .modal-handle:hover::before{background:#94A3B8;}
+body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .modal-section{font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:6px;letter-spacing:.5px;}
 .tag-row{display:flex;gap:8px;margin-bottom:10px;}
 .tag-btn{flex:1;padding:9px;border-radius:10px;border:1.5px solid;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
@@ -427,6 +447,9 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
     <div class="stat"><span class="sv" id="se">0</span><span class="sl">空位</span></div>
     <div class="stat"><span class="sv" id="sg">0</span><span class="sl">賓客</span></div>
   </div>
+  <div style="flex:1;display:flex;justify-content:center;">
+    <button class="btn btn-theater" onclick="enterTheater()">🎬 電影院劇院模式</button>
+  </div>
   <div class="btns">
     <button class="btn" onclick="showEventSelect()" id="btn-switch-event" style="border-color:#7C3AED;color:#7C3AED;background:#F0EAF9;display:none;">🔄 切換/建立活動</button>
     <button class="btn" id="btn-login" onclick="handleAuth()" style="border-color:#FCA5A5;color:#B91C1C;background:#FEF2F2;">🔒 登入</button>
@@ -450,6 +473,10 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
   <div class="leg"><div class="ld" style="background:#6366F1;border:0.5px solid #4338CA;"></div>佔用</div>
 </div>
 
+<div class="theater-bar" id="theater-bar">
+  <span>🎬 劇院模式　已報到 <b id="th-ci">0</b> / <b id="th-as">0</b></span>
+  <button onclick="exitTheater()">✕ 離開</button>
+</div>
 <div class="venue" id="venue-wrap">
   <div class="stage">請登入後選擇活動開始使用</div>
   <div id="vr"></div>
@@ -1031,6 +1058,9 @@ function buildGridVenue(keys, wrap) {
     const rowLabelW = 24, gapW = 12, availW = document.getElementById('venue-wrap').clientWidth - 32;
     const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1)) / totalCols);
     const seatW = Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
+    const seatH = document.body.classList.contains('theater')
+        ? Math.max(40, Math.min(90, Math.floor((window.innerHeight - 130) / Math.max(maxRow,1)) - 2))
+        : 0; // 劇院模式：座位加高填滿畫面
 
     const hdr = document.createElement('div'); hdr.className = 'zone-header-row';
     let hdrHTML = `<div style="width:${rowLabelW}px;flex-shrink:0;"></div>`;
@@ -1051,7 +1081,7 @@ function buildGridVenue(keys, wrap) {
                 const code = `${z}${r}-${s}`;
                 const el = document.createElement('div');
                 const colorClass = ['sa', 'sb', 'sc', 'sd', 'se'][i % 5];
-                el.className = `seat ${colorClass}`; el.style.width = seatW + 'px'; el.id = 's-' + code; el.dataset.id = code; el.title = code;
+                el.className = `seat ${colorClass}`; el.style.width = seatW + 'px'; if (seatH) { el.style.height = seatH + 'px'; el.style.fontSize = (seatH >= 60 ? 15 : 14) + 'px'; } el.id = 's-' + code; el.dataset.id = code; el.title = code;
                 if (!keys.includes(code)) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; } 
                 else attachSeatEvents(el, code);
                 zoneDiv.appendChild(el);
@@ -1129,6 +1159,7 @@ window.openModal = function(code){
       else{ ciBtn0.textContent='☑ 標記報到'; ciBtn0.className='checkin-modal-btn'; }
     }else{ ciBtn0.style.display='none'; }
     document.getElementById('modal-bg').classList.add('show');
+    if(document.body.classList.contains('theater')) placeTheaterModal();
     return;
   }
   
@@ -1162,6 +1193,7 @@ window.openModal = function(code){
     else{ ciBtn.textContent='☑ 標記報到'; ciBtn.className='checkin-modal-btn'; }
   }else{ ciBtn.style.display='none'; }
   document.getElementById('modal-bg').classList.add('show');
+  if(document.body.classList.contains('theater')) placeTheaterModal();
 }
 
 // ── ✏️ 彈窗內直接編輯賓客名稱 ──
@@ -1186,28 +1218,19 @@ window.saveNameEdit=function(){
   if(!newName) return toast('名稱不能空白','ter');
   if(newName===oldName) return cancelNameEdit();
 
-  if(oldName){
-    // 改名：名單、所有座位指派、舊結構殘留、報到紀錄一起換
-    if(guests.includes(newName)) return toast('名單中已有「'+newName.substring(0,12)+'」，請換個名稱','ter');
-    const idx=guests.indexOf(oldName);
-    if(idx>-1) guests[idx]=newName; else guests.push(newName);
-    guests.sort();
-    Object.keys(asgn).forEach(c=>{ if(asgn[c]===oldName) asgn[c]=newName; });
-    Object.keys(seatMap).forEach(c=>{ if(seatMap[c]===oldName) seatMap[c]=newName; });
-    if(window.checkins){
-      Object.entries(window.checkins).forEach(([c,v])=>{
-        if(v&&v.name===oldName){ v.name=newName; set(ref(db, PROJECT_ID+'/checkins2026/'+c+'/name'), newName).catch(()=>{}); }
-      });
-    }
-    toast('已更名','tok');
-  }else{
-    // 空位：輸入名字直接新增並指派
-    const takenAt=Object.keys(asgn).find(c=>asgn[c]===newName);
-    if(takenAt) return toast('此賓客已在座位 '+takenAt,'ter');
-    if(!guests.includes(newName)){ guests.push(newName); guests.sort(); }
-    asgn[code]=newName; delete occupied[code];
-    toast('已新增並指派','tok');
+  // 只改這一格：其他同名座位（如整排「國際媒體」）不受影響
+  const dupAt=Object.keys(asgn).find(c=>c!==code&&asgn[c]===newName);
+  asgn[code]=newName; delete occupied[code];
+  if(!guests.includes(newName)) guests.push(newName);
+  if(oldName && !Object.values(asgn).includes(oldName)){
+    // 舊名字已沒有任何座位在用 → 從名單移除，免得變成一顆未分配的殘留
+    const idx=guests.indexOf(oldName); if(idx>-1) guests.splice(idx,1);
+    Object.keys(seatMap).forEach(c=>{ if(seatMap[c]===oldName) seatMap[c]=''; });
   }
+  guests.sort();
+  const ci=window.checkins&&window.checkins[code];
+  if(ci){ ci.name=newName; set(ref(db, PROJECT_ID+'/checkins2026/'+code+'/name'), newName).catch(()=>{}); }
+  toast(dupAt?('已更新（座位 '+dupAt+' 也叫這個名字）'):(oldName?'已更名':'已新增並指派'), dupAt?'tin':'tok');
   refreshAll(); scheduleSave(); openModal(code);
 };
 document.getElementById('m-name-input').addEventListener('keydown',e=>{
@@ -1215,6 +1238,63 @@ document.getElementById('m-name-input').addEventListener('keydown',e=>{
   if(e.key==='Enter'){ e.preventDefault(); saveNameEdit(); }
   else if(e.key==='Escape'){ e.preventDefault(); cancelNameEdit(); }
 });
+
+// ── 🎬 劇院模式：只留座位格子，視窗可拖曳 ──
+let theaterPos=null; // 視窗位置（本次開啟期間記住）
+function rebuildForTheater(){
+  requestAnimationFrame(()=>{ if(Object.keys(seatMap).length){ buildVenue(Object.keys(seatMap)); refreshAll(); } });
+}
+window.enterTheater=function(){
+  closeModal();
+  document.body.classList.add('theater');
+  window.scrollTo(0,0);
+  const el=document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  rebuildForTheater();
+};
+window.exitTheater=function(){
+  if(!document.body.classList.contains('theater')) return;
+  closeModal();
+  document.body.classList.remove('theater');
+  const m=document.querySelector('#modal-bg .modal'); m.style.left=''; m.style.top='';
+  if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  rebuildForTheater();
+};
+// 按 Esc 跳出全螢幕時，順便離開劇院模式
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement) exitTheater(); });
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||e.defaultPrevented||!document.body.classList.contains('theater')) return;
+  if(document.getElementById('modal-bg').classList.contains('show')) closeModal(); else exitTheater();
+});
+function placeTheaterModal(){
+  const m=document.querySelector('#modal-bg .modal');
+  const w=m.offsetWidth||380, h=m.offsetHeight||420;
+  if(!theaterPos) theaterPos={x:window.innerWidth-w-20, y:window.innerHeight-h-20}; // 預設右下角
+  theaterPos.x=Math.max(8,Math.min(theaterPos.x, window.innerWidth-w-8));
+  theaterPos.y=Math.max(8,Math.min(theaterPos.y, window.innerHeight-Math.min(h,60)-8));
+  m.style.left=theaterPos.x+'px'; m.style.top=theaterPos.y+'px';
+}
+(function initModalDrag(){
+  const m=document.querySelector('#modal-bg .modal');
+  let drag=null;
+  const down=e=>{
+    if(!document.body.classList.contains('theater')) return;
+    if(e.button!==undefined&&e.button!==0) return;
+    const r=m.getBoundingClientRect();
+    drag={dx:e.clientX-r.left, dy:e.clientY-r.top, id:e.pointerId};
+    e.currentTarget.setPointerCapture(e.pointerId); e.preventDefault();
+  };
+  const move=e=>{
+    if(!drag||e.pointerId!==drag.id) return;
+    theaterPos={x:e.clientX-drag.dx, y:e.clientY-drag.dy};
+    placeTheaterModal();
+  };
+  const up=e=>{ if(drag&&e.pointerId===drag.id) drag=null; };
+  [m.querySelector('.modal-handle'), document.getElementById('m-code')].forEach(h=>{
+    h.addEventListener('pointerdown',down); h.addEventListener('pointermove',move);
+    h.addEventListener('pointerup',up); h.addEventListener('pointercancel',up);
+  });
+})();
 
 window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
 window.closeModal=function(){document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
@@ -1557,6 +1637,8 @@ function updateStats(){
   document.getElementById('sg').textContent=gc;
   document.getElementById('pf').style.width=(gc?n/gc*100:0)+'%';
   document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
+  const thCi=document.getElementById('th-ci'), thAs=document.getElementById('th-as');
+  if(thCi){ thCi.textContent=Object.keys(window.checkins||{}).filter(c=>asgn[c]).length; thAs.textContent=n; }
 }
 
 // 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
