@@ -133,15 +133,59 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 /* ── 🎬 劇院模式 ── */
 .btn-theater{background:#111827;color:#FDE68A;border-color:#111827;font-size:13px;padding:8px 18px;font-weight:700;letter-spacing:.5px;}
 .btn-theater:hover{background:#000;color:#FEF3C7;}
-body.theater{padding:10px;background:#E5E7EB;}
+body.theater{padding:14px 18px;background:radial-gradient(ellipse 90% 60% at 50% 0%,#1E2A4A 0%,#0B1020 60%,#070A14 100%);min-height:100vh;}
 body.theater #main-title,body.theater #header-sub,body.theater .top,body.theater .pbar,body.theater #ptxt,body.theater .legend,body.theater .panel{display:none!important;}
-body.theater .venue{margin:0;min-height:calc(100vh - 20px);border:none;box-shadow:0 2px 10px rgba(0,0,0,.06);}
-body.theater .stage{font-size:13px;font-weight:700;color:#6B7280;background:linear-gradient(180deg,#F3F4F6,#fff);padding:8px;margin-bottom:10px;}
-.theater-bar{display:none;position:fixed;top:14px;right:18px;z-index:90;align-items:center;gap:10px;background:rgba(17,24,39,.88);color:#fff;padding:6px 8px 6px 14px;border-radius:99px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);}
-body.theater .theater-bar{display:flex;}
-.theater-bar b{color:#FDE68A;font-weight:700;}
-.theater-bar button{border:none;background:#fff;color:#111;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;}
-.theater-bar button:hover{background:#FDE68A;}
+body.theater .venue{margin:0;background:transparent;border:none;padding:0 4px;min-height:0;overflow-x:auto;}
+/* 舞台＝發光的銀幕 */
+body.theater .stage{width:62%;margin:2px auto 22px;padding:9px 0;border:none;border-radius:8px 8px 50% 50%/8px 8px 22px 22px;background:linear-gradient(180deg,#F8FAFF 0%,#C7D2FE 100%);color:#312E81;font-size:13px;font-weight:800;letter-spacing:6px;box-shadow:0 0 0 1px rgba(199,210,254,.5),0 14px 50px 6px rgba(129,140,248,.35);}
+/* 區標、排號 */
+body.theater .zh{background:transparent!important;font-size:12px;letter-spacing:3px;border-bottom:2px solid currentColor;border-radius:0;padding:3px 0 5px;}
+body.theater .zh-a{color:#93C5FD;} body.theater .zh-b{color:#6EE7B7;} body.theater .zh-c{color:#FCD34D;} body.theater .zh-d{color:#C4B5FD;} body.theater .zh-e{color:#F9A8D4;}
+body.theater .zone-header-row{margin-bottom:8px;}
+body.theater .rl{color:#64748B;font-size:13px;font-weight:700;}
+body.theater .vrow{margin-bottom:5px;}
+/* 座位：像電影院椅子，上緣圓、下緣平，格子間留縫 */
+body.theater .vzone{gap:4px;}
+body.theater .seat{border-radius:10px 10px 4px 4px;border-width:1px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);text-shadow:0 1px 1px rgba(0,0,0,.25);}
+body.theater .seat:not(.filled):not(.occupied):not(.ceremony):not(.photo):not(.checked-in){background:rgba(255,255,255,.04)!important;box-shadow:none;border-style:dashed;}
+body.theater .seat.sa:not(.filled){border-color:rgba(147,197,253,.45);} body.theater .seat.sb:not(.filled){border-color:rgba(110,231,183,.45);}
+body.theater .seat.sc:not(.filled){border-color:rgba(252,211,77,.45);} body.theater .seat.sd:not(.filled){border-color:rgba(196,181,253,.45);}
+body.theater .seat.se:not(.filled){border-color:rgba(249,168,212,.45);}
+body.theater .seat.checked-in{background:#334155!important;border-color:#475569!important;color:#94A3B8!important;text-shadow:none;}
+body.theater .seat.checked-in::after{content:"✓";font-size:13px;font-weight:900;color:#4ADE80;top:2px;right:4px;}
+body.theater .round-table-center{background:#1E293B;border-color:#334155;color:#CBD5E1;}
+/* 搜尋亮燈 */
+body.th-searching .seat:not(.th-hit){opacity:.18;filter:saturate(.3);}
+body.th-searching .seat:not(.th-hit):hover{opacity:.6;}
+.seat.th-hit{position:relative;z-index:4;animation:thglow 1.2s ease-in-out infinite;}
+@keyframes thglow{0%,100%{box-shadow:0 0 0 3px #FDE047,0 0 14px 4px rgba(253,224,71,.55);}50%{box-shadow:0 0 0 4px #FEF08A,0 0 30px 10px rgba(253,224,71,.9);}}
+/* 下方控制列 */
+.th-dock{display:none;margin-top:18px;gap:18px;align-items:flex-start;}
+body.theater .th-dock{display:flex;}
+.th-search{flex:0 1 560px;min-width:280px;}
+.th-sbox{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:0 6px 0 14px;transition:all .15s;}
+.th-sbox:focus-within{border-color:#FDE047;background:rgba(255,255,255,.1);box-shadow:0 0 0 3px rgba(253,224,71,.18);}
+.th-sbox input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:#F8FAFC;font-size:15px;padding:12px 0;}
+.th-sbox input::placeholder{color:#64748B;}
+.th-sbox .th-x{border:none;background:rgba(255,255,255,.1);color:#CBD5E1;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:12px;display:none;}
+.th-sbox .th-x:hover{background:rgba(255,255,255,.2);}
+.th-count{font-size:12px;color:#94A3B8;margin:8px 2px 6px;min-height:16px;}
+.th-count b{color:#FDE047;}
+.th-results{display:flex;flex-wrap:wrap;gap:6px;max-height:78px;overflow-y:auto;}
+.th-chip{font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(253,224,71,.12);border:1px solid rgba(253,224,71,.4);color:#FEF9C3;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+.th-chip:hover{background:rgba(253,224,71,.25);}
+.th-chip i{font-style:normal;font-size:10px;font-weight:700;background:#FDE047;color:#422006;padding:1px 6px;border-radius:4px;}
+.th-chip.done{opacity:.6;}
+.th-side{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+.th-legend{display:flex;gap:12px;font-size:11px;color:#94A3B8;flex-wrap:wrap;justify-content:flex-end;}
+.th-legend span{display:inline-flex;align-items:center;gap:5px;}
+.th-legend em{width:12px;height:12px;border-radius:4px 4px 2px 2px;display:inline-block;}
+.th-prog{display:flex;align-items:center;gap:12px;color:#CBD5E1;font-size:13px;}
+.th-prog b{color:#4ADE80;font-size:18px;}
+.th-bar{width:180px;height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;}
+.th-bar div{height:100%;width:0;background:linear-gradient(90deg,#22C55E,#86EFAC);transition:width .4s;}
+.th-exit{border:1px solid rgba(255,255,255,.2);background:transparent;color:#E2E8F0;font-size:12px;padding:7px 14px;border-radius:99px;cursor:pointer;}
+.th-exit:hover{background:#fff;color:#0B1020;}
 /* 劇院模式的座位視窗：不遮背景、可拖曳、點其他格子直接切換 */
 body.theater #modal-bg{background:transparent;pointer-events:none;display:none;}
 body.theater #modal-bg.show{display:block;}
@@ -473,13 +517,33 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div class="leg"><div class="ld" style="background:#6366F1;border:0.5px solid #4338CA;"></div>佔用</div>
 </div>
 
-<div class="theater-bar" id="theater-bar">
-  <span>🎬 劇院模式　已報到 <b id="th-ci">0</b> / <b id="th-as">0</b></span>
-  <button onclick="exitTheater()">✕ 離開</button>
-</div>
 <div class="venue" id="venue-wrap">
   <div class="stage">請登入後選擇活動開始使用</div>
   <div id="vr"></div>
+</div>
+
+<div class="th-dock" id="th-dock">
+  <div class="th-search">
+    <div class="th-sbox">
+      <span style="font-size:15px;opacity:.7;">🔍</span>
+      <input type="text" id="th-q" placeholder="搜尋姓名、單位或座位號（例：國際媒體、A5-3）" autocomplete="off" />
+      <button class="th-x" id="th-x" type="button" onclick="clearTheaterSearch()" title="清除">✕</button>
+    </div>
+    <div class="th-count" id="th-count">輸入關鍵字，符合的座位會亮燈</div>
+    <div class="th-results" id="th-results"></div>
+  </div>
+  <div class="th-side">
+    <div class="th-prog">已報到 <span><b id="th-ci">0</b> / <span id="th-as">0</span></span><div class="th-bar"><div id="th-bar"></div></div></div>
+    <div class="th-legend">
+      <span><em style="background:#378ADD"></em>已分配</span>
+      <span><em style="background:#334155;border:1px solid #475569"></em>已報到</span>
+      <span><em style="background:#E11D48"></em>揭幕</span>
+      <span><em style="background:#F59E0B"></em>合影</span>
+      <span><em style="background:#6366F1"></em>佔用</span>
+      <span><em style="border:1px dashed #64748B"></em>空位</span>
+    </div>
+    <button class="th-exit" onclick="exitTheater()">✕ 離開劇院模式（Esc）</button>
+  </div>
 </div>
 
 <div class="panel">
@@ -1056,10 +1120,12 @@ function buildGridVenue(keys, wrap) {
     const zones = Array.from(zoneSet).sort(); if(zones.length === 0) return;
     let totalCols = 0; zones.forEach(z => totalCols += maxSeatPerZone[z]);
     const rowLabelW = 24, gapW = 12, availW = document.getElementById('venue-wrap').clientWidth - 32;
-    const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1)) / totalCols);
+    const isTheater = document.body.classList.contains('theater');
+    const seatGap = isTheater ? 4 : 0; // 劇院模式座位之間留縫
+    const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1) - seatGap * (totalCols - zones.length)) / totalCols);
     const seatW = Math.max(calculatedSeatW, 44); // 保底寬度：手機上不再壓縮到看不見字，改為左右滑動
-    const seatH = document.body.classList.contains('theater')
-        ? Math.max(40, Math.min(90, Math.floor((window.innerHeight - 130) / Math.max(maxRow,1)) - 2))
+    const seatH = isTheater
+        ? Math.max(40, Math.min(96, Math.floor((window.innerHeight - 300) / Math.max(maxRow,1)) - 5))
         : 0; // 劇院模式：座位加高填滿畫面
 
     const hdr = document.createElement('div'); hdr.className = 'zone-header-row';
@@ -1255,7 +1321,8 @@ window.enterTheater=function(){
 window.exitTheater=function(){
   if(!document.body.classList.contains('theater')) return;
   closeModal();
-  document.body.classList.remove('theater');
+  document.body.classList.remove('theater','th-searching');
+  document.querySelectorAll('.seat.th-hit').forEach(el=>el.classList.remove('th-hit'));
   const m=document.querySelector('#modal-bg .modal'); m.style.left=''; m.style.top='';
   if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   rebuildForTheater();
@@ -1266,6 +1333,51 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||e.defaultPrevented||!document.body.classList.contains('theater')) return;
   if(document.getElementById('modal-bg').classList.contains('show')) closeModal(); else exitTheater();
 });
+// ── 🔍 劇院模式搜尋：符合的座位亮燈，其餘變暗 ──
+let thHits=[];
+function applyTheaterSearch(){
+  const inp=document.getElementById('th-q'); if(!inp) return;
+  document.querySelectorAll('.seat.th-hit').forEach(el=>el.classList.remove('th-hit'));
+  const kw=inp.value.trim().toLowerCase();
+  document.getElementById('th-x').style.display=kw?'inline-block':'none';
+  const on=document.body.classList.contains('theater')&&kw;
+  document.body.classList.toggle('th-searching',!!on);
+  const box=document.getElementById('th-results'), cnt=document.getElementById('th-count');
+  box.innerHTML=''; thHits=[];
+  if(!on){ cnt.textContent='輸入關鍵字，符合的座位會亮燈'; return; }
+  Object.keys(seatMap).forEach(code=>{
+    const name=occupied[code]?'佔用':(asgn[code]||'');
+    if(name.toLowerCase().includes(kw)||code.toLowerCase()===kw||(kw.length>=3&&code.toLowerCase().includes(kw))){
+      const el=document.getElementById('s-'+code);
+      if(el){ el.classList.add('th-hit'); thHits.push({code,name}); }
+    }
+  });
+  const coll=new Intl.Collator('en',{numeric:true});
+  thHits.sort((a,b)=>coll.compare(a.code,b.code));
+  if(!thHits.length){ cnt.innerHTML='找不到符合的座位'; return; }
+  const ciN=thHits.filter(h=>window.checkins&&window.checkins[h.code]).length;
+  cnt.innerHTML=`找到 <b>${thHits.length}</b> 格`+(ciN?`，其中 ${ciN} 格已報到`:'')+(thHits.length>1?'　點下方名牌可直接開啟':'　按 Enter 直接開啟');
+  thHits.slice(0,80).forEach(({code,name})=>{
+    const c=document.createElement('span');
+    const done=window.checkins&&window.checkins[code];
+    c.className='th-chip'+(done?' done':'');
+    c.innerHTML=`<i>${code}</i>`;
+    c.appendChild(document.createTextNode((done?'✓ ':'')+(name||'（空位）')));
+    c.onclick=()=>{ openModal(code); locateSeat(code); };
+    box.appendChild(c);
+  });
+}
+window.clearTheaterSearch=function(){ const i=document.getElementById('th-q'); i.value=''; applyTheaterSearch(); i.focus(); };
+(function initTheaterSearch(){
+  const inp=document.getElementById('th-q');
+  inp.addEventListener('input',()=>{ clearLocator(); applyTheaterSearch(); });
+  inp.addEventListener('keydown',e=>{
+    if(e.isComposing||e.keyCode===229) return;
+    if(e.key==='Enter'&&thHits.length){ e.preventDefault(); openModal(thHits[0].code); locateSeat(thHits[0].code); }
+    else if(e.key==='Escape'){ e.preventDefault(); if(inp.value) clearTheaterSearch(); else inp.blur(); }
+  });
+})();
+
 function placeTheaterModal(){
   const m=document.querySelector('#modal-bg .modal');
   const w=m.offsetWidth||380, h=m.offsetHeight||420;
@@ -1609,7 +1721,7 @@ window.applyLayout = async function() {
     }
 };
 
-function refreshAll(){renderSeats();updateStats();renderChips();}
+function refreshAll(){renderSeats();updateStats();renderChips();applyTheaterSearch();}
 function renderSeats(){
   Object.keys(seatMap).forEach(code => {
     const el = document.getElementById('s-'+code);
@@ -1638,7 +1750,11 @@ function updateStats(){
   document.getElementById('pf').style.width=(gc?n/gc*100:0)+'%';
   document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
   const thCi=document.getElementById('th-ci'), thAs=document.getElementById('th-as');
-  if(thCi){ thCi.textContent=Object.keys(window.checkins||{}).filter(c=>asgn[c]).length; thAs.textContent=n; }
+  if(thCi){
+    const ciN=Object.keys(window.checkins||{}).filter(c=>asgn[c]).length;
+    thCi.textContent=ciN; thAs.textContent=n;
+    document.getElementById('th-bar').style.width=(n?ciN/n*100:0)+'%';
+  }
 }
 
 // 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
