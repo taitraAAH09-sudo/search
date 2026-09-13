@@ -97,62 +97,77 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .error-title { font-size:16px; font-weight:700; color:var(--red); margin-bottom:8px; }
 .error-msg { font-size:13px; color:var(--ink-3); line-height:1.7; }
 
+.top-row { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.lang-switch { display:flex; background:rgba(255,255,255,0.14); border-radius:999px; padding:2px; flex-shrink:0; }
+.lang-btn { border:none; background:transparent; color:rgba(255,255,255,0.62); font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:.05em; padding:4px 11px; border-radius:999px; cursor:pointer; line-height:1.5; }
+.lang-btn.on { background:rgba(255,255,255,0.92); color:var(--accent); font-weight:500; }
+.lang-btn:focus-visible { outline:2px solid #fff; outline-offset:1px; }
+html[lang="en"] .badge-zone { font-size:11px; letter-spacing:-.01em; }
+html[lang="en"] .badge-seat { font-size:9.5px; }
+html[lang="en"] .checkin-btn { font-size:11.5px; padding:8px 10px; }
+html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-tag">TAITRA · Event Lookup</div>
+  <div class="top-row">
+    <div class="header-tag">TAITRA · Event Lookup</div>
+    <div class="lang-switch">
+      <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
+      <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
   <div class="header-title" id="event-title">座位查詢系統</div>
   <div class="conn-row">
     <div class="conn-dot" id="conn-dot"></div>
-    <div class="conn-lbl" id="conn-lbl">連線中…</div>
+    <div class="conn-lbl" id="conn-lbl" data-i18n="conn_connecting">連線中…</div>
   </div>
   <div class="search-wrap">
     <span class="s-icon">🔍</span>
     <input type="text" class="search-input" id="search"
-      placeholder="搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）"
+      data-i18n-ph="search_ph" placeholder="搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）"
       oninput="doSearch()" autocomplete="off"
       autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" />
     <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
   </div>
-  <button class="scan-btn2" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
-  <button class="scan-btn2" style="margin-top:8px;opacity:.85;" onclick="openBadgeAdmin()">🏷️ 建立證件編號對照表</button>
+  <button class="scan-btn2" data-i18n="btn_scan" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
+  <button class="scan-btn2" data-i18n="btn_badge_admin" style="margin-top:8px;opacity:.85;" onclick="openBadgeAdmin()">🏷️ 建立證件編號對照表</button>
   <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none"
     onchange="handleScanFile(this.files[0])">
 </div>
 
 <div id="scan-overlay">
   <div class="spinner"></div>
-  <div id="scan-status">準備中…</div>
+  <div id="scan-status" data-i18n="scan_preparing">準備中…</div>
 </div>
 
 <div id="cam-overlay">
   <video id="cam-video" autoplay playsinline muted></video>
   <div class="cam-frame"><div class="scanline"></div></div>
-  <div class="cam-hint">只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光</div>
+  <div class="cam-hint" data-i18n-html="cam_hint">只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光</div>
   <div class="cam-btns">
-    <button class="cam-cancel" onclick="stopCamera()">✕ 取消</button>
-    <button class="cam-shoot" onclick="captureFrame()">📸 辨識框內文字</button>
+    <button class="cam-cancel" data-i18n="cam_cancel" onclick="stopCamera()">✕ 取消</button>
+    <button class="cam-shoot" data-i18n="cam_shoot" onclick="captureFrame()">📸 辨識框內文字</button>
   </div>
 </div>
 
 <div id="badge-admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,28,42,0.94);z-index:100;overflow-y:auto;">
   <div style="max-width:480px;margin:0 auto;padding:20px 20px 60px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">🏷️ 建立證件編號對照</h3>
+      <h3 data-i18n="ba_title" style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">🏷️ 建立證件編號對照</h3>
       <button onclick="closeBadgeAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
-    <div style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
+    <div data-i18n="ba_desc" style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
       先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05 或 0053）。編號綁定「人」：他換座位編號會自動跟著走；他不在座位表上（未到）時，掃描與搜尋都不會顯示。
     </div>
-    <input type="text" id="badge-guest-search" placeholder="搜尋姓名／座位…" oninput="badgeAdminSearch()"
+    <input type="text" id="badge-guest-search" data-i18n-ph="ba_search_ph" placeholder="搜尋姓名／座位…" oninput="badgeAdminSearch()"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:8px;font-family:inherit;font-size:14px;outline:none;">
     <div id="badge-guest-results" style="max-height:180px;overflow-y:auto;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <button onclick="document.getElementById('badge-excel-input').click()"
+      <button data-i18n="ba_import" onclick="document.getElementById('badge-excel-input').click()"
         style="flex:1;padding:10px;border:1.5px dashed rgba(255,255,255,0.45);border-radius:8px;background:transparent;color:#fff;font-size:13.5px;font-family:inherit;cursor:pointer;">
         📂 匯入 Excel（編號＋姓名，一次建立多筆）
       </button>
@@ -160,16 +175,16 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
         onchange="importBadgeExcel(this.files[0])">
     </div>
     <div id="badge-selected-guest" style="color:#fff;font-size:13px;margin-bottom:10px;min-height:18px;"></div>
-    <input type="text" id="badge-code-input" placeholder="輸入證件編號，例如 P-05"
+    <input type="text" id="badge-code-input" data-i18n-ph="ba_code_ph" placeholder="輸入證件編號，例如 P-05"
       autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
       style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:10px;font-family:'DM Mono',monospace;font-size:14px;outline:none;">
-    <button onclick="submitBadgeCode()"
+    <button data-i18n="ba_save" onclick="submitBadgeCode()"
       style="width:100%;padding:11px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Noto Serif TC',serif;">
       儲存對照
     </button>
     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:22px 0 14px;">
     <div style="color:rgba(255,255,255,0.7);font-size:12.5px;margin-bottom:8px;">
-      目前已建立（<span id="badge-count">0</span> 筆）
+      <span data-i18n="ba_count_pre">目前已建立（</span><span id="badge-count">0</span><span data-i18n="ba_count_post"> 筆）</span>
     </div>
     <div id="badge-admin-list"></div>
   </div>
@@ -178,37 +193,204 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 <div class="stats-bar" id="stats-bar" style="display:none">
   <div class="stat">
     <div class="stat-num" id="st-checkin" style="color:var(--green);">0%</div>
-    <div class="stat-lbl">整體報到率</div>
+    <div class="stat-lbl" data-i18n="stat_checkin">整體報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
   </div>
   <div class="stat">
     <div class="stat-num" id="st-ceremony" style="color:#E11D48;">0%</div>
-    <div class="stat-lbl">合影貴賓報到率</div>
+    <div class="stat-lbl" data-i18n="stat_ceremony">合影貴賓報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
   </div>
   <div class="stat">
     <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
-    <div class="stat-lbl">空位數</div>
+    <div class="stat-lbl" data-i18n="stat_empty">空位數</div>
   </div>
   <div class="stat">
     <div class="stat-num" id="st-total" style="color:var(--accent);">0</div>
-    <div class="stat-lbl">總席數</div>
+    <div class="stat-lbl" data-i18n="stat_total">總席數</div>
   </div>
 </div>
 
 <div style="padding:0 16px 14px;background:var(--white);border-bottom:1px solid var(--rule);">
-  <button onclick="exportCheckinReport()"
+  <button data-i18n="btn_report" onclick="exportCheckinReport()"
     style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Serif TC',serif;display:flex;align-items:center;justify-content:center;gap:8px;">
     📋 一鍵生成報到報告表
   </button>
 </div>
 
 <div id="main">
-  <div class="hint"><div class="hint-icon">⏳</div><div>載入資料中…</div></div>
+  <div class="hint"><div class="hint-icon">⏳</div><div data-i18n="loading">載入資料中…</div></div>
 </div>
 
-<div class="footer" id="footer">TAITRA · 座位查詢系統</div>
+<div class="footer" id="footer" data-i18n="footer_default">TAITRA · 座位查詢系統</div>
 
+<script>
+/* ── 中英雙語字串表 ──
+   要再加一個語言（例如土耳其文），複製 en 整個區塊改成 tr，
+   再到 .lang-switch 加一顆 <button ... onclick="setLang('tr')">TR</button> 即可。 */
+const I18N = {
+"zh-TW":{
+  doc_title_suffix:"座位查詢",
+  conn_connecting:"連線中…", conn_ok:"已連線 · 即時同步", conn_err:"連線失敗", conn_waiting:"等待活動參數",
+  search_ph:"搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）",
+  btn_scan:"📷 相機掃描名牌／名片 找座位",
+  btn_badge_admin:"🏷️ 建立證件編號對照表",
+  btn_report:"📋 一鍵生成報到報告表",
+  scan_preparing:"準備中…",
+  cam_hint:"只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光",
+  cam_cancel:"✕ 取消", cam_shoot:"📸 辨識框內文字",
+  ba_title:"🏷️ 建立證件編號對照",
+  ba_desc:"先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05 或 0053）。編號綁定「人」：他換座位編號會自動跟著走；他不在座位表上（未到）時，掃描與搜尋都不會顯示。",
+  ba_search_ph:"搜尋姓名／座位…",
+  ba_import:"📂 匯入 Excel（編號＋姓名，一次建立多筆）",
+  ba_code_ph:"輸入證件編號，例如 P-05",
+  ba_save:"儲存對照",
+  ba_count_pre:"目前已建立（", ba_count_post:" 筆）",
+  ba_empty:"尚未建立任何對照", ba_no_guest:"找不到符合的賓客", ba_unnamed:"(未指定姓名)",
+  ba_pick_empty:"這個座位沒有賓客姓名，無法綁定編號（編號是跟「人」走的）",
+  ba_selected:(n,c)=>`已選擇：<b>${n}</b>　（目前座位 ${c}，之後換位編號會自動跟著人走）`,
+  ba_need_guest:"請先搜尋並選擇賓客", ba_need_code:"請輸入證件編號", ba_need_both:"請輸入編號並選擇賓客",
+  ba_at_seat:(n,s)=>`${n}（目前座位 ${s}）`,
+  ba_ambiguous:(v,n)=>`${v}（席次圖有 ${n} 位同名，請刪除後改用完整姓名重建）`,
+  ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
+  stat_checkin:"整體報到率", stat_ceremony:"合影貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
+  loading:"載入資料中…", footer_default:"TAITRA · 座位查詢系統", last_sync:"最後同步",
+  err_no_event_title:"缺少活動參數",
+  err_no_event_msg:"請從前台系統點擊「🔍 手機查詢」按鈕進入，<br>或確認網址包含 ?event=活動代碼",
+  hint_search:"輸入姓名、單位或座位編號<br>即可查詢",
+  res_count:n=>`找到 ${n} 筆結果`,
+  res_none:kw=>`🔍 找不到「${kw}」相關座位`,
+  lbl_seat_code:"座位編號：", lbl_empty_seat:"（空位）",
+  btn_checkin:"報到", btn_checked:"✅ 已報到",
+  scan_no_text:"📷 沒有辨識到文字，請靠近一點、對準名字再拍一次",
+  scan_no_match:t=>`📷 辨識到「${t}」<br>但找不到相符的賓客，請改用手動搜尋`,
+  badge_exact:"🏷️ 證件編號完全比對", badge_fuzzy:"🏷️ 證件編號比對（有1個字元可能誤判，請確認）",
+  tag_badge_hit:"編號命中", tag_barcode_hit:"條碼命中",
+  barcode_hit:"🏷️ 條碼直接命中", barcode_code:c=>`　條碼編號：${c}`,
+  no_name:"(查無姓名資料)",
+  scan_other:"其他可能相關（姓名比對，依相似度排序）",
+  scan_results:(n,t,more)=>`📷 掃描比對結果：${n} 筆，依相似度排序（辨識文字：${t}${more?"…":""}）`,
+  tag_high:"高相似", tag_mid:"中相似", tag_low:"可能相關",
+  ocr_scanning:"掃描中…",
+  ocr_prepare:'準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>',
+  ocr_progress:p=>`辨識中… ${p}%`, ocr_loading:"載入辨識資料…",
+  ocr_fail:m=>`掃描失敗：${m}`,
+  err_ocr_engine:"辨識引擎載入失敗，請確認網路", err_barcode_lib:"條碼函式庫載入失敗",
+  err_xlsx:"Excel 元件載入失敗，請確認網路",
+  xl_not_ready:"資料尚未載入完成，請稍候再試",
+  xl_no_rows:"沒有解析到任何「編號＋姓名」的資料列，請確認 Excel 內容",
+  xl_confirm:(n,pv,more)=>`共解析到 ${n} 筆對照，例如：\n${pv}${more?"\n…":""}\n\n確定匯入？（同編號會覆蓋舊資料）`,
+  xl_done:n=>`✅ 已匯入 ${n} 筆。席次圖已排的人立即可掃；還沒排的會在排入後自動生效。`,
+  xl_fail:m=>`匯入失敗：${m}`,
+  rpt_title:e=>`${e} 報到報告`,
+  rpt_generated:"報表產生時間", rpt_item:"項目", rpt_value:"數值",
+  rpt_expected:"應到人數", rpt_in:"已報到", rpt_out:"未報到", rpt_rate:"報到率",
+  sheet_summary:"報到總覽", sheet_in:"已報到名單", sheet_out:"未報到名單",
+  col_code:"座位編號", col_desc:"座位描述", col_name:"賓客姓名／單位", col_time:"報到時間",
+  file_prefix:"報到報告"
+},
+"en":{
+  doc_title_suffix:"Seat lookup",
+  conn_connecting:"Connecting…", conn_ok:"Connected · Live sync", conn_err:"Connection failed", conn_waiting:"Waiting for event code",
+  search_ph:"Search a name, organization or seat code… (spaces separate keywords)",
+  btn_scan:"📷 Scan a badge or card to find the seat",
+  btn_badge_admin:"🏷️ Badge number mapping",
+  btn_report:"📋 Generate check-in report",
+  scan_preparing:"Preparing…",
+  cam_hint:"Frame just the <b>name</b> line — not the whole badge. Move closer, keep it straight, avoid glare.",
+  cam_cancel:"✕ Cancel", cam_shoot:"📸 Read the text in frame",
+  ba_title:"🏷️ Badge number mapping",
+  ba_desc:"Search for the guest first, then enter the number printed on the badge (for example P-05 or 0053). The number is bound to the person: if they move to another seat it follows them, and if they are not on the seating chart it will not appear in a scan or a search.",
+  ba_search_ph:"Search a name or seat…",
+  ba_import:"📂 Import Excel (number + name, many at once)",
+  ba_code_ph:"Badge number, e.g. P-05",
+  ba_save:"Save mapping",
+  ba_count_pre:"Saved mappings (", ba_count_post:")",
+  ba_empty:"No mappings yet", ba_no_guest:"No matching guest", ba_unnamed:"(No name)",
+  ba_pick_empty:"This seat has no guest name, so a number cannot be bound to it — numbers follow the person.",
+  ba_selected:(n,c)=>`Selected: <b>${n}</b>　(currently at ${c}; the number follows the guest if the seat changes)`,
+  ba_need_guest:"Search for and select a guest first", ba_need_code:"Enter the badge number",
+  ba_need_both:"Enter a number and select a guest",
+  ba_at_seat:(n,s)=>`${n} (currently at ${s})`,
+  ba_ambiguous:(v,n)=>`${v} (${n} guests on the chart share this name — delete this and re-add with the full name)`,
+  ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
+  stat_checkin:"Check-in rate", stat_ceremony:"Photo VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
+  loading:"Loading data…", footer_default:"TAITRA · Seat lookup", last_sync:"Last sync",
+  err_no_event_title:"Missing event code",
+  err_no_event_msg:"Open this page from the 🔍 mobile lookup button in the main system,<br>or check that the URL contains ?event=YOUR_EVENT_CODE",
+  hint_search:"Enter a name, organization or seat code<br>to look it up",
+  res_count:n=>`${n} result${n>1?"s":""}`,
+  res_none:kw=>`🔍 No seat matches "${kw}"`,
+  lbl_seat_code:"Seat code: ", lbl_empty_seat:"(Empty)",
+  btn_checkin:"Check in", btn_checked:"✅ Checked in",
+  scan_no_text:"📷 No text recognized. Move closer, aim at the name and shoot again.",
+  scan_no_match:t=>`📷 Read "${t}"<br>but no guest matched. Please search by hand instead.`,
+  badge_exact:"🏷️ Exact badge number match", badge_fuzzy:"🏷️ Badge number match (1 character may be misread — please confirm)",
+  tag_badge_hit:"Badge match", tag_barcode_hit:"Barcode match",
+  barcode_hit:"🏷️ Barcode matched", barcode_code:c=>`　Barcode: ${c}`,
+  no_name:"(No name on file)",
+  scan_other:"Other possible matches (by name similarity)",
+  scan_results:(n,t,more)=>`📷 ${n} possible matches, sorted by similarity (text read: ${t}${more?"…":""})`,
+  tag_high:"High", tag_mid:"Medium", tag_low:"Possible",
+  ocr_scanning:"Scanning…",
+  ocr_prepare:'Preparing the text engine…<br><span style="font-size:12px;opacity:.7;">The first scan downloads the recognition data (about 10–30s); later scans are much faster</span>',
+  ocr_progress:p=>`Reading… ${p}%`, ocr_loading:"Loading recognition data…",
+  ocr_fail:m=>`Scan failed: ${m}`,
+  err_ocr_engine:"The text engine could not load. Check the network connection.",
+  err_barcode_lib:"The barcode library could not load.",
+  err_xlsx:"The Excel component could not load. Check the network connection.",
+  xl_not_ready:"Data is still loading. Try again in a moment.",
+  xl_no_rows:"No “number + name” rows were found. Check the Excel file.",
+  xl_confirm:(n,pv,more)=>`${n} mappings found, for example:\n${pv}${more?"\n…":""}\n\nImport them? (An existing number will be overwritten.)`,
+  xl_done:n=>`✅ Imported ${n} mappings. Guests already on the seating chart can be scanned now; the rest take effect once they are seated.`,
+  xl_fail:m=>`Import failed: ${m}`,
+  rpt_title:e=>`${e} check-in report`,
+  rpt_generated:"Generated at", rpt_item:"Item", rpt_value:"Value",
+  rpt_expected:"Expected", rpt_in:"Checked in", rpt_out:"Not checked in", rpt_rate:"Check-in rate",
+  sheet_summary:"Summary", sheet_in:"Checked in", sheet_out:"Not checked in",
+  col_code:"Seat code", col_desc:"Seat", col_name:"Guest / organization", col_time:"Time",
+  file_prefix:"Checkin_report"
+}
+};
+
+/* 語言決定順序：網址 ?lang=en → 這台裝置上次選的 → 預設中文。
+   若希望外賓開連結時自動跳英文，把 AUTO_DETECT 改成 true 即可。 */
+const AUTO_DETECT=false;
+(function(){
+  const q=(new URLSearchParams(location.search).get('lang')||'').toLowerCase();
+  let stored=null; try{ stored=localStorage.getItem('lookup_lang'); }catch(e){}
+  let init='zh-TW';
+  if(q.startsWith('en')) init='en';
+  else if(q.startsWith('zh')) init='zh-TW';
+  else if(stored==='en'||stored==='zh-TW') init=stored;
+  else if(AUTO_DETECT&&!/^zh/i.test(navigator.language||'')) init='en';
+  window.LANG=init;
+})();
+
+window.t=function(k){
+  const dict=I18N[window.LANG]||I18N['zh-TW'];
+  let v=dict[k];
+  if(v===undefined) v=I18N['zh-TW'][k];
+  if(v===undefined) return k;
+  return (typeof v==='function')?v.apply(null,[].slice.call(arguments,1)):v;
+};
+
+window.applyI18n=function(){
+  document.documentElement.lang=(window.LANG==='en')?'en':'zh-TW';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{el.innerHTML=t(el.getAttribute('data-i18n-html'));});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-ph'));});
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on',b.getAttribute('data-lang')===window.LANG));
+};
+
+window.setLang=function(l){
+  window.LANG=(l==='en')?'en':'zh-TW';
+  try{ localStorage.setItem('lookup_lang',window.LANG); }catch(e){}
+  applyI18n();
+  if(typeof window._onLangChange==='function') window._onLangChange();
+};
+applyI18n();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -235,24 +417,28 @@ if(!PROJECT_ID){
   document.getElementById('main').innerHTML=`
     <div class="error-box">
       <div class="error-icon">🔗</div>
-      <div class="error-title">缺少活動參數</div>
-      <div class="error-msg">請從前台系統點擊「🔍 手機查詢」按鈕進入，<br>或確認網址包含 ?event=活動代碼</div>
+      <div class="error-title">${t('err_no_event_title')}</div>
+      <div class="error-msg">${t('err_no_event_msg')}</div>
     </div>`;
-  document.getElementById('conn-lbl').textContent='等待活動參數';
+  document.getElementById('conn-lbl').textContent=t('conn_waiting');
   throw new Error('No event param');
 }
 
-document.getElementById('event-title').textContent = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ');
-document.title = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ') + ' · 座位查詢';
+const EVENT_NAME = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ');
+function applyEventTitle(){
+  document.getElementById('event-title').textContent = EVENT_NAME;
+  document.title = EVENT_NAME + ' · ' + t('doc_title_suffix');
+}
+applyEventTitle();
 
 let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
-let loaded=false;
+let loaded=false, _lastMain=null;   // _lastMain：記住畫面上最後一次渲染，切語言時原地重繪
 
 function setConn(ok){
   const dot=document.getElementById('conn-dot');
   const lbl=document.getElementById('conn-lbl');
-  if(ok){dot.className='conn-dot ok';lbl.textContent='已連線 · 即時同步';}
-  else{dot.className='conn-dot err';lbl.textContent='連線失敗';}
+  if(ok){dot.className='conn-dot ok';lbl.textContent=t('conn_ok');}
+  else{dot.className='conn-dot err';lbl.textContent=t('conn_err');}
 }
 
 function updateStats(){
@@ -278,7 +464,7 @@ function updateStats(){
 
   const now=new Date();
   document.getElementById('footer').textContent=
-    PROJECT_ID+' · 最後同步 '+
+    PROJECT_ID+' · '+t('last_sync')+' '+
     now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
 }
 
@@ -335,6 +521,10 @@ function parseSeatCode(code){
   if(mh){
     const [,tCode,seat]=mh;
     const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en'){
+      const tl=customName?`Table ${customName}`:'Head Table';
+      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):'HEAD', badgeBot:`S${seat}`, color:'gold' };
+    }
     const tableLabel=customName?`第 ${customName} 桌`:'主桌';
     const badgeLabel=customName?`第${customName}桌`:'主桌';
     return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
@@ -345,6 +535,10 @@ function parseSeatCode(code){
     const [,row,table,seat]=m;
     const tCode=code.split('-')[0];
     const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en'){
+      const tl=customName?`Table ${customName}`:`Table ${table}`;
+      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):`T${table}`, badgeBot:`S${seat}`, color:'blue' };
+    }
     const tableLabel=customName?`第 ${customName} 桌`:`第 ${table} 桌`;
     const badgeLabel=customName?`第${customName}桌`:`第${table}桌`;
     return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
@@ -353,6 +547,8 @@ function parseSeatCode(code){
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m2){
     const [,zone,row,seat]=m2;
+    if(window.LANG==='en')
+      return { detail:`Zone ${zone} · Row ${row} · Seat ${seat}`, badgeTop:zone, badgeBot:`R${row}-S${seat}`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
     return { detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:zone, badgeBot:`${row}排${seat}席`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
   }
   return { detail:code, badgeTop:code, badgeBot:'', color:'blue' };
@@ -364,9 +560,10 @@ window.doSearch=function(){
   const main=document.getElementById('main');
 
   if(!loaded) return;
+  _lastMain=null;
 
   if(!kw){
-    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>輸入姓名、單位或座位編號<br>即可查詢</div></div>';
+    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>'+t('hint_search')+'</div></div>';
     return;
   }
 
@@ -403,7 +600,7 @@ window.doSearch=function(){
   });
 
   if(!results.length){
-    main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
+    main.innerHTML=`<div class="no-result">${t('res_none',kw)}</div>`;
     return;
   }
 
@@ -411,10 +608,10 @@ window.doSearch=function(){
   const kwE=terms.map(esc).join('|');
   const re=new RegExp(`(${kwE})`,'gi');
 
-  let html=`<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
+  let html=`<div class="result-count">${t('res_count',results.length)}</div><div class="result-list">`;
   results.forEach(([code,name])=>{
     const p=parseSeatCode(code);
-    const hn=name?name.replace(re,'<mark>$1</mark>'):'（空位）';
+    const hn=name?name.replace(re,'<mark>$1</mark>'):t('lbl_empty_seat');
     const hc=code.replace(re,'<mark>$1</mark>');
     html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
       <div class="seat-badge badge-${p.color}">
@@ -423,12 +620,12 @@ window.doSearch=function(){
       </div>
       <div class="card-info">
         <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>
-        <div class="card-seat">座位編號：${hc}</div>
+        <div class="card-seat">${t('lbl_seat_code')}${hc}</div>
         <div class="card-zone">${p.detail}</div>
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
         onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
-        ${CHECKINS[code]?'✅ 已報到':'報到'}
+        ${CHECKINS[code]?t('btn_checked'):t('btn_checkin')}
       </button>
     </div>`;
   });
@@ -488,7 +685,7 @@ function loadXLSX(){
   _xlsxLoading=new Promise((res,rej)=>{
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload=res; s.onerror=()=>rej(new Error('Excel 元件載入失敗，請確認網路'));
+    s.onload=res; s.onerror=()=>rej(new Error(t('err_xlsx')));
     document.head.appendChild(s);
   });
   return _xlsxLoading;
@@ -517,16 +714,16 @@ window.importBadgeExcel=async function(file){
       }
       if(badge&&name) pairs.push([normBadgeCode(badge), name]);
     });
-    if(!pairs.length){ alert('沒有解析到任何「編號＋姓名」的資料列，請確認 Excel 內容'); return; }
+    if(!pairs.length){ alert(t('xl_no_rows')); return; }
     const dup={}; pairs.forEach(([b,n])=>{ dup[b]=n; });
     const list=Object.entries(dup);
     const preview=list.slice(0,5).map(([b,n])=>`${b} → ${n}`).join('\n');
-    if(!confirm(`共解析到 ${list.length} 筆對照，例如：\n${preview}${list.length>5?'\n…':''}\n\n確定匯入？（同編號會覆蓋舊資料）`)) return;
+    if(!confirm(t('xl_confirm',list.length,preview,list.length>5))) return;
     const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026.json`;
     await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(dup)});
-    alert(`✅ 已匯入 ${list.length} 筆。席次圖已排的人立即可掃；還沒排的會在排入後自動生效。`);
+    alert(t('xl_done',list.length));
   }catch(e){
-    alert('匯入失敗：'+(e.message||e));
+    alert(t('xl_fail',(e.message||e)));
   }finally{
     document.getElementById('badge-excel-input').value='';
   }
@@ -534,7 +731,7 @@ window.importBadgeExcel=async function(file){
 
 window.saveBadgeCode=async function(rawBadge, seatCode){
   const badge=normBadgeCode(rawBadge);
-  if(!badge||!seatCode) return alert('請輸入編號並選擇賓客');
+  if(!badge||!seatCode) return alert(t('ba_need_both'));
   const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026/${encodeURIComponent(badge)}.json`;
   await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(seatCode)});
 };
@@ -566,28 +763,28 @@ window.badgeAdminSearch=function(){
     return terms.every(t=>codeL.includes(t)||nameL.includes(t));
   }).slice(0,20);
   if(!results.length){
-    box.innerHTML='<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">找不到符合的賓客</div>';
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">${t('ba_no_guest')}</div>`;
     return;
   }
   box.innerHTML=results.map(([code,name])=>
     `<div onclick="pickBadgeGuest('${code}')" style="padding:9px 10px;background:rgba(255,255,255,0.08);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;">
-      <span>${name||'(未指定姓名)'}</span>
+      <span>${name||t('ba_unnamed')}</span>
       <span style="opacity:.55;font-family:'DM Mono',monospace;">${code}</span>
     </div>`
   ).join('');
 };
 window.pickBadgeGuest=function(code){
-  if(!DATA[code]){ alert('這個座位沒有賓客姓名，無法綁定編號（編號是跟「人」走的）'); return; }
+  if(!DATA[code]){ alert(t('ba_pick_empty')); return; }
   _badgeSelectedCode=code;
-  document.getElementById('badge-selected-guest').innerHTML=`已選擇：<b>${DATA[code]}</b>　（目前座位 ${code}，之後換位編號會自動跟著人走）`;
+  document.getElementById('badge-selected-guest').innerHTML=t('ba_selected',DATA[code],code);
   document.getElementById('badge-guest-results').innerHTML='';
   document.getElementById('badge-guest-search').value='';
   document.getElementById('badge-code-input').focus();
 };
 window.submitBadgeCode=async function(){
-  if(!_badgeSelectedCode) return alert('請先搜尋並選擇賓客');
+  if(!_badgeSelectedCode) return alert(t('ba_need_guest'));
   const badge=document.getElementById('badge-code-input').value;
-  if(!badge.trim()) return alert('請輸入證件編號');
+  if(!badge.trim()) return alert(t('ba_need_code'));
   await saveBadgeCode(badge, DATA[_badgeSelectedCode]); // ← 存姓名：編號綁人不綁座位
   document.getElementById('badge-code-input').value='';
   document.getElementById('badge-selected-guest').textContent='';
@@ -600,16 +797,16 @@ function renderBadgeAdminList(){
   const entries=Object.entries(BADGE_MAP);
   cnt.textContent=entries.length;
   if(!entries.length){
-    box.innerHTML='<div style="color:rgba(255,255,255,0.4);font-size:13px;">尚未建立任何對照</div>';
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.4);font-size:13px;">${t('ba_empty')}</div>`;
     return;
   }
   box.innerHTML=entries.map(([badge,val])=>{
     const r=resolveBadge(badge);
     const label=(r&&r.seat)
-      ? `${r.name}（目前座位 ${r.seat}）`
+      ? t('ba_at_seat',r.name,r.seat)
       : (r&&r.ambiguous)
-        ? `<span style="color:#fbbf24;">${val}（席次圖有 ${r.ambiguous} 位同名，請刪除後改用完整姓名重建）</span>`
-        : `<span style="opacity:.55;">${val}（目前不在座位表 → 掃描/搜尋不會顯示）</span>`;
+        ? `<span style="color:#fbbf24;">${t('ba_ambiguous',val,r.ambiguous)}</span>`
+        : `<span style="opacity:.55;">${t('ba_not_seated',val)}</span>`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.06);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;">
       <span><b style="font-family:'DM Mono',monospace;">${badge}</b> → ${label}</span>
       <button onclick="deleteBadgeCode('${badge}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:2px 6px;">✕</button>
@@ -621,22 +818,24 @@ function parseSeatLabel(code){
   const mh=code.match(/^(H\d+)-(\d+)$/);
   if(mh){
     const customName=TABLE_NAMES[mh[1]]?TABLE_NAMES[mh[1]].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en') return customName?`Table ${customName} Seat ${mh[2]}`:`Head Table Seat ${mh[2]}`;
     return customName?`第${customName}桌 第${mh[2]}席`:`主桌 第${mh[2]}席`;
   }
   const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
   if(m){
     const tCode=code.split('-')[0];
     const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en') return customName?`Table ${customName} Seat ${m[3]}`:`Table ${m[2]} Seat ${m[3]}`;
     return customName?`第${customName}桌 第${m[3]}席`:`第${m[2]}桌 第${m[3]}席`;
   }
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
-  if(m2) return `${m2[1]}區 第${m2[2]}排 第${m2[3]}席`;
+  if(m2) return window.LANG==='en'?`Zone ${m2[1]} Row ${m2[2]} Seat ${m2[3]}`:`${m2[1]}區 第${m2[2]}排 第${m2[3]}席`;
   return code;
 }
 
 window.exportCheckinReport=function(){
   if(!loaded || Object.keys(DATA).length===0){
-    alert('資料尚未載入完成，請稍候再試');
+    alert(t('xl_not_ready'));
     return;
   }
 
@@ -659,41 +858,41 @@ window.exportCheckinReport=function(){
   const nowStr=now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
 
   const summaryAoa=[
-    [PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ')+' 報到報告'],
-    ['報表產生時間', nowStr],
+    [t('rpt_title',EVENT_NAME)],
+    [t('rpt_generated'), nowStr],
     [],
-    ['項目','數值'],
-    ['應到人數', total],
-    ['已報到', inCount],
-    ['未報到', total-inCount],
-    ['報到率', pct+'%'],
+    [t('rpt_item'),t('rpt_value')],
+    [t('rpt_expected'), total],
+    [t('rpt_in'), inCount],
+    [t('rpt_out'), total-inCount],
+    [t('rpt_rate'), pct+'%'],
   ];
   const ws0=XLSX.utils.aoa_to_sheet(summaryAoa);
   ws0['!cols']=[{wch:16},{wch:24}];
-  XLSX.utils.book_append_sheet(wb, ws0, '報到總覽');
+  XLSX.utils.book_append_sheet(wb, ws0, t('sheet_summary'));
 
   // ── Sheet 2：已報到名單 ──
-  const inAoa=[['座位編號','座位描述','賓客姓名／單位','報到時間']];
+  const inAoa=[[t('col_code'),t('col_desc'),t('col_name'),t('col_time')]];
   checkedIn.forEach(([code,name])=>{
     const ci=CHECKINS[code];
     inAoa.push([code, parseSeatLabel(code), name, ci?ci.time||'':'']);
   });
   const ws1=XLSX.utils.aoa_to_sheet(inAoa);
   ws1['!cols']=[{wch:14},{wch:20},{wch:42},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, ws1, '已報到名單');
+  XLSX.utils.book_append_sheet(wb, ws1, t('sheet_in'));
 
   // ── Sheet 3：未報到名單 ──
-  const outAoa=[['座位編號','座位描述','賓客姓名／單位']];
+  const outAoa=[[t('col_code'),t('col_desc'),t('col_name')]];
   notCheckedIn.forEach(([code,name])=>{
     outAoa.push([code, parseSeatLabel(code), name]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(outAoa);
   ws2['!cols']=[{wch:14},{wch:20},{wch:42}];
-  XLSX.utils.book_append_sheet(wb, ws2, '未報到名單');
+  XLSX.utils.book_append_sheet(wb, ws2, t('sheet_out'));
 
   const ts=now.getFullYear().toString().slice(2)+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0');
   const eventLabel=PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,'').substring(0,16);
-  XLSX.writeFile(wb, `報到報告_${eventLabel}_${ts}.xlsx`);
+  XLSX.writeFile(wb, `${t('file_prefix')}_${eventLabel}_${ts}.xlsx`);
 };
 
 /* ── 📷 相機掃描名牌：拍照 → 文字辨識(OCR) → 與座位資料模糊比對 ── */
@@ -705,7 +904,7 @@ function loadTesseract(){
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
     s.onload=res;
-    s.onerror=()=>rej(new Error('辨識引擎載入失敗，請確認網路'));
+    s.onerror=()=>rej(new Error(t('err_ocr_engine')));
     document.head.appendChild(s);
   });
   return _tessLoading;
@@ -720,7 +919,7 @@ function loadZXing(){
     const s=document.createElement('script');
     s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
     s.onload=res;
-    s.onerror=()=>rej(new Error('條碼函式庫載入失敗'));
+    s.onerror=()=>rej(new Error(t('err_barcode_lib')));
     document.head.appendChild(s);
   });
   return _zxingLoading;
@@ -806,7 +1005,7 @@ async function processCapturedImage(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
   ov.classList.add('show');
-  st.textContent='掃描中…';
+  st.textContent=t('ocr_scanning');
   const code=await tryDecodeBarcode(input);
   if(code){
     // 情況一：條碼內容本身就是座位代碼（直接命中）
@@ -841,11 +1040,12 @@ async function processCapturedImage(input){
   await runOcr(input); // 沒條碼、或條碼查無資料，退回文字辨識
 }
 function renderBarcodeHit(seatCode,scannedCode){
+  _lastMain=()=>renderBarcodeHit(seatCode,scannedCode);
   const main=document.getElementById('main');
   const p=parseSeatCode(seatCode);
-  const name=DATA[seatCode]||'(查無姓名資料)';
-  const sub=scannedCode&&scannedCode!==seatCode?`　條碼編號：${scannedCode}`:'';
-  main.innerHTML=`<div class="result-count" style="color:#4ade80;">🏷️ 條碼直接命中${sub}</div>
+  const name=DATA[seatCode]||t('no_name');
+  const sub=scannedCode&&scannedCode!==seatCode?t('barcode_code',scannedCode):'';
+  main.innerHTML=`<div class="result-count" style="color:#4ade80;">${t('barcode_hit')}${sub}</div>
     <div class="result-list">
       <div class="result-card ${CHECKINS[seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
         <div class="seat-badge badge-${p.color}">
@@ -853,13 +1053,13 @@ function renderBarcodeHit(seatCode,scannedCode){
           <div class="badge-seat">${p.badgeBot}</div>
         </div>
         <div class="card-info">
-          <div class="card-name">${name}<span class="match-tag high">條碼命中</span></div>
-          <div class="card-seat">座位編號：${seatCode}</div>
+          <div class="card-name">${name}<span class="match-tag high">${t('tag_barcode_hit')}</span></div>
+          <div class="card-seat">${t('lbl_seat_code')}${seatCode}</div>
           <div class="card-zone">${p.detail}</div>
         </div>
         <button class="checkin-btn ${CHECKINS[seatCode]?'done':''}"
           onclick="toggleCheckin('${seatCode}',${!CHECKINS[seatCode]})">
-          ${CHECKINS[seatCode]?'✅ 已報到':'報到'}
+          ${CHECKINS[seatCode]?t('btn_checked'):t('btn_checkin')}
         </button>
       </div>
     </div>`;
@@ -868,21 +1068,21 @@ async function runOcr(input){
   const ov=document.getElementById('scan-overlay');
   const st=document.getElementById('scan-status');
   ov.classList.add('show');
-  st.innerHTML='準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>';
+  st.innerHTML=t('ocr_prepare');
   try{
     await loadTesseract();
     const proc=preprocessForOcr(input);
     const {data}=await Tesseract.recognize(proc,'chi_tra+eng',{
       logger:m=>{
-        if(m.status==='recognizing text') st.textContent='辨識中… '+Math.round((m.progress||0)*100)+'%';
-        else st.textContent='載入辨識資料…';
+        if(m.status==='recognizing text') st.textContent=t('ocr_progress',Math.round((m.progress||0)*100));
+        else st.textContent=t('ocr_loading');
       }
     });
     ov.classList.remove('show');
     renderScanResults((data.text||'').replace(/\s+/g,''));
   }catch(e){
     ov.classList.remove('show');
-    alert('掃描失敗：'+(e.message||e));
+    alert(t('ocr_fail',(e.message||e)));
   }
 }
 
@@ -1005,10 +1205,11 @@ function fuzzyScore(name,text){
   return hit+bi*2; // 連續兩字相符加重計分
 }
 function renderScanResults(text){
+  _lastMain=()=>renderScanResults(text);
   const main=document.getElementById('main');
   const preview=text?text.slice(0,60):'';
   if(!text){
-    main.innerHTML='<div class="no-result">📷 沒有辨識到文字，請靠近一點、對準名字再拍一次</div>';
+    main.innerHTML=`<div class="no-result">${t('scan_no_text')}</div>`;
     return;
   }
 
@@ -1016,8 +1217,8 @@ function renderScanResults(text){
   let badgeHtml='';
   if(badgeHit){
     const p=parseSeatCode(badgeHit.seatCode);
-    const name=DATA[badgeHit.seatCode]||'(查無姓名資料)';
-    const confLabel=badgeHit.dist===0?'🏷️ 證件編號完全比對':'🏷️ 證件編號比對（有1個字元可能誤判，請確認）';
+    const name=DATA[badgeHit.seatCode]||t('no_name');
+    const confLabel=badgeHit.dist===0?t('badge_exact'):t('badge_fuzzy');
     badgeHtml=`<div class="result-count" style="color:#4ade80;">${confLabel}：${badgeHit.badge}</div>
     <div class="result-list">
       <div class="result-card ${CHECKINS[badgeHit.seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
@@ -1026,13 +1227,13 @@ function renderScanResults(text){
           <div class="badge-seat">${p.badgeBot}</div>
         </div>
         <div class="card-info">
-          <div class="card-name">${name}<span class="match-tag high">編號命中</span></div>
-          <div class="card-seat">座位編號：${badgeHit.seatCode}</div>
+          <div class="card-name">${name}<span class="match-tag high">${t('tag_badge_hit')}</span></div>
+          <div class="card-seat">${t('lbl_seat_code')}${badgeHit.seatCode}</div>
           <div class="card-zone">${p.detail}</div>
         </div>
         <button class="checkin-btn ${CHECKINS[badgeHit.seatCode]?'done':''}"
           onclick="toggleCheckin('${badgeHit.seatCode}',${!CHECKINS[badgeHit.seatCode]})">
-          ${CHECKINS[badgeHit.seatCode]?'✅ 已報到':'報到'}
+          ${CHECKINS[badgeHit.seatCode]?t('btn_checked'):t('btn_checkin')}
         </button>
       </div>
     </div>`;
@@ -1046,7 +1247,7 @@ function renderScanResults(text){
     .slice(0,15);
 
   if(!scored.length&&!badgeHit){
-    main.innerHTML=`<div class="no-result">📷 辨識到「${preview}」<br>但找不到相符的賓客，請改用手動搜尋</div>`;
+    main.innerHTML=`<div class="no-result">${t('scan_no_match',preview)}</div>`;
     return;
   }
   if(!scored.length){
@@ -1054,13 +1255,13 @@ function renderScanResults(text){
     return;
   }
 
-  let html=badgeHtml+(badgeHit?`<div class="result-count" style="margin-top:14px;">其他可能相關（姓名比對，依相似度排序）</div>`:`<div class="result-count">📷 掃描比對結果：${scored.length} 筆，依相似度排序（辨識文字：${preview}${text.length>60?'…':''}）</div>`)+'<div class="result-list">';
+  let html=badgeHtml+(badgeHit?`<div class="result-count" style="margin-top:14px;">${t('scan_other')}</div>`:`<div class="result-count">${t('scan_results',scored.length,preview,text.length>60)}</div>`)+'<div class="result-list">';
   scored.forEach(({code,name,score})=>{
     const p=parseSeatCode(code);
     const hn=[...name].map(ch=>(_cjk(ch)&&text.includes(ch))?`<mark>${ch}</mark>`:ch).join('');
-    const tag=score>=4?'<span class="match-tag high">高相似</span>'
-      :score>=2?'<span class="match-tag mid">中相似</span>'
-      :'<span class="match-tag low">可能相關</span>';
+    const tag=score>=4?`<span class="match-tag high">${t('tag_high')}</span>`
+      :score>=2?`<span class="match-tag mid">${t('tag_mid')}</span>`
+      :`<span class="match-tag low">${t('tag_low')}</span>`;
     html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
       <div class="seat-badge badge-${p.color}">
         <div class="badge-zone">${p.badgeTop}</div>
@@ -1068,18 +1269,28 @@ function renderScanResults(text){
       </div>
       <div class="card-info">
         <div class="card-name">${hn}${tag}</div>
-        <div class="card-seat">座位編號：${code}</div>
+        <div class="card-seat">${t('lbl_seat_code')}${code}</div>
         <div class="card-zone">${p.detail}</div>
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
         onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
-        ${CHECKINS[code]?'✅ 已報到':'報到'}
+        ${CHECKINS[code]?t('btn_checked'):t('btn_checkin')}
       </button>
     </div>`;
   });
   html+='</div>';
   main.innerHTML=html;
 }
+
+/* 切換語言：重下標題、統計、目前畫面與後台清單 */
+window._onLangChange=function(){
+  applyEventTitle();
+  if(loaded){
+    updateStats();
+    if(_lastMain) _lastMain(); else doSearch();
+  }
+  renderBadgeAdminList();
+};
 
 window.clearSearch=function(){
   document.getElementById('search').value='';
