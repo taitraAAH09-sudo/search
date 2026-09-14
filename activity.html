@@ -1,7 +1,11 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="座位管理">
 <title>活動座位管理系統</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -157,6 +161,19 @@ body.theater .round-table-center{background:#1E293B;border-color:#334155;color:#
 body.theater{overflow-x:hidden;}
 body.theater #vr{width:max-content;min-width:0;margin:0 auto;}
 body.theater .vrow,body.theater .zone-header-row{min-width:0!important;}
+/* 🔒 鎖定：平板上滑動不會離開介面 */
+body.theater.th-lock{position:fixed;inset:0;width:100%;overflow:hidden;overscroll-behavior:none;padding:0;}
+body.theater.th-lock #main-content{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 18px calc(18px + env(safe-area-inset-bottom));}
+body.theater.th-lock .venue{overscroll-behavior-x:contain;}
+.th-lock-btn{display:none;position:fixed;top:14px;left:18px;z-index:92;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.14);background:rgba(15,23,42,.85);color:#E2E8F0;font-size:13px;font-weight:700;padding:9px 16px;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:blur(6px);}
+body.theater .th-lock-btn{display:inline-flex;}
+body.theater.th-lock .th-lock-btn{background:rgba(22,101,52,.85);border-color:rgba(74,222,128,.45);color:#BBF7D0;}
+.th-lock-btn:hover{background:rgba(255,255,255,.16);}
+body.theater.th-lock .th-lock-btn:hover{background:rgba(22,101,52,1);}
+.th-lock-btn small{font-weight:500;opacity:.7;font-size:11px;}
+.th-hint{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:93;background:rgba(15,23,42,.94);color:#FDE047;border:1px solid rgba(253,224,71,.35);font-size:13px;padding:10px 18px;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.45);}
+.th-hint.show{display:block;animation:hintin .25s ease;}
+@keyframes hintin{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
 /* 縮放按鈕 */
 .th-zoom{display:none;position:fixed;top:14px;right:18px;z-index:90;align-items:center;gap:2px;background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:blur(6px);}
 body.theater .th-zoom{display:flex;}
@@ -266,7 +283,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .dc-actions button{flex:none;border:1.5px solid #1D3A6E;background:#EAF0FA;color:#1D3A6E;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:13px;}
 .dc-actions button.active{background:#F5A623;border-color:#F5A623;color:#fff;}
 .dc-board.picking{cursor:crosshair;background:#FFFBEB;}
-.dc-board.picking .dc-card{outline:2px dashed #F59E0B;outline-offset:2px;cursor:pointer;}
+.dc-board.picking .dc-card{outline:2px dashed #F5A623;outline-offset:2px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -357,7 +374,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
     <div class="modal-code" id="tm-title" style="margin-bottom:12px;">桌次設定</div>
     <div style="margin-bottom:16px;">
       <div class="modal-section">自訂桌名</div>
-      <div style="flex;gap:8px;display:flex;">
+      <div style="display:flex;gap:8px;">
         <input type="text" id="tm-name" placeholder="例如：貴賓 A 桌 (留白顯示預設)" style="flex:1;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid #D1D5DB;outline:none;" />
         <button class="btn btn-primary" onclick="saveTableName()">儲存名稱</button>
       </div>
@@ -532,6 +549,8 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div id="vr"></div>
 </div>
 
+<button class="th-lock-btn" id="th-lock-btn" type="button" onclick="toggleTheaterLock()"></button>
+<div class="th-hint" id="th-hint"></div>
 <div class="th-zoom" id="th-zoom">
   <button type="button" id="th-zminus" onclick="stepTheaterZoom(-1)" title="縮小 10%（快捷鍵 -）">−10%</button>
   <button type="button" class="th-zv" id="th-zv" onclick="setTheaterZoom(1)" title="回到符合螢幕（快捷鍵 0）">100%</button>
@@ -557,7 +576,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
       <span><em style="background:#6366F1"></em>佔用</span>
       <span><em style="border:1px dashed #64748B"></em>空位</span>
     </div>
-    <button class="th-exit" onclick="exitTheater()">✕ 離開劇院模式（Esc）</button>
+    <button class="th-exit" onclick="exitTheater()">✕ 離開劇院模式</button>
   </div>
 </div>
 
@@ -572,8 +591,6 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
       <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">➕ 新增</span>
       <input type="text" id="gi" placeholder="輸入新賓客名字，按 Enter" onkeydown="if(event.key==='Enter')addGuest()" />
       <button class="btn" onclick="addGuest()">新增</button>
-      <button class="btn" onclick="document.getElementById('panel-excel-input').click()" style="background:#1B4F8A;color:#fff;border-color:#1B4F8A;display:inline-flex;align-items:center;gap:4px;" title="上傳排到一半的座位表，直接覆蓋介面">📂 上傳覆蓋 Excel</button>
-      <input type="file" id="panel-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handlePanelExcelUpload(this)">
     </div>
 
   </div>
@@ -1331,30 +1348,84 @@ let theaterPos=null; // 視窗位置（本次開啟期間記住）
 function rebuildForTheater(){
   requestAnimationFrame(()=>{ if(Object.keys(seatMap).length){ buildVenue(Object.keys(seatMap)); refreshAll(); } });
 }
+let wakeLock=null;
+async function keepAwake(on){
+  try{
+    if(on&&'wakeLock' in navigator){ wakeLock=await navigator.wakeLock.request('screen'); }
+    else if(wakeLock){ await wakeLock.release(); wakeLock=null; }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&document.body.classList.contains('th-lock')) keepAwake(true);
+});
+function thHint(msg){
+  const h=document.getElementById('th-hint');
+  h.textContent=msg; h.classList.add('show');
+  clearTimeout(h._t); h._t=setTimeout(()=>h.classList.remove('show'),2600);
+}
+function paintLockBtn(){
+  const b=document.getElementById('th-lock-btn');
+  const on=document.body.classList.contains('th-lock');
+  b.innerHTML=on?'🔒 畫面已鎖定 <small>點此解鎖</small>':'🔓 未鎖定 <small>點此鎖定畫面</small>';
+  b.title=on?'解除鎖定後才能捲動整頁或離開劇院模式':'鎖定後滑動不會離開此畫面';
+}
+window.setTheaterLock=function(on){
+  document.body.classList.toggle('th-lock',!!on);
+  paintLockBtn(); keepAwake(!!on);
+  if(on){ document.getElementById('main-content').scrollTop=0; }
+};
+window.toggleTheaterLock=function(){
+  const on=!document.body.classList.contains('th-lock');
+  setTheaterLock(on);
+  thHint(on?'🔒 已鎖定：滑動不會離開此畫面':'🔓 已解鎖：可以捲動或離開劇院模式');
+};
+// 鎖定時吃掉整頁的下拉／上滑（座位區與搜尋結果內部仍可正常捲動）
+document.addEventListener('touchmove',e=>{
+  if(!document.body.classList.contains('th-lock')||e.touches.length>1) return;
+  let n=e.target;
+  while(n&&n!==document.body){
+    const st=getComputedStyle(n);
+    const sx=/(auto|scroll)/.test(st.overflowX)&&n.scrollWidth>n.clientWidth+1;
+    const sy=/(auto|scroll)/.test(st.overflowY)&&n.scrollHeight>n.clientHeight+1;
+    if(sx||sy) return; // 這一塊自己可以捲，放行
+    n=n.parentElement;
+  }
+  e.preventDefault();
+},{passive:false});
+
 window.enterTheater=function(){
   closeModal();
   document.body.classList.add('theater');
   window.scrollTo(0,0);
   loadTheaterZoom(); applyTheaterZoom();
+  setTheaterLock(true); // 進來就先鎖住，平板滑動不會跳走
   const el=document.documentElement;
   if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
   rebuildForTheater();
 };
-window.exitTheater=function(){
+window.exitTheater=function(force){
   if(!document.body.classList.contains('theater')) return;
+  if(document.body.classList.contains('th-lock')&&force!==true){
+    thHint('畫面已鎖定，請先點左上角「解鎖」'); return;
+  }
   closeModal();
-  document.body.classList.remove('theater','th-searching');
+  document.body.classList.remove('theater','th-searching','th-lock');
+  keepAwake(false); paintLockBtn();
   document.getElementById('vr').style.zoom='';
   document.querySelectorAll('.seat.th-hit').forEach(el=>el.classList.remove('th-hit'));
   const m=document.querySelector('#modal-bg .modal'); m.style.left=''; m.style.top='';
   if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   rebuildForTheater();
 };
-// 按 Esc 跳出全螢幕時，順便離開劇院模式
-document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement) exitTheater(); });
+// 平板滑一下常常會把全螢幕滑掉：只提示，不把劇院模式一起關掉
+document.addEventListener('fullscreenchange',()=>{
+  if(document.fullscreenElement||!document.body.classList.contains('theater')) return;
+  if(document.body.classList.contains('th-lock')) thHint('已退出全螢幕，畫面仍鎖定中');
+});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||e.defaultPrevented||!document.body.classList.contains('theater')) return;
-  if(document.getElementById('modal-bg').classList.contains('show')) closeModal(); else exitTheater();
+  if(document.getElementById('modal-bg').classList.contains('show')) closeModal();
+  else if(!document.body.classList.contains('th-lock')) exitTheater();
 });
 // ── 🔎 劇院模式縮放：每次 ±10%，範圍 50%～200%，每個活動各自記住 ──
 const TH_ZMIN=0.5, TH_ZMAX=2;
@@ -1414,7 +1485,7 @@ function applyTheaterSearch(){
   thHits.sort((a,b)=>coll.compare(a.code,b.code));
   if(!thHits.length){ cnt.innerHTML='找不到符合的座位'; return; }
   const ciN=thHits.filter(h=>window.checkins&&window.checkins[h.code]).length;
-  cnt.innerHTML=`找到 <b>${thHits.length}</b> 格`+(ciN?`，其中 ${ciN} 格已報到`:'')+(thHits.length>1?' 點下方名牌可直接開啟':' 按 Enter 直接開啟');
+  cnt.innerHTML=`找到 <b>${thHits.length}</b> 格`+(ciN?`，其中 ${ciN} 格已報到`:'')+(thHits.length>1?'　點下方名牌可直接開啟':'　按 Enter 直接開啟');
   thHits.slice(0,80).forEach(({code,name})=>{
     const c=document.createElement('span');
     const done=window.checkins&&window.checkins[code];
@@ -1529,7 +1600,6 @@ window.switchLayoutTab = function(tab) {
 
 function showExcelStatus(msg, type) {
   const el = document.getElementById('excel-upload-status');
-  if (!el) return;
   el.style.display = 'block';
   el.textContent = msg;
   if (type === 'ok') { el.style.background = '#E8F5EE'; el.style.color = '#1A6B4A'; }
@@ -1551,29 +1621,14 @@ document.getElementById('excel-upload-input').addEventListener('change', functio
   event.target.value = '';
 });
 
-// 下方賓客面板上傳 Excel 處理常式
-window.handlePanelExcelUpload = function(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (!isAdmin) {
-    toast('請先登入才能上傳座位表', 'ter');
-    input.value = '';
-    return;
-  }
-  processExcelFile(file);
-  input.value = '';
-};
-
 async function processExcelFile(file) {
   if (!isAdmin) { toast('請先登入才能上傳座位表', 'ter'); return; }
   if (!PROJECT_ID || PROJECT_ID === 'EVENT_DEFAULT') {
     showExcelStatus('❌ 請先選擇活動再上傳 Excel', 'err');
-    toast('請先選擇活動再上傳 Excel', 'ter');
     return;
   }
 
   showExcelStatus('解析 Excel 中…', 'info');
-  toast('解析 Excel 中…', 'tin');
 
   try {
     const buf = await file.arrayBuffer();
@@ -1653,6 +1708,8 @@ async function processExcelFile(file) {
     }
 
     // ── 格式 C：中文座位碼（左1A / 右3B…座位碼列 + 賓客名列交錯）──
+    // 轉換成系統通用格式：左→Z（A區）、右→Y（B區），數字=欄位，字母排號轉成排數
+    // 例：左1A → ZA1-1，右3B → YB1-3（A/B/C/D/E 排號轉成區域字母尾碼，確保不與其他活動衝突）
     const cnSeatPat = /^([左右])(\d+)([A-Za-z])$/;
     if (Object.keys(newMaster).length === 0) {
       let ci = 0;
@@ -1665,11 +1722,12 @@ async function processExcelFile(file) {
             const m = origCode.match(cnSeatPat);
             if (!m) return;
             const [, side, seatNum, rowLetter] = m;
+            // 左→A區，右→B區；rowLetter(A/B/C/D/E) 轉成排數(1/2/3/4/5)；seatNum 是該排內的座位序號
             const zoneCode = (side === '左' ? 'A' : 'B');
-            const rowIdx = rowLetter.charCodeAt(0) - 64;
-            const code = `${zoneCode}${rowIdx}-${seatNum}`;
+            const rowIdx = rowLetter.charCodeAt(0) - 64; // A=1, B=2, C=3...
+            const code = `${zoneCode}${rowIdx}-${seatNum}`; // 例：A1-1（左1A）、B3-5（右5C）
             const name = nameRow[col] || '';
-            newMaster[code] = '';
+            newMaster[code] = ''; // 結構節點不放姓名，姓名一律存 assignments，移動座位才不會留殘影
             if (name) newAssign[code] = name;
           });
           ci += 2;
@@ -1685,7 +1743,6 @@ async function processExcelFile(file) {
 
     if (totalMaster === 0) {
       showExcelStatus('❌ 找不到座位資料，請確認 Excel 格式（座位碼欄如 A1-1、H1-1、R1_T1-1）', 'err');
-      toast('找不到座位資料，請確認 Excel 格式', 'ter');
       return;
     }
 
@@ -1700,16 +1757,16 @@ async function processExcelFile(file) {
       `座位格局：${totalMaster} 格\n` +
       `賓客資料：${totalAssign} 筆\n` +
       (totalTags > 0 ? `標記資料：${totalTags} 筆\n` : '') +
-      `\n將覆寫「${PROJECT_ID}」的座位結構與名單，確定要執行嗎？`
+      `\n將覆寫「${PROJECT_ID}」的座位結構，確定要執行嗎？`
     );
     if (!ok) { showExcelStatus('已取消', 'info'); return; }
 
     showExcelStatus('寫入 Firebase 中…', 'info');
-    toast('寫入 Firebase 中…', 'tin');
     layoutMode = detectedLayout;
     sessionStorage.setItem('taitra_layout', detectedLayout);
 
-    // 整節點覆寫，徹底清除舊格局殘留（含自訂桌名、報到記錄），避免新舊座位格局同時存在
+    // 【核心修正】整節點覆寫，徹底清除舊格局殘留（含自訂桌名、報到記錄），
+    // 避免新舊座位格局同時存在
     await set(ref(db, PROJECT_ID), {
       seats_master2026: newMaster,
       assignments2026: Object.keys(newAssign).length ? newAssign : null,
@@ -1720,14 +1777,13 @@ async function processExcelFile(file) {
     });
 
     showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位（${isRound ? '圓桌' : '方陣'}模式）`, 'ok');
-    toast('🎉 座位表與名單已成功覆蓋！', 'tok');
+    toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
     document.getElementById('layout-modal-bg').classList.remove('show');
     refreshAll();
 
   } catch(e) {
     console.error(e);
     showExcelStatus('❌ 錯誤：' + e.message, 'err');
-    toast('上傳解析失敗：' + e.message, 'ter');
   }
 }
 
@@ -1739,7 +1795,7 @@ window.applyLayout = async function() {
     const newMaster = {};
     const ZK = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-    // 1. 生成資料結構
+    // 1. 生成資料結構 (與原本相同)
     if (mode === 'grid') {
         const rows = parseInt(document.getElementById('l-rows').value, 10);
         const zones = document.getElementById('l-zones').value.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
@@ -1771,17 +1827,21 @@ window.applyLayout = async function() {
 
     setSyncStatus('saving');
     try {
+        // 【核心修正】：這裡強制清空該活動路徑並寫入新結構，確保 Firebase 有效觸發 onValue
+        // 如果是新活動，這一行會直接建立資料庫
         await set(ref(db, PROJECT_ID), {
             seats_master2026: newMaster,
-            assignments2026: null,
+            assignments2026: null, // 新架構必須清除舊分配
             tags2026: null,
             seats2026: null,
-            table_names2026: null,
+            table_names2026: null, // 同步清除舊桌名，避免跟新格局殘留並存
             checkins2026: null
         });
         
         toast('🎉 座位架構已成功建立！', 'tok');
         document.getElementById('layout-modal-bg').classList.remove('show');
+        
+        // 強制刷新頁面狀態
         refreshAll();
     } catch (e) {
         console.error(e);
@@ -1826,12 +1886,13 @@ function updateStats(){
   }
 }
 
-// 搜尋定位：紅圈脈衝＋座位上方跳動的📍
+// 搜尋定位：紅圈脈衝＋座位上方跳動的📍，一眼找到目標座位
 let locatorTimer=null, locatorRAF=null;
 function locateSeat(code){
   clearLocator();
   const el0=document.getElementById('s-'+code);
   if(!el0) return;
+  // inline:'center' 讓座位圖的「橫向捲動」也自動捲到目標（手機上B區在畫面外時必要）
   const thMode=document.body.classList.contains('theater');
   el0.scrollIntoView({behavior:'smooth', block:thMode?'nearest':'center', inline:thMode?'nearest':'center'});
   const pin=document.createElement('div');
@@ -1839,6 +1900,7 @@ function locateSeat(code){
   pin.textContent='📍';
   pin.style.position='fixed';
   document.body.appendChild(pin);
+  // 每一影格跟著座位的實際位置走：捲動中、捲動後、甚至座位圖被重蓋都能對準
   const tick=()=>{
     const el=document.getElementById('s-'+code);
     if(el){
@@ -1853,6 +1915,7 @@ function locateSeat(code){
     locatorRAF=requestAnimationFrame(tick);
   };
   tick();
+  // 不自動消失：持續跳動，直到使用者做下一個動作（搜尋別人、點座位、拖曳）才清除
 }
 
 function clearLocator(){
@@ -1939,10 +2002,14 @@ window.doReset = async function() {
   const eventName = document.getElementById('event-name-input').value;
   if (!confirm(`⚠️ 警告：確定要【徹底清除】所有資料嗎？\n這將會直接刪除「${eventName}」的所有座位、名單與報到紀錄！\n清除後資料將無法復原，確定要執行嗎？`)) return;
 
+  // 阻斷可能的背景儲存，避免清空後又把舊資料寫回去
   clearTimeout(saveTimer);
   setSyncStatus('saving');
   try {
+    // 【核心修正】：直接刪除該活動在 Firebase 的整個根節點
     await set(ref(db, PROJECT_ID), null);
+
+    // 完全清除本地快取陣列
     clearLocalData();
     refreshAll();
     
@@ -1955,6 +2022,11 @@ window.doReset = async function() {
 };
 
 window.doExport = async function() {
+    // 賓客欄位斷行規則：
+    // 1. 如果字串裡已經有真正的換行（Excel 原本就打兩行），完全尊重原本的斷法，不再處理。
+    // 2. 如果沒有換行（打成一行），一律用「第一個空白」當作公司／姓名職稱的分界，
+    //    不管後面姓名跟職稱之間是連著打還是多打一個空白，都當成同一段（第二行），
+    //    避免因為輸入習慣不一致，讓公司名稱被錯誤拆開。
     function splitCompanyName(str) {
         if (!str) return str;
         if (str.includes('\n')) return str;
@@ -1984,6 +2056,12 @@ window.doExport = async function() {
     const wb = new ExcelJS.Workbook();
 
     if (isRound) {
+        // ═══ 圓桌禮賓位置圖 → JPG ═══
+        // 樣式仿「主桌位置圖」：白底名牌＋橘色禮賓序號＋黃色主位/主賓標籤，
+        // 圓桌本體為深藍圓框，座位卡排在外圈橢圓軌道，不遮擋圓形；下方為舞台背板。
+        // 禮賓序號規則：主位可自選（預設 12 點鐘）；主位對面＝1(主賓)、
+        // 1 的右邊＝2、2 的對面＝3、3 的右邊＝4…依序交替替補。
+
         const tables = {};
         keys.forEach(k => { const tCode = k.split('-')[0]; if (!tables[tCode]) tables[tCode] = []; tables[tCode].push(k); });
         const tableKeys = Object.keys(tables).sort((a, b) => {
@@ -1996,6 +2074,7 @@ window.doExport = async function() {
             return na - nb;
         });
 
+        // ── 選主位（實體座位號：1 = 12 點鐘方向，順時針）──
         const hostRaw = prompt(
             '主位在哪個座位？\n輸入「實體座位號」(1 = 12點鐘方向，順時針編號)。\n' +
             '多桌時可用逗號依桌次分別指定，例如：1,6\n' +
@@ -2005,8 +2084,13 @@ window.doExport = async function() {
 
         toast('正在繪製 JPG…', 'tin');
 
+        // 產生每個實體座位(0-based, 12點鐘起順時針)的禮賓標籤
+        // 規則（以主位為中心，右手／左手交替往外）：
+        // 主位對面＝1(主賓)；主位右手＝2，2的對面＝3(同時也是1的右手)；
+        // 主位左手＝4，4的對面＝5(同時也是1的左手)；6＝2的右手，7＝6的對面(=3的右手)；
+        // 8＝4的左手，9＝8的對面(=5的左手)…以此類推，右手鏈與左手鏈各自往外延伸。
         function protocolLabels(n, hostSeatNo) {
-            let h = (hostSeatNo >= 1 && hostSeatNo <= n) ? hostSeatNo - 1 : 0;
+            let h = (hostSeatNo >= 1 && hostSeatNo <= n) ? hostSeatNo - 1 : 0; // 預設 12 點鐘（上方）
             const R = i => (i % n + n) % n;
             const half = Math.floor(n / 2);
             const label = new Array(n).fill(null);
@@ -2071,7 +2155,7 @@ window.doExport = async function() {
             ctx.arcTo(x + w, y, x + w, y + h, r);
             ctx.arcTo(x + w, y + h, x, y + h, r);
             ctx.arcTo(x, y + h, x, y, r);
-            ctx.arcTo(x, y + w, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
             ctx.closePath();
         }
 
@@ -2108,6 +2192,7 @@ window.doExport = async function() {
             const hostSeatNo = hostList.length === 0 ? 0 : (hostList.length === 1 ? hostList[0] : (hostList[idx] || 0));
             const proto = protocolLabels(n, hostSeatNo);
 
+            // 圓桌本體（深藍圓框，同範例圖；桌名淡淡放中央）
             ctx.beginPath(); ctx.arc(cx, cy, CIRCLE_R, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF'; ctx.fill();
             ctx.lineWidth = 4; ctx.strokeStyle = NAVY; ctx.stroke();
@@ -2127,6 +2212,7 @@ window.doExport = async function() {
                 const name = (asgn[code] || '').trim();
                 const info = proto.label[i];
 
+                // 名牌卡（白底深藍框；空位為灰色虛線框）
                 roundRect(sx - BOX_W / 2, sy - BOX_H / 2, BOX_W, BOX_H, 4);
                 ctx.fillStyle = '#FFFFFF'; ctx.fill();
                 if (name) {
@@ -2142,6 +2228,7 @@ window.doExport = async function() {
                     ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
                 }
 
+                // 卡片朝圓心方向的邊界點（放序號徽章）與再往內的位置（放黃色標籤）
                 const dx = cx - sx, dy = cy - sy;
                 const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
                 const tEdge = Math.min(
@@ -2151,6 +2238,7 @@ window.doExport = async function() {
                 const bx = sx + ux * tEdge, by = sy + uy * tEdge;
 
                 if (info && (info.type === 'num' || info.type === 'guest')) {
+                    // 橘色禮賓序號（主賓 = 1）
                     const BW = 27;
                     ctx.fillStyle = ORANGE;
                     ctx.fillRect(bx - BW / 2, by - BW / 2, BW, BW);
@@ -2159,6 +2247,7 @@ window.doExport = async function() {
                     ctx.fillText(String(info.rank), bx, by + 1);
                 }
                 if (info && (info.type === 'host' || info.type === 'guest')) {
+                    // 黃色「主位／主賓」標籤（在名牌與圓桌之間）
                     const tagText = info.type === 'host' ? '主位' : '主賓';
                     const TW = 56, TH = 27;
                     const tx = sx + ux * (tEdge + (info.type === 'guest' ? 46 : 26));
@@ -2214,7 +2303,28 @@ window.doExport = async function() {
     zones.forEach((z, i) => { zoneColorMap[z] = ZONE_PALETTE[i % ZONE_PALETTE.length]; });
 
     const ws = wb.addWorksheet('席次圖');
+
     const useVertical = confirm('賓客姓名文字方向：\n\n確定＝直書（文字由上至下排列＋@微軟正黑體，中文正立、英文橫躺）\n取消＝橫書（一般 Excel 閱讀方式）');
+
+    function toVerticalRichText(str, baseSize) {
+        if (!str) return null;
+        const tokens = str.split(' ').filter(t => t.length > 0);
+        const runs = [];
+        tokens.forEach(token => {
+            const isLatin = /^[A-Za-z0-9.,'-]+$/.test(token);
+            if (isLatin) {
+                runs.push({ font: { name:'@微軟正黑體', size:baseSize, bold:true }, text: token + '\n' });
+            } else {
+                Array.from(token).forEach(ch => {
+                    runs.push({ font: { name:'微軟正黑體', size:baseSize, bold:true }, text: ch + '\n' });
+                });
+            }
+        });
+        if (runs.length) {
+            runs[runs.length - 1].text = runs[runs.length - 1].text.replace(/\n$/, '');
+        }
+        return runs;
+    }
 
     let colStarts = {}, curCol = 2;
     zones.forEach(z => { colStarts[z] = curCol; curCol += maxSeatPerZone[z] + 1; });
@@ -2262,7 +2372,7 @@ window.doExport = async function() {
     for (let r = 1; r <= maxRow.v; r++) {
         const codeRowIdx = curRow, nameRowIdx = curRow + 1;
         ws.getRow(codeRowIdx).height = useVertical ? 12 : 18;
-        ws.getRow(nameRowIdx).height = useVertical ? 150 : undefined;
+        ws.getRow(nameRowIdx).height = useVertical ? 150 : undefined; // 豎排固定 150：Excel 對程式產生的豎排＋換行有渲染延遲的限制，動態精算高度並沒有解決，改用固定值
 
         const rowNames = {};
         zones.forEach(z => {
@@ -2295,6 +2405,8 @@ window.doExport = async function() {
                 nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
 
                 if (useVertical) {
+                    // Excel「文字由上至下排列」(textRotation=180，ExcelJS 寫 -90) ＋ 直式字型「@微軟正黑體」：
+                    // 中文字會轉回正向由上往下讀，英文維持橫躺；多行時第一行在最右、往左排
                     nameCell.value = fullName;
                     nameCell.font = { name:'@微軟正黑體', size:12, bold:true };
                     nameCell.alignment = { horizontal:'center', vertical:'top', textRotation:-90, wrapText:true };
@@ -2348,6 +2460,7 @@ function hideTip(){dtt.style.display='none';}
 document.addEventListener('dragover',e=>{if(dragGuest||dragFrom)moveTip(e);});
 function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+cls;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800);}
 
+// 搜尋下一個人（輸入變動）時，收掉上一個定位標
 const _gsEl = document.getElementById('gs');
 if (_gsEl) _gsEl.addEventListener('input', clearLocator);
 
@@ -2360,10 +2473,11 @@ window.addEventListener('resize', () => {
 });
 
 // ═══════════════ 圓桌細節圖：可拖曳 WYSIWYG 編輯器 ═══════════════
+// 與活動資料庫連動：開啟時載入（無存檔則以目前座位預填），拖曳/套用名單即自動儲存至 Firebase。
 const DC_BOARD_W = 680, DC_BOARD_H = 640, DC_CIRCLE_R = 150, DC_RX = 258, DC_RY = 245;
-let detailState = {};
+let detailState = {};          // { tCode: { cards:[{id,text,role,rank,x,y,tagHidden,badgeDX,badgeDY}] } }
 let dcSaveTimer = null, dcIdSeq = 1;
-let dcSwapSource = null;
+let dcSwapSource = null;       // { tCode, id } 交換位置：已選取的第一張名牌
 
 function dcStatus(msg, ok) {
     const el = document.getElementById('dc-status');
@@ -2378,15 +2492,19 @@ function dcSave() {
     }, 700);
 }
 
+// 禮賓序位規則（以主位為中心，右手／左手交替往外）：
+// 主位對面＝1(主賓)；主位右手＝2，2的對面＝3(同時也是1的右手)；
+// 主位左手＝4，4的對面＝5(同時也是1的左手)；6＝2的右手，7＝6的對面(=3的右手)；
+// 8＝4的左手，9＝8的對面(=5的左手)…右手鏈與左手鏈各自往外延伸。
 function dcOrderFromHost(n, hostPi) {
     const R = i => (i % n + n) % n;
     const half = Math.floor(n / 2);
-    const order = [];
+    const order = [];                      // order[r-1] = 序號 r 的實體索引
     const used = new Set([hostPi]);
     const nextFree = idx => { let g = 0; while (used.has(idx) && g++ <= n) idx = R(idx - 1); return idx; };
     const place = idx => { order.push(idx); used.add(idx); };
 
-    if (n - 1 >= 1) place(nextFree(R(hostPi + half)));
+    if (n - 1 >= 1) place(nextFree(R(hostPi + half))); // rank 1 = 主位對面
     let rightAnchor = hostPi, leftAnchor = hostPi;
     while (order.length < n - 1) {
         const rightSeat = nextFree(R(rightAnchor - 1));
@@ -2422,6 +2540,8 @@ function dcEventName() {
     if (!n) n = document.title.replace(' · 座位系統', '').trim();
     return n || '活動';
 }
+// 名牌視覺大小依禮賓序位遞減：主位最大 > 主賓(1) > 2 > 3 …，序位數字越大名牌越小。
+// 先以 10 人版本（主位+9）為基準比例；若桌次人數更多，數字越大的名牌會持續縮小到最小尺寸為止。
 function dcCardSize(rank) {
     const w = Math.max(112, 176 - rank * 7);
     const fs = Math.max(11, 15 - rank * 0.42);
@@ -2431,7 +2551,7 @@ function dcDefaultPos(physIdx, n) {
     const ang = (physIdx * (360 / n) - 90) * Math.PI / 180;
     let x = Math.round(DC_BOARD_W / 2 + DC_RX * Math.cos(ang));
     let y = Math.round(DC_BOARD_H / 2 + DC_RY * Math.sin(ang));
-    x = Math.min(DC_BOARD_W - 92, Math.max(92, x));
+    x = Math.min(DC_BOARD_W - 92, Math.max(92, x));   // 名牌不超出畫布
     y = Math.min(DC_BOARD_H - 32, Math.max(32, y));
     return { x, y };
 }
@@ -2452,11 +2572,13 @@ function dcGroupTables() {
         const nb = mb ? parseInt(mb[1]) : parseInt(b.replace(/\D/g, '') || 0);
         return na - nb;
     });
+    // 與架構設定連動：只呈現「主桌」，外面生成幾個主桌，這裡就有幾個圓桌
     const hOnly = order.filter(t => t.startsWith('H'));
     if (hOnly.length > 0) order = hOnly;
     order.forEach(t => tables[t].sort((x, y) => parseInt(x.split('-')[1]) - parseInt(y.split('-')[1])));
     return { tables, order };
 }
+// 由目前座位分配預填（主位預設＝實體座位1／12點鐘，可用「點選主位」改）
 function dcDefaultTableState(tCode, seats) {
     const n = seats.length, cards = [];
     seats.forEach((code, i) => {
@@ -2532,6 +2654,7 @@ function dcBuildPanel(tCode, seats) {
         board.appendChild(cardEl);
     });
     panel.appendChild(board);
+    // 需在插入 DOM 後才能量測尺寸 → 下一個 frame 貼齊徽章
     requestAnimationFrame(() => {
         board.querySelectorAll('.dc-card').forEach((cardEl, i) => {
             const c = st.cards[i];
@@ -2539,6 +2662,7 @@ function dcBuildPanel(tCode, seats) {
         });
     });
 
+    // ── 名單輸入區 ──
     const side = document.createElement('div');
     side.className = 'dc-side';
     const hint = document.createElement('div');
@@ -2551,6 +2675,7 @@ function dcBuildPanel(tCode, seats) {
     side.appendChild(hint);
     const ta = document.createElement('textarea');
     ta.placeholder = '第1行：主位\n第2行：主賓（序號1）\n第3行：序號2\n…';
+    // 以目前卡片內容（依禮賓序）預填
     const ordered = st.cards.filter(c => c.role !== 'free').slice().sort((a, b) => a.rank - b.rank);
     ta.value = ordered.map(c => c.text).join('\n').replace(/\n+$/, '');
     side.appendChild(ta);
@@ -2562,6 +2687,7 @@ function dcBuildPanel(tCode, seats) {
         const lines = ta.value.split('\n').map(s => s.trim());
         const proto = st.cards.filter(c => c.role !== 'free').sort((a, b) => a.rank - b.rank);
         proto.forEach((c, i) => { c.text = lines[i] || ''; });
+        // 多出來的行 → 加掛名牌，疊在右下角
         const extra = lines.slice(proto.length).filter(s => s);
         extra.forEach((txt, j) => {
             st.cards.push({ id: 'c' + (dcIdSeq++), text: txt, role: 'free', rank: 999, x: DC_BOARD_W - 120, y: 60 + j * 64 });
@@ -2600,6 +2726,7 @@ function dcBuildPanel(tCode, seats) {
             dcStatus('請在圓桌上點選一張名牌設為主位…');
         } else { dcStatus(''); }
     };
+    // 對稱排列：主位保持在目前方向，其餘名牌依實體座位序等距對稱分佈一圈
     const bSym = document.createElement('button');
     bSym.textContent = '♻️ 對稱排列';
     bSym.title = '以主位目前的方向為基準，其他名牌等距對稱繞圓排列';
@@ -2620,6 +2747,9 @@ function dcBuildPanel(tCode, seats) {
         dcSave();
         toast('♻️ 已依主位方向對稱排列', 'tok');
     };
+    // 匯入前方席次圖：不理會前方實體座位號(1-12)，只取前方目前已分配的賓客名單，
+    // 依「本桌已產生的禮賓方向」（主位→主賓(1)→2→3…）依序對應填入。
+    // 注意：前方若沒有賓客可對應（空位），不會清空本桌原本已有的名字，避免資料不見。
     const bImport = document.createElement('button');
     bImport.textContent = '📥 匯入席次圖名單';
     bImport.title = '取前方主畫面此桌目前已分配的賓客名單，依本桌主位方向的禮賓序位依序對應（不理會前方座位號，前方無資料時不覆蓋原本名字）';
@@ -2639,6 +2769,8 @@ function dcBuildPanel(tCode, seats) {
             toast('⚠️ 前方目前沒有可匯入的賓客名單，本桌名字維持原狀', 'tin');
         }
     };
+    // 寫回前方座位：反方向 — 把本桌名牌目前在圖上的「實際方位」換算成前方最接近的座位號，直接寫回前方指定。
+    // 角度不必完全精準（有偏差沒關係），只是盡量讓主位落在前方最接近上/下/左/右的座位號；前方原本該座位的賓客會被覆蓋。
     const bWriteBack = document.createElement('button');
     bWriteBack.textContent = '📤 寫回前方座位';
     bWriteBack.title = '依名牌目前在圖上的方位，換算成前方最接近的座位號並直接寫回（前方該座位原本的賓客會被覆蓋）';
@@ -2648,11 +2780,12 @@ function dcBuildPanel(tCode, seats) {
         if (ring.length === 0) { toast('⚠️ 本桌目前沒有可寫回前方的賓客', 'tin'); return; }
         const cx = DC_BOARD_W / 2, cy = DC_BOARD_H / 2, step = 360 / n;
         const items = ring.map(c => {
-            const angDeg = Math.atan2(c.y - cy, c.x - cx) * 180 / Math.PI;
+            const angDeg = Math.atan2(c.y - cy, c.x - cx) * 180 / Math.PI; // -90° = 正上方
             let idx = Math.round((angDeg + 90) / step);
             idx = ((idx % n) + n) % n;
             return { c, idx };
         });
+        // 多張名牌換算後搶同一個前方座位號時，依序遞補到下一個空位，避免互相覆蓋
         const used = new Set();
         items.forEach(item => {
             let idx = item.idx, guard = 0;
@@ -2683,6 +2816,8 @@ function dcRefreshBoard(board, tCode) {
     });
 }
 
+// 交換位置：點第一張名牌的 ⇄ 選取，再點第二張的 ⇄ 即互換兩張名牌的文字內容
+// （位置、序號徽章、主位/主賓標籤都留在原位，只交換姓名，適合用來對調長官與長官姓名等任意兩個名牌）
 function dcSwapClick(tCode, card, el) {
     const board = el.closest('.dc-board');
     if (!dcSwapSource) {
@@ -2692,6 +2827,7 @@ function dcSwapClick(tCode, card, el) {
         return;
     }
     if (dcSwapSource.id === card.id && dcSwapSource.tCode === tCode) {
+        // 再點一次自己＝取消選取
         dcSwapSource = null;
         el.classList.remove('dc-swap-selected');
         dcStatus('');
@@ -2716,6 +2852,7 @@ function dcSwapClick(tCode, card, el) {
     toast('🔀 已交換兩張名牌的姓名', 'tok');
 }
 
+// 序號徽章與主位/主賓標籤永遠貼在名牌「面向圓心」的那一側（靠近圓形）
 function dcDecorate(el, card) {
     const badge = el.querySelector('.dc-badge');
     const tag = el.querySelector('.dc-tag');
@@ -2727,8 +2864,9 @@ function dcDecorate(el, card) {
         Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9,
         Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9
     );
-    const ex = w / 2 + ux * t, ey = h / 2 + uy * t;
+    const ex = w / 2 + ux * t, ey = h / 2 + uy * t;   // 卡片邊界上朝圓心的點
     if (badge) {
+        // 數字徽章預設貼齊名牌邊緣，若使用者曾手動拖曳過，疊加其自訂偏移量（避免遮住名字）
         const bdx = card.badgeDX || 0, bdy = card.badgeDY || 0;
         badge.style.left = (ex - 13 + bdx) + 'px';
         badge.style.top = (ey - 13 + bdy) + 'px';
@@ -2748,6 +2886,7 @@ function dcBuildCard(card, tCode) {
     el.className = 'dc-card' + (card.text ? '' : ' empty');
     el.style.left = card.x + 'px';
     el.style.top = card.y + 'px';
+    // 名牌大小依禮賓序位遞減：主位(rank 0)最大，主賓(1)次之，數字越大越小；加掛名牌固定用中等大小
     const sizeRank = card.role === 'free' ? 4 : (card.rank || 0);
     const sz = dcCardSize(sizeRank);
     el.style.width = (card.w || sz.w) + 'px';
@@ -2762,6 +2901,7 @@ function dcBuildCard(card, tCode) {
         b.textContent = card.rank;
         b.title = '拖曳可移動數字位置，避免擋住名字';
         el.appendChild(b);
+        // 數字徽章可獨立拖曳（跟名牌一樣），移開後偏移量會記住
         b.addEventListener('pointerdown', e => {
             e.stopPropagation();
             e.preventDefault();
@@ -2775,6 +2915,7 @@ function dcBuildCard(card, tCode) {
             const up = () => {
                 b.removeEventListener('pointermove', move);
                 b.removeEventListener('pointerup', up);
+                // 換算成相對於預設貼齊位置的偏移量，之後名牌移動時徽章會跟著保持這個偏移
                 const w = el.offsetWidth || 150, h = el.offsetHeight || 44;
                 const dx = DC_BOARD_W / 2 - card.x, dy = DC_BOARD_H / 2 - card.y;
                 const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
@@ -2797,6 +2938,7 @@ function dcBuildCard(card, tCode) {
         t.textContent = card.tagHidden ? '' : (card.role === 'host' ? '主位' : '主賓');
         t.title = '點一下可隱藏／再點一下恢復顯示，避免標籤擋到名牌';
         el.appendChild(t);
+        // 點選「主位／主賓」標籤可隱藏／出現，避免擋到名字或其他名牌
         t.addEventListener('pointerdown', e => e.stopPropagation());
         t.addEventListener('click', e => {
             e.stopPropagation();
@@ -2807,6 +2949,7 @@ function dcBuildCard(card, tCode) {
             dcSave();
         });
     }
+    // 交換位置小按鈕：先點一張名牌的 ⇄，再點另一張名牌的 ⇄，即可互換兩者文字內容
     const swapBtn = document.createElement('div');
     swapBtn.className = 'dc-swap-btn';
     swapBtn.textContent = '⇄';
@@ -2814,7 +2957,7 @@ function dcBuildCard(card, tCode) {
     swapBtn.addEventListener('pointerdown', e => e.stopPropagation());
     swapBtn.addEventListener('click', e => { e.stopPropagation(); dcSwapClick(tCode, card, el); });
     el.appendChild(swapBtn);
-    
+    // 拖曳（滑鼠＋觸控）；「點選主位」模式下改為選取
     el.addEventListener('pointerdown', e => {
         const board = el.parentElement;
         if (board && board.classList.contains('picking')) {
@@ -2841,7 +2984,7 @@ function dcBuildCard(card, tCode) {
             card.y = Math.min(DC_BOARD_H - 24, Math.max(24, oy + (ev.clientY - startY)));
             el.style.left = card.x + 'px';
             el.style.top = card.y + 'px';
-            dcDecorate(el, card);
+            dcDecorate(el, card);   // 徽章/標籤跟著轉向圓心
         };
         const up = () => {
             el.removeEventListener('pointermove', move);
@@ -2861,6 +3004,7 @@ function dcBuildCard(card, tCode) {
         dcRefreshBoard(el.parentElement || document.querySelector('.dc-board[data-tcode="' + tCode + '"]'), tCode);
         dcSave();
     });
+    // 調整大小：右下角小方塊，可拖曳自由調整這張名牌的寬／高（雙擊右下角可還原成預設大小）
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'dc-resize-handle';
     resizeHandle.title = '拖曳調整這張名牌的寬高（雙擊還原預設大小）';
@@ -2899,6 +3043,7 @@ function dcBuildCard(card, tCode) {
     return el;
 }
 
+// ── 匯出 PPT（橫式 16:9，每頁最多 3 桌；每個名牌都是可編輯文字框）──
 let _pptxLoading = null;
 function dcLoadPptx() {
     if (window.PptxGenJS) return Promise.resolve();
@@ -2924,20 +3069,22 @@ window.dcExportPPT = async function () {
     pptx.defineLayout({ name: 'W16x9', width: 13.333, height: 7.5 });
     pptx.layout = 'W16x9';
 
-    const PER = 3;
-    const PX = 1 / 96;
+    const PER = 3;                      // 每頁最多三桌（與 JPG 一致）
+    const PX = 1 / 96;                  // px → 英吋
     const pages = Math.ceil(boards.length / PER);
 
     for (let pg = 0; pg < pages; pg++) {
         const group = boards.slice(pg * PER, pg * PER + PER);
         const slide = pptx.addSlide();
 
+        // 頁首深藍標題列
         slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.62, fill: { color: '132742' }, line: { color: '132742' } });
         slide.addText(eventName + '－主桌位置圖' + (pages > 1 ? `（${pg + 1}/${pages}）` : ''), {
             x: 0, y: 0, w: 13.333, h: 0.62, align: 'center', valign: 'middle',
             fontSize: 20, bold: true, color: 'FFFFFF', fontFace: FONT
         });
 
+        // 依桌數分欄置中；整體縮放到單頁可容納
         const n = group.length;
         const scale = Math.min((13.333 - 0.6) / (n * DC_BOARD_W * PX + (n - 1) * 0.25), (7.5 - 1.5) / (DC_BOARD_H * PX));
         const bw = DC_BOARD_W * PX * scale, bh = DC_BOARD_H * PX * scale, gap = 0.25;
@@ -2950,10 +3097,12 @@ window.dcExportPPT = async function () {
             const ox = startX + gi * (bw + gap);
             const cxAbs = ox + bw / 2, cyAbs = topY + bh / 2;
 
+            // 桌名
             slide.addText(dcTableLabel(tCode), {
                 x: ox, y: topY - 0.42, w: bw, h: 0.36, align: 'center', valign: 'middle',
                 fontSize: Number(Math.max(9, 15 * scale).toFixed(1)), bold: true, color: INK, fontFace: FONT
             });
+            // 圓桌
             const dia = DC_CIRCLE_R * 2 * PX * scale;
             slide.addShape(pptx.ShapeType.ellipse, {
                 x: cxAbs - dia / 2, y: cyAbs - dia / 2, w: dia, h: dia,
@@ -2964,12 +3113,14 @@ window.dcExportPPT = async function () {
                 fontSize: Number(Math.max(9, 16 * scale).toFixed(1)), bold: true, color: '9AA9C4', fontFace: FONT
             });
 
+            // 名牌：每張都是獨立文字框（進 PPT 可點開改字、可拖曳）
             board.querySelectorAll('.dc-card').forEach(el => {
                 const w = el.offsetWidth * PX * scale, h = el.offsetHeight * PX * scale;
                 const cx = ox + parseFloat(el.style.left) * PX * scale;
                 const cy = topY + parseFloat(el.style.top) * PX * scale;
                 const isEmpty = el.classList.contains('empty');
                 const text = isEmpty ? '' : (el.querySelector('span') ? el.querySelector('span').textContent : '');
+                // 字級＝基準字 × 整體縮放；字多再自動遞減，確保不溢出名牌框
                 const baseFs = 11 * scale;
                 const cap = Math.max(6, Math.min(baseFs, (w * h * 96 * 96 * 1.05) / Math.max(1, text.length) / 30));
                 const fs = Math.max(6, Math.min(baseFs, cap));
@@ -2982,6 +3133,7 @@ window.dcExportPPT = async function () {
                     line: isEmpty ? { color: 'B9C2D0', width: 1, dashType: 'dash' } : { color: NAVY, width: 1.75 }
                 });
 
+                // 序位徽章（照畫面實際位置，含手動微調）
                 const badge = el.querySelector('.dc-badge');
                 if (badge) {
                     const bx = cx - w / 2 + parseFloat(badge.style.left) * PX * scale;
@@ -2994,6 +3146,7 @@ window.dcExportPPT = async function () {
                         fill: { color: ORANGE }, line: { color: ORANGE, width: 0.5 }
                     });
                 }
+                // 主位／主賓黃色標籤
                 const tag = el.querySelector('.dc-tag');
                 if (tag && !tag.classList.contains('dc-tag-hidden')) {
                     const ddx = cxAbs - cx, ddy = cyAbs - cy;
@@ -3023,13 +3176,15 @@ window.dcExportPPT = async function () {
     toast('✅ PPT 匯出完成！每個名牌都可在 PowerPoint 內編輯', 'tok');
 };
 
+// ── 匯出 JPG（所見即所得）──
 window.dcExportJPG = function () {
     const boards = Array.from(document.querySelectorAll('#dc-body .dc-board'));
     if (boards.length === 0) { toast('沒有可匯出的內容', 'ter'); return; }
-    const eventName = dcEventName();
+    const eventName = dcEventName();   // 表頭＝前方建立活動時輸入的展名
     const FONT = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
     const NAVY = '#1D3A6E', INK = '#13315C', ORANGE = '#F5A623', YELLOW = '#FFF200';
 
+    // 最多 3 個主桌時整排橫印；超過 3 桌回到每列 2 桌
     const TPR = boards.length <= 3 ? Math.max(1, boards.length) : 2;
     const PAD = 24, TITLE_H = 76, LABEL_H = 34, GAP = 26;
     const nCols = Math.min(TPR, boards.length);
@@ -3067,12 +3222,14 @@ window.dcExportJPG = function () {
         ctx.fillText(dcTableLabel(tCode), ox + DC_BOARD_W / 2, oy + LABEL_H / 2);
         const by0 = oy + LABEL_H;
 
+        // 圓桌
         ctx.beginPath();
         ctx.arc(ox + DC_BOARD_W / 2, by0 + DC_BOARD_H / 2, DC_CIRCLE_R, 0, Math.PI * 2);
         ctx.lineWidth = 6; ctx.strokeStyle = NAVY; ctx.stroke();
         ctx.fillStyle = 'rgba(29,58,110,0.35)'; ctx.font = 'bold 22px ' + FONT;
         ctx.fillText(dcTableLabel(tCode), ox + DC_BOARD_W / 2, by0 + DC_BOARD_H / 2);
 
+        // 名牌（依 DOM 實際大小與位置繪製）
         board.querySelectorAll('.dc-card').forEach(el => {
             const w = el.offsetWidth, h = el.offsetHeight;
             const cx = ox + parseFloat(el.style.left), cy = by0 + parseFloat(el.style.top);
@@ -3093,6 +3250,7 @@ window.dcExportJPG = function () {
                 const lh = size + 4, startY = cy - ((lines.length - 1) * lh) / 2;
                 lines.forEach((ln, li) => ctx.fillText(ln, cx, startY + li * lh));
             }
+            // 徽章與標籤：貼在名牌面向圓心的那一側
             const bcx = ox + DC_BOARD_W / 2, bcy = by0 + DC_BOARD_H / 2;
             const ddx = bcx - cx, ddy = bcy - cy;
             const dl = Math.hypot(ddx, ddy) || 1, ux = ddx / dl, uy = ddy / dl;
@@ -3103,6 +3261,8 @@ window.dcExportJPG = function () {
             const badge = el.querySelector('.dc-badge');
             let epx, epy;
             if (badge) {
+                // 用畫面上實際的徽章位置（含使用者手動拖曳的偏移量），而不是重新計算預設位置，
+                // 這樣匯出的 JPG 才會跟畫面上看到的一致，數字不會跳回原位。
                 epx = x + parseFloat(badge.style.left) + 13;
                 epy = y + parseFloat(badge.style.top) + 13;
                 ctx.fillStyle = ORANGE;
