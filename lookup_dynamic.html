@@ -285,16 +285,18 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
         <div>
           <button class="wk-btn" data-i18n="wk_pick_photo" onclick="document.getElementById('wk-photo-input').click()">選擇／更換照片</button>
           <div data-i18n="wk_photo_hint" style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:6px;line-height:1.5;">壓成 480×480，只存在本系統</div>
+          <div id="wk-photo-src" style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:4px;line-height:1.5;"></div>
         </div>
         <input type="file" id="wk-photo-input" accept="image/*" style="display:none" onchange="wikiPickPhoto(this.files[0])">
       </div>
       <div class="wk-label" data-i18n="wk_name_zh">姓名（中）＊必填，用來對應席次圖</div>
-      <input type="text" id="wk-name-zh" class="wk-input" autocomplete="off">
+      <input type="text" id="wk-name-zh" class="wk-input" autocomplete="off" onchange="wikiTouch(true)">
       <div class="wk-label" data-i18n="wk_phone">電話／手機（選填，卡片上可直接點撥）</div>
-      <input type="tel" id="wk-phone" class="wk-input" autocomplete="off" inputmode="tel">
+      <input type="tel" id="wk-phone" class="wk-input" autocomplete="off" inputmode="tel" oninput="wikiTouch()" onblur="wikiTouch(true)">
       <div class="wk-label" data-i18n="wk_note">聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）</div>
-      <textarea id="wk-note" class="wk-input"></textarea>
-      <button class="wk-save" data-i18n="wk_save" onclick="wikiSaveRecord()" style="margin-top:6px;">💾 儲存</button>
+      <textarea id="wk-note" class="wk-input" oninput="wikiTouch()" onblur="wikiTouch(true)"></textarea>
+      <div data-i18n="wk_autosave_hint" style="color:rgba(255,255,255,0.45);font-size:11.5px;margin:2px 0 8px;line-height:1.6;">打完字會自動儲存，不按下面的按鈕也不會掉；按儲存只是順便回清單。</div>
+      <button class="wk-save" data-i18n="wk_save" onclick="wikiSaveRecord()" style="margin-top:6px;">💾 儲存並回清單</button>
       <button class="wk-btn" data-i18n="wk_back" onclick="wikiBackToList()" style="width:100%;margin-top:8px;">← 回清單</button>
       <button class="wk-del" id="wk-del" data-i18n="wk_delete" onclick="wikiDeleteRecord()" style="display:none;">🗑 刪除本系統這筆（一覽表資料不受影響）</button>
       <div id="wk-form-msg" style="color:#4ade80;font-size:12.5px;margin-top:10px;min-height:16px;"></div>
@@ -387,7 +389,12 @@ const I18N = {
   wk_name_zh:"姓名（中）＊必填，用來對應席次圖",
   wk_phone:"電話／手機（選填，卡片上可直接點撥）",
   wk_note:"聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）",
-  wk_save:"💾 儲存", wk_back:"← 回清單",
+  wk_save:"💾 儲存並回清單", wk_back:"← 回清單",
+  wk_autosave_hint:"打完字會自動儲存，不按下面的按鈕也不會掉；按儲存只是順便回清單。",
+  wk_autosaved:tm=>`✅ 已自動儲存 ${tm}`,
+  wk_src_local:"照片來源：本系統自己上傳的（不受一覽表影響）",
+  wk_src_wiki:"照片來源：長官中英一覽表（已自動備份一份到本系統）",
+  wk_src_cache:"照片來源：本系統備份的一覽表照片（一覽表目前查無這個人）",
   wk_delete:"🗑 刪除本系統這筆（一覽表資料不受影響）",
   wk_del_confirm:"確定刪除本系統這筆照片／聯絡資料？（長官中英一覽表的原始資料不會被更動）",
   wk_form_new:"新增聯絡人", wk_form_edit:n=>`編輯：${n}`,
@@ -481,7 +488,12 @@ const I18N = {
   wk_name_zh:"Chinese name * required — this is what matches the seating chart",
   wk_phone:"Phone / mobile (optional, tap to call from the card)",
   wk_note:"Contact notes (optional: LINE, aide, host, which car…)",
-  wk_save:"💾 Save", wk_back:"← Back to list",
+  wk_save:"💾 Save & back", wk_back:"← Back to list",
+  wk_autosave_hint:"Changes save automatically as you type — the button below just takes you back to the list.",
+  wk_autosaved:tm=>`✅ Auto-saved ${tm}`,
+  wk_src_local:"Photo: uploaded here (independent of the directory)",
+  wk_src_wiki:"Photo: from the directory (a copy has been backed up here)",
+  wk_src_cache:"Photo: local backup of the directory photo (not found in the directory right now)",
   wk_delete:"🗑 Delete this record here (the directory is untouched)",
   wk_del_confirm:"Delete this photo / contact record from this system? The Executive Bilingual Directory is not affected.",
   wk_form_new:"New contact", wk_form_edit:n=>`Editing: ${n}`,
@@ -1554,19 +1566,37 @@ function findVip(seatName){
     wikiPhoto=pick.photo||null; sameName=tied.length;
   }
 
+  const cache=(loc&&loc.photoCache)||null;
   if(loc||wikiPhoto){
+    const k=lk.length?lk[0]:(cands.length?_key(cands[0][key]):'');
+    // 這個人已經有聯絡人資料，就把一覽表當下的照片自動存一份到本系統（備份，不是覆蓋）
+    if(loc&&wikiPhoto&&cache!==wikiPhoto) cachePhoto(k,wikiPhoto);
     out={
       name:(loc&&loc.name)||(cands.length?cands[0][key]:'')||'',
-      key:lk.length?lk[0]:(cands.length?_key(cands[0][key]):''),
-      photo:(loc&&loc.photo)||wikiPhoto||null,
+      key:k,
+      // 優先序：本系統自己換過的 → 一覽表現況 → 本系統備份的那張（一覽表刪掉或連不上時還有得用）
+      photo:(loc&&loc.photo)||wikiPhoto||cache||null,
+      wikiPhoto:wikiPhoto,
       phone:(loc&&loc.phone)||'',
       note:(loc&&loc.note)||'',
+      hasLocal:!!loc,
       sameName:(loc&&loc.photo)?0:sameName,      // 本系統已指定照片就不用再警告同名
-      src:(loc&&loc.photo)?'local':(wikiPhoto?'wiki':'local')
+      src:(loc&&loc.photo)?'local':(wikiPhoto?'wiki':(cache?'cache':'local'))
     };
   }
   _wikiCache[seatName]=out;
   return out;
+}
+/* 自動備份一覽表照片：PATCH 只加 photoCache 欄位，不碰電話與備註；同一個人每次開頁只寫一次 */
+const _cached=new Set();
+function cachePhoto(key,photo){
+  if(!key||!photo||_cached.has(key)) return;
+  _cached.add(key);
+  fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
+    {method:'PATCH',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({photoCache:photo,photoCacheAt:Date.now()})})
+    .then(r=>{ if(!r.ok) _cached.delete(key); })
+    .catch(()=>_cached.delete(key));
 }
 function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 /* 卡片上的 onclick 只帶索引，姓名放在暫存表裡，避免姓名含引號時語法出錯 */
@@ -1685,7 +1715,7 @@ function renderCeremonyList(){
 /* ══════════════════════════════════════════════════════════════════
    👤 照片／聯絡方式管理：只寫本系統，永遠不回寫一覽表
    ══════════════════════════════════════════════════════════════════ */
-let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false;
+let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false, _wkSrc=null, _wkTimer=null;
 function _wkOpen(){ return document.getElementById('wiki-admin-overlay').style.display==='block'; }
 window.openWikiAdminFor=function(i){
   const c=_CTX[i];
@@ -1706,7 +1736,8 @@ window.openWikiAdmin=function(){
 };
 window.closeWikiAdmin=function(){ document.getElementById('wiki-admin-overlay').style.display='none'; };
 window.wikiBackToList=function(){
-  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false;
+  clearTimeout(_wkTimer);
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false; _wkSrc=null;
   document.getElementById('wk-form').style.display='none';
   document.getElementById('wk-browse').style.display='block';
   document.getElementById('wk-form-msg').textContent='';
@@ -1774,7 +1805,7 @@ function _wkShowForm(){
   document.getElementById('wk-form-msg').textContent='';
 }
 window.wikiNewRecord=function(){
-  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false;
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false; _wkSrc=null;
   _wkShowForm();
   document.getElementById('wk-form-title').textContent=t('wk_form_new');
   document.getElementById('wk-name-zh').value=(document.getElementById('wk-search').value||'').trim();
@@ -1782,13 +1813,15 @@ window.wikiNewRecord=function(){
   document.getElementById('wk-note').value='';
   document.getElementById('wk-del').style.display='none';
   _wkSetPreview(null);
+  _wkShowSrc();
 };
 /* rec 可來自本系統或一覽表；一覽表的只會把照片帶進預覽，存檔時才寫進本系統 */
 function wikiEditKey(key,rec){
   const loc=LOCAL[key]||null;
   _wkKey=key;
-  _wkPhoto=(loc&&loc.photo)||(rec&&rec.photo)||null;
+  _wkPhoto=(loc&&loc.photo)||(rec&&rec.photo)||(loc&&loc.photoCache)||null;
   _wkPhotoDirty=!!(loc&&loc.photo);
+  _wkSrc=(loc&&loc.photo)?'local':((rec&&rec.photo)?'wiki':((loc&&loc.photoCache)?'cache':null));
   _wkShowForm();
   const nm=(loc&&loc.name)||(rec&&rec.name)||key;
   document.getElementById('wk-form-title').textContent=t('wk_form_edit',nm);
@@ -1797,6 +1830,12 @@ function wikiEditKey(key,rec){
   document.getElementById('wk-note').value=(loc&&loc.note)||'';
   document.getElementById('wk-del').style.display=loc?'block':'none';
   _wkSetPreview(_wkPhoto);
+  _wkShowSrc();
+}
+function _wkShowSrc(){
+  const el=document.getElementById('wk-photo-src');
+  if(!el) return;
+  el.textContent=_wkSrc?t('wk_src_'+_wkSrc):'';
 }
 /* 照片壓成 480×480 置中裁切的 JPEG */
 window.wikiPickPhoto=function(file){
@@ -1813,44 +1852,76 @@ window.wikiPickPhoto=function(file){
       const w=img.width*sc, h=img.height*sc;
       ctx2.drawImage(img,(size-w)/2,(size-h)/2,w,h);
       _wkPhoto=c.toDataURL('image/jpeg',0.85);
-      _wkPhotoDirty=true;
-      _wkSetPreview(_wkPhoto);
+      _wkPhotoDirty=true; _wkSrc='local';
+      _wkSetPreview(_wkPhoto); _wkShowSrc();
+      wikiAutoSave(true);       // 換照片立刻存
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
   document.getElementById('wk-photo-input').value='';
 };
-window.wikiSaveRecord=async function(){
+/* 打字停 900 毫秒自動存；姓名欄離開焦點才存，避免打到一半就被當成新的一筆 */
+window.wikiTouch=function(now){
+  clearTimeout(_wkTimer);
+  if(now) wikiAutoSave();
+  else _wkTimer=setTimeout(()=>wikiAutoSave(),900);
+};
+async function wikiAutoSave(){
+  const name=(document.getElementById('wk-name-zh').value||'').trim();
+  if(name.length<2) return;                       // 姓名還沒填完就先不存
+  await _wikiPersist(true);
+}
+window.wikiAutoSave=wikiAutoSave;
+
+/* 實際寫檔。auto=true 是自動存（留在表單上），false 是按儲存鈕（存完回清單） */
+async function _wikiPersist(auto){
   const name=document.getElementById('wk-name-zh').value.trim();
-  if(!name){ alert(t('wk_need_name')); return; }
+  if(!name){ if(!auto) alert(t('wk_need_name')); return false; }
   const key=_key(name);
-  if(!key){ alert(t('wk_need_name')); return; }
+  if(!key){ if(!auto) alert(t('wk_need_name')); return false; }
+  const old=LOCAL[key]||{};
+  _cached.add(key);                              // 這一輪自己就會寫入，不用再另外備份一次
+  // 這個人在一覽表有照片、而本系統還沒備份過 → 建檔當下就順手存一份
+  const wp=(function(){ const v=findVip(name); return (v&&v.wikiPhoto)||null; })();
   const rec={
     name:name,
     phone:document.getElementById('wk-phone').value.trim(),
     note:document.getElementById('wk-note').value.trim(),
-    photo:_wkPhotoDirty?(_wkPhoto||null):((LOCAL[key]&&LOCAL[key].photo)||null),  // 沒換過照片就不把一覽表的照片複製進來
+    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||null),   // 沒自己換過就不覆蓋，照片仍跟著一覽表走
+    photoCache:wp||old.photoCache||null,                       // 一覽表照片的本機備份
+    photoCacheAt:wp?Date.now():(old.photoCacheAt||null),
     updated:Date.now()
   };
   const msg=document.getElementById('wk-form-msg');
-  msg.style.color='#4ade80'; msg.textContent='…';
+  msg.style.color='#4ade80';
   try{
-    // 改了姓名等於換一筆，舊的先刪掉
-    if(_wkKey&&_wkKey!==key&&LOCAL[_wkKey]){
+    if(_wkKey&&_wkKey!==key&&LOCAL[_wkKey]){      // 改了姓名等於換一筆，舊的先刪掉
       await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(_wkKey)}.json`,{method:'DELETE'});
+      delete LOCAL[_wkKey];
     }
     const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
       {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
     if(!r.ok) throw new Error('HTTP '+r.status);
-    LOCAL[key]=rec; _wikiCache={};
+    LOCAL[key]=rec; _wkKey=key; _cached.add(key); _wikiCache={};
     if(loaded) refreshMain();
-    msg.textContent=t('wk_saved');
-    setTimeout(()=>{ wikiBackToList(); },700);
+    const d=new Date();
+    msg.textContent=auto
+      ? t('wk_autosaved',d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0'))
+      : t('wk_saved');
+    document.getElementById('wk-del').style.display='block';
+    if(!_wkSrc&&rec.photoCache) { _wkSrc='cache'; _wkShowSrc(); }
+    return true;
   }catch(e){
     msg.style.color='#f87171';
     msg.textContent=t('wk_save_fail',e.message||e);
+    return false;
   }
+}
+window.wikiSaveRecord=async function(){
+  clearTimeout(_wkTimer);
+  const ok=await _wikiPersist(false);
+  if(ok) setTimeout(()=>{ wikiBackToList(); },600);
 };
 window.wikiDeleteRecord=async function(){
   if(!_wkKey||!LOCAL[_wkKey]) return;
