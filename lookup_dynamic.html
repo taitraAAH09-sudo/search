@@ -1941,7 +1941,7 @@ async function _wikiPersist(auto){
     name:name,
     phone:document.getElementById('wk-phone').value.trim(),
     note:document.getElementById('wk-note').value.trim(),
-    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||null),   // 沒自己換過就不覆蓋，照片仍跟著一覽表走
+    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||_wkPhoto||null),   // 沒自己換過也沒關係：只要儲存當下畫面上有照片（哪怕是從一覽表帶過來的），就視為人工已確認過，一併存成本系統照片，消除模糊比對／同名警告
     photoCache:wp||old.photoCache||null,                       // 一覽表照片的本機備份
     photoCacheAt:wp?Date.now():(old.photoCacheAt||null),
     updated:Date.now()
