@@ -106,40 +106,66 @@ html[lang="en"] .badge-zone { font-size:11px; letter-spacing:-.01em; }
 html[lang="en"] .badge-seat { font-size:9.5px; }
 html[lang="en"] .checkin-btn { font-size:11.5px; padding:8px 10px; }
 html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
-/* ── 合影貴賓清單／貴賓照片 ── */
+/* ── 合影貴賓：席次圖式相片牆 ── */
 .stat.clickable { cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s; }
 .stat.clickable:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
 .stat.clickable:active { transform:scale(0.97); }
 .stat-tap { font-family:"DM Mono",monospace; font-size:8.5px; color:var(--accent); margin-top:3px; letter-spacing:.03em; }
 
-.avatar { flex-shrink:0; border-radius:50%; object-fit:cover; background:var(--bg); border:1.5px solid var(--rule); cursor:zoom-in; }
-.avatar-ph { flex-shrink:0; border-radius:50%; background:var(--bg); border:1.5px dashed var(--rule); color:var(--ink-3); display:flex; align-items:center; justify-content:center; font-size:15px; }
-.avatar.warn { border-color:#F59E0B; border-width:2px; }
-.result-card.has-avatar { gap:10px; }
-
-.cer-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:14px 16px 4px; }
+.cer-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:14px 16px 6px; }
 .cer-tab { border:1px solid var(--rule); background:var(--white); color:var(--ink-2); border-radius:999px; padding:6px 12px; font-size:12px; font-family:"Noto Serif TC",serif; cursor:pointer; }
 .cer-tab.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
 .cer-back { margin-left:auto; border:none; background:transparent; color:var(--accent); font-size:12.5px; font-family:"Noto Serif TC",serif; cursor:pointer; padding:6px 2px; }
-.mini-btn { flex-shrink:0; padding:7px 9px; border-radius:8px; border:1px dashed var(--rule); background:var(--white); color:var(--ink-3); font-size:11px; font-family:"Noto Serif TC",serif; cursor:pointer; white-space:nowrap; }
-.mini-btn:hover { border-color:var(--accent); color:var(--accent); }
-.cer-actions { display:flex; flex-direction:column; gap:6px; align-items:stretch; flex-shrink:0; }
 
-#photo-view { position:fixed; inset:0; background:rgba(10,14,20,0.92); z-index:110; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; padding:24px; }
+.cer-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:8px 16px 36px; }
+@media(min-width:560px){ .cer-grid { grid-template-columns:repeat(3,1fr); } }
+@media(min-width:820px){ .cer-grid { grid-template-columns:repeat(4,1fr); } }
+.cer-card { background:var(--white); border:1px solid var(--rule); border-radius:14px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.07); display:flex; flex-direction:column; animation:slideIn .18s ease; }
+.cer-card.done { border:2px solid var(--green); box-shadow:0 2px 10px rgba(26,107,74,0.18); }
+.cer-photo { position:relative; width:100%; aspect-ratio:1/1; background:var(--bg); }
+.cer-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
+.cer-photo .cer-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:44px; color:#C8C4BC; }
+.cer-photo .cer-ph.warnring { box-shadow:inset 0 0 0 3px #F59E0B; }
+.cer-photo img.warnring { box-shadow:inset 0 0 0 3px #F59E0B; border:3px solid #F59E0B; }
+.cer-stamp { position:absolute; inset:0; background:rgba(26,107,74,0.45); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; gap:2px; pointer-events:none; }
+.cer-stamp .tick { font-size:40px; line-height:1; text-shadow:0 2px 10px rgba(0,0,0,0.35); }
+.cer-stamp .txt { font-size:13px; font-weight:700; letter-spacing:.06em; }
+.cer-stamp .tm { font-family:"DM Mono",monospace; font-size:11px; opacity:.92; }
+.cer-body { padding:9px 10px 10px; display:flex; flex-direction:column; gap:5px; flex:1; }
+.cer-nm { font-size:13.5px; font-weight:700; line-height:1.45; }
+.cer-code { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+.cer-ct { font-size:11.5px; color:var(--ink-2); line-height:1.55; word-break:break-word; }
+.cer-ct a { color:var(--accent); text-decoration:none; }
+.cer-warn { font-size:10.5px; color:#B45309; line-height:1.4; }
+.cer-btns { display:flex; gap:6px; margin-top:auto; padding-top:4px; }
+.cer-in { flex:1; padding:9px 4px; border-radius:8px; border:1.5px solid var(--green); background:var(--green-light); color:var(--green); font-size:12.5px; font-weight:700; font-family:"Noto Serif TC",serif; cursor:pointer; }
+.cer-in.done { background:var(--green); border-color:var(--green); color:#fff; }
+.cer-edit { flex-shrink:0; padding:9px 10px; border-radius:8px; border:1px solid var(--rule); background:var(--white); color:var(--ink-3); font-size:12px; cursor:pointer; font-family:"Noto Serif TC",serif; }
+.cer-edit:hover { border-color:var(--accent); color:var(--accent); }
+
+.avatar { flex-shrink:0; border-radius:10px; object-fit:cover; background:var(--bg); border:1.5px solid var(--rule); cursor:zoom-in; }
+.avatar.warn { border-color:#F59E0B; border-width:2px; }
+.result-card.has-avatar { gap:10px; }
+
+#photo-view { position:fixed; inset:0; background:rgba(10,14,20,0.93); z-index:110; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; padding:24px; }
 #photo-view.show { display:flex; }
-#photo-view img { max-width:88vw; max-height:70vh; border-radius:14px; box-shadow:0 8px 40px rgba(0,0,0,0.5); }
-#photo-view .pv-name { color:#fff; font-size:15px; text-align:center; line-height:1.6; max-width:88vw; }
+#photo-view img { max-width:90vw; max-height:66vh; border-radius:14px; box-shadow:0 8px 40px rgba(0,0,0,0.5); }
+#photo-view .pv-name { color:#fff; font-size:16px; text-align:center; line-height:1.7; max-width:90vw; }
+#photo-view .pv-sub { color:rgba(255,255,255,0.75); font-size:13px; text-align:center; line-height:1.7; }
 
 .wk-input { width:100%; padding:10px 12px; border-radius:8px; border:none; margin-bottom:8px; font-family:inherit; font-size:14px; outline:none; }
+textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 .wk-label { color:rgba(255,255,255,0.55); font-size:11px; margin:6px 0 3px; font-family:"DM Mono",monospace; letter-spacing:.04em; }
 .wk-row { display:flex; align-items:center; gap:14px; margin:10px 0 14px; }
-.wk-prev { width:74px; height:74px; border-radius:10px; background:rgba(255,255,255,0.1); border:1px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+.wk-prev { width:112px; height:112px; border-radius:12px; background:rgba(255,255,255,0.1); border:1px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
 .wk-prev img { width:100%; height:100%; object-fit:cover; }
 .wk-btn { padding:9px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:#fff; font-size:13px; font-family:inherit; cursor:pointer; }
 .wk-save { width:100%; padding:11px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:"Noto Serif TC",serif; }
+.wk-del { width:100%; padding:10px; border:1px solid rgba(248,113,113,0.6); border-radius:8px; background:transparent; color:#f87171; font-size:13px; cursor:pointer; font-family:"Noto Serif TC",serif; margin-top:8px; }
 .wk-item { display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,0.07); border-radius:8px; margin-bottom:5px; color:#fff; font-size:13px; cursor:pointer; }
-.wk-item img { width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0; }
-.wk-item .wk-noimg { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.wk-item img { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+.wk-item .wk-noimg { width:44px; height:44px; border-radius:8px; background:rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.wk-src { font-family:"DM Mono",monospace; font-size:9px; padding:1px 5px; border-radius:20px; background:rgba(255,255,255,0.16); opacity:.8; }
 
 .footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
 </style>
@@ -229,22 +255,23 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 <div id="photo-view" onclick="closePhotoView()">
   <img id="pv-img" src="" alt="">
   <div class="pv-name" id="pv-name"></div>
-  <button class="wk-btn" id="pv-edit" data-i18n="pv_edit" onclick="event.stopPropagation();editPhotoFromView()">🔄 更換這張照片</button>
+  <div class="pv-sub" id="pv-sub"></div>
+  <button class="wk-btn" id="pv-edit" data-i18n="pv_edit" onclick="event.stopPropagation();editPhotoFromView()">✎ 編輯照片／聯絡方式</button>
   <div style="color:rgba(255,255,255,0.5);font-size:12px;" data-i18n="pv_close">點任意處關閉</div>
 </div>
 
 <div id="wiki-admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,28,42,0.94);z-index:100;overflow-y:auto;">
   <div style="max-width:480px;margin:0 auto;padding:20px 20px 60px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h3 data-i18n="wk_title" style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">👤 貴賓聯絡人／照片</h3>
+      <h3 data-i18n="wk_title" style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">👤 貴賓照片／聯絡方式</h3>
       <button onclick="closeWikiAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div data-i18n="wk_desc" style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
-      這裡的資料與「長官中英一覽表」共用同一個資料庫。中文姓名與席次圖上的姓名相符時，查詢畫面就會自動帶出照片；公司、姓名、職稱仍以座位系統為準，這裡只提供照片。
+      照片會自動從「長官中英一覽表」同步進來；在這裡新增或更換，只會存在本系統，不會動到一覽表的資料。公司、姓名、職稱一律以座位系統顯示為準。
     </div>
 
     <div id="wk-browse">
-      <input type="text" id="wk-search" data-i18n-ph="wk_search_ph" placeholder="搜尋姓名／公司／職稱…" oninput="wikiAdminSearch()"
+      <input type="text" id="wk-search" data-i18n-ph="wk_search_ph" placeholder="搜尋姓名…" oninput="wikiAdminSearch()"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="wk-input">
       <button data-i18n="wk_new" onclick="wikiNewRecord()" class="wk-save" style="margin-bottom:12px;">＋ 新增聯絡人</button>
       <div id="wk-results"></div>
@@ -254,25 +281,22 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
     <div id="wk-form" style="display:none;">
       <div id="wk-form-title" style="color:#fff;font-size:14px;font-weight:700;margin-bottom:10px;"></div>
       <div class="wk-row">
-        <div class="wk-prev" id="wk-prev"><span style="color:rgba(255,255,255,0.4);font-size:20px;">🖼</span></div>
+        <div class="wk-prev" id="wk-prev"><span style="color:rgba(255,255,255,0.4);font-size:26px;">🖼</span></div>
         <div>
           <button class="wk-btn" data-i18n="wk_pick_photo" onclick="document.getElementById('wk-photo-input').click()">選擇／更換照片</button>
-          <div data-i18n="wk_photo_hint" style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:6px;line-height:1.5;">會自動壓成 320×320 縮圖</div>
+          <div data-i18n="wk_photo_hint" style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:6px;line-height:1.5;">壓成 480×480，只存在本系統</div>
         </div>
         <input type="file" id="wk-photo-input" accept="image/*" style="display:none" onchange="wikiPickPhoto(this.files[0])">
       </div>
       <div class="wk-label" data-i18n="wk_name_zh">姓名（中）＊必填，用來對應席次圖</div>
       <input type="text" id="wk-name-zh" class="wk-input" autocomplete="off">
-      <div class="wk-label" data-i18n="wk_name_en">姓名（英）選填</div>
-      <input type="text" id="wk-name-en" class="wk-input" autocomplete="off">
-      <div class="wk-label" data-i18n="wk_company">公司／單位（中／英）選填</div>
-      <input type="text" id="wk-company-zh" class="wk-input" autocomplete="off">
-      <input type="text" id="wk-company-en" class="wk-input" autocomplete="off">
-      <div class="wk-label" data-i18n="wk_title_field">職稱（中／英）選填</div>
-      <input type="text" id="wk-title-zh" class="wk-input" autocomplete="off">
-      <input type="text" id="wk-title-en" class="wk-input" autocomplete="off">
+      <div class="wk-label" data-i18n="wk_phone">電話／手機（選填，卡片上可直接點撥）</div>
+      <input type="tel" id="wk-phone" class="wk-input" autocomplete="off" inputmode="tel">
+      <div class="wk-label" data-i18n="wk_note">聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）</div>
+      <textarea id="wk-note" class="wk-input"></textarea>
       <button class="wk-save" data-i18n="wk_save" onclick="wikiSaveRecord()" style="margin-top:6px;">💾 儲存</button>
       <button class="wk-btn" data-i18n="wk_back" onclick="wikiBackToList()" style="width:100%;margin-top:8px;">← 回清單</button>
+      <button class="wk-del" id="wk-del" data-i18n="wk_delete" onclick="wikiDeleteRecord()" style="display:none;">🗑 刪除本系統這筆（一覽表資料不受影響）</button>
       <div id="wk-form-msg" style="color:#4ade80;font-size:12.5px;margin-top:10px;min-height:16px;"></div>
     </div>
   </div>
@@ -344,33 +368,38 @@ const I18N = {
   ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
   stat_checkin:"整體報到率", stat_ceremony:"合影貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
   stat_tap:"👆 點我看名單",
-  btn_wiki_admin:"👤 貴賓聯絡人／照片管理",
-  cer_title:"🎬 合影貴賓名單",
+  btn_wiki_admin:"👤 貴賓照片／聯絡方式",
+  cer_title:"🎬 合影貴賓",
   cer_tab_out:n=>`未報到 ${n}`, cer_tab_in:n=>`已報到 ${n}`, cer_tab_all:n=>`全部 ${n}`,
   cer_back:"← 回搜尋",
   cer_none_out:"🎉 合影貴賓全部到齊",
   cer_none_in:"目前還沒有合影貴賓報到",
   cer_empty:"這場活動還沒有標記任何合影貴賓（請到席次圖系統標記）",
-  cer_addphoto:"📷 補照片",
-  cer_same_name:n=>`⚠ 同名 ${n} 位，請確認照片`,
-  pv_close:"點任意處關閉", pv_edit:"🔄 更換這張照片",
-  wk_title:"👤 貴賓聯絡人／照片",
-  wk_desc:"這裡的資料與「長官中英一覽表」共用同一個資料庫。中文姓名與席次圖上的姓名相符時，查詢畫面就會自動帶出照片；公司、姓名、職稱仍以座位系統為準，這裡只提供照片。",
-  wk_search_ph:"搜尋姓名／公司／職稱…",
+  cer_arrived:"已報到",
+  cer_same_name:n=>`⚠ 資料庫同名 ${n} 位，請確認照片`,
+  cer_addphoto:"✎ 照片／聯絡",
+  pv_close:"點任意處關閉", pv_edit:"✎ 編輯照片／聯絡方式",
+  wk_title:"👤 貴賓照片／聯絡方式",
+  wk_desc:"照片會自動從「長官中英一覽表」同步進來；在這裡新增或更換，只會存在本系統，不會動到一覽表的資料。公司、姓名、職稱一律以座位系統顯示為準。",
+  wk_search_ph:"搜尋姓名…",
   wk_new:"＋ 新增聯絡人",
-  wk_pick_photo:"選擇／更換照片", wk_photo_hint:"會自動壓成 320×320 縮圖",
-  wk_name_zh:"姓名（中）＊必填，用來對應席次圖", wk_name_en:"姓名（英）選填",
-  wk_company:"公司／單位（中／英）選填", wk_title_field:"職稱（中／英）選填",
+  wk_pick_photo:"選擇／更換照片", wk_photo_hint:"壓成 480×480，只存在本系統",
+  wk_name_zh:"姓名（中）＊必填，用來對應席次圖",
+  wk_phone:"電話／手機（選填，卡片上可直接點撥）",
+  wk_note:"聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）",
   wk_save:"💾 儲存", wk_back:"← 回清單",
+  wk_delete:"🗑 刪除本系統這筆（一覽表資料不受影響）",
+  wk_del_confirm:"確定刪除本系統這筆照片／聯絡資料？（長官中英一覽表的原始資料不會被更動）",
   wk_form_new:"新增聯絡人", wk_form_edit:n=>`編輯：${n}`,
-  wk_need_name:"請至少填寫中文姓名（照片是靠中文姓名對應席次圖的）",
-  wk_saved:"✅ 已儲存，查詢畫面會自動更新",
+  wk_need_name:"請填寫中文姓名（照片是靠中文姓名對應席次圖的）",
+  wk_saved:"✅ 已儲存（只存在本系統）",
   wk_save_fail:m=>`儲存失敗：${m}`,
   wk_loading:"聯絡人資料載入中…",
-  wk_count:(n,m)=>`共 ${n} 筆聯絡人，其中 ${m} 筆有照片`,
+  wk_count:(n,m)=>`本系統 ${n} 筆／一覽表同步 ${m} 筆`,
   wk_no_result:"找不到符合的聯絡人，可按上方「新增聯絡人」建立",
   wk_search_hint:"輸入關鍵字搜尋，或直接按「新增聯絡人」",
-  wk_offline:"聯絡人資料庫連線失敗，仍可查座位，但照片無法顯示或編輯",
+  wk_offline:"一覽表連線失敗（照片可能顯示不全），本系統自己新增的照片與聯絡方式不受影響",
+  src_local:"本系統", src_wiki:"一覽表",
   loading:"載入資料中…", footer_default:"TAITRA · 座位查詢系統", last_sync:"最後同步",
   err_no_event_title:"缺少活動參數",
   err_no_event_msg:"請從前台系統點擊「🔍 手機查詢」按鈕進入，<br>或確認網址包含 ?event=活動代碼",
@@ -433,33 +462,38 @@ const I18N = {
   ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
   stat_checkin:"Check-in rate", stat_ceremony:"Photo VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
   stat_tap:"👆 Tap for the list",
-  btn_wiki_admin:"👤 VIP contacts & photos",
-  cer_title:"🎬 Photo-call VIP list",
+  btn_wiki_admin:"👤 VIP photos & contacts",
+  cer_title:"🎬 Photo-call VIPs",
   cer_tab_out:n=>`Not in ${n}`, cer_tab_in:n=>`Checked in ${n}`, cer_tab_all:n=>`All ${n}`,
   cer_back:"← Back to search",
   cer_none_out:"🎉 Every photo-call VIP has checked in",
   cer_none_in:"No photo-call VIP has checked in yet",
   cer_empty:"No photo-call VIP is tagged for this event yet (tag them in the seating chart system)",
-  cer_addphoto:"📷 Add photo",
-  cer_same_name:n=>`⚠ ${n} contacts share this name — please verify`,
-  pv_close:"Tap anywhere to close", pv_edit:"🔄 Replace this photo",
-  wk_title:"👤 VIP contacts & photos",
-  wk_desc:"These records share the database of the Executive Bilingual Directory. When the Chinese name matches the seating chart, the photo appears automatically in the lookup. Organization, name and title always come from the seating system — only the photo comes from here.",
-  wk_search_ph:"Search a name, organization or title…",
+  cer_arrived:"CHECKED IN",
+  cer_same_name:n=>`⚠ ${n} contacts share this name — verify the photo`,
+  cer_addphoto:"✎ Photo / contact",
+  pv_close:"Tap anywhere to close", pv_edit:"✎ Edit photo / contact",
+  wk_title:"👤 VIP photos & contacts",
+  wk_desc:"Photos sync in from the Executive Bilingual Directory. Anything you add or change here stays in this system only and never writes back to the directory. Organization, name and title always come from the seating system.",
+  wk_search_ph:"Search a name…",
   wk_new:"＋ New contact",
-  wk_pick_photo:"Choose / replace photo", wk_photo_hint:"Resized to a 320×320 thumbnail",
-  wk_name_zh:"Chinese name * required — this is what matches the seating chart", wk_name_en:"English name (optional)",
-  wk_company:"Organization ZH / EN (optional)", wk_title_field:"Title ZH / EN (optional)",
+  wk_pick_photo:"Choose / replace photo", wk_photo_hint:"Resized to 480×480, stored in this system only",
+  wk_name_zh:"Chinese name * required — this is what matches the seating chart",
+  wk_phone:"Phone / mobile (optional, tap to call from the card)",
+  wk_note:"Contact notes (optional: LINE, aide, host, which car…)",
   wk_save:"💾 Save", wk_back:"← Back to list",
+  wk_delete:"🗑 Delete this record here (the directory is untouched)",
+  wk_del_confirm:"Delete this photo / contact record from this system? The Executive Bilingual Directory is not affected.",
   wk_form_new:"New contact", wk_form_edit:n=>`Editing: ${n}`,
   wk_need_name:"A Chinese name is required — it is what links the photo to the seating chart.",
-  wk_saved:"✅ Saved. The lookup updates automatically.",
+  wk_saved:"✅ Saved (this system only)",
   wk_save_fail:m=>`Save failed: ${m}`,
   wk_loading:"Loading contacts…",
-  wk_count:(n,m)=>`${n} contacts, ${m} with a photo`,
+  wk_count:(n,m)=>`${n} local · ${m} synced from the directory`,
   wk_no_result:"No contact matched. Use “New contact” above to create one.",
   wk_search_hint:"Type to search, or create a new contact",
-  wk_offline:"The contact database is unreachable. Seat lookup still works, but photos cannot be shown or edited.",
+  wk_offline:"The directory is unreachable (some photos may be missing). Records created here are unaffected.",
+  src_local:"local", src_wiki:"directory",
   loading:"Loading data…", footer_default:"TAITRA · Seat lookup", last_sync:"Last sync",
   err_no_event_title:"Missing event code",
   err_no_event_msg:"Open this page from the 🔍 mobile lookup button in the main system,<br>or check that the URL contains ?event=YOUR_EVENT_CODE",
@@ -540,7 +574,8 @@ applyI18n();
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getDatabase,ref,onValue}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-import{getFirestore,collection,onSnapshot,addDoc,updateDoc,doc as fsDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+/* 一覽表只讀不寫：這裡刻意只匯入讀取用的函式，程式裡沒有任何寫回 Firestore 的路徑 */
+import{getFirestore,collection,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fb=initializeApp({
   apiKey:"AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
@@ -764,7 +799,7 @@ window.doSearch=function(){
     const p=parseSeatCode(code);
     const hn=name?name.replace(re,'<mark>$1</mark>'):t('lbl_empty_seat');
     const hc=code.replace(re,'<mark>$1</mark>');
-    const av=avatarHtml(name,36);   // 中文姓名對得上貴賓資料庫時帶出照片
+    const av=avatarHtml(name,48);   // 中文姓名對得上貴賓資料庫時帶出照片
     html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''} ${av?'has-avatar':''}">
       <div class="seat-badge badge-${p.color}">
         <div class="badge-zone">${p.badgeTop}</div>
@@ -1442,17 +1477,24 @@ window._onLangChange=function(){
     if(_lastMain) _lastMain(); else doSearch();
   }
   renderBadgeAdminList();
-  if(document.getElementById('wiki-admin-overlay').style.display==='block') wikiAdminSearch();
+  if(_wkOpen()) wikiAdminSearch();
 };
 
 
 /* ══════════════════════════════════════════════════════════════════
-   貴賓照片：連動「長官中英一覽表」(AllVIPWiki) 的 Firestore 資料庫
-   規則：只借用「照片」。公司／姓名／職稱一律以座位系統顯示的為準。
-   對應方式：貴賓資料庫的中文姓名，出現在席次圖那一格的文字裡就算命中
+   貴賓照片與聯絡方式（單向）
+   讀：「長官中英一覽表」AllVIPWiki（Firestore）→ 只借照片，唯讀，絕不回寫。
+   寫：本系統自己的 Firebase（vip_contacts2026）→ 照片、電話、聯絡備註。
+       本系統有的就蓋過一覽表，沒有的才用一覽表的照片。
+   對應方式：姓名（中）出現在席次圖那格文字裡就算命中
             （席次圖常寫成「○○公司 王小明 董事長」，所以用包含比對）。
+   公司／姓名／職稱一律以座位系統顯示為準，這裡只補照片與聯絡方式。
    ══════════════════════════════════════════════════════════════════ */
+const LOCAL_PATH='vip_contacts2026';   // 跨活動共用，換一場活動照片與聯絡方式還在
 let WIKI=[], WIKI_READY=false, WIKI_ERR=false;
+let LOCAL={};                          // key = 姓名正規化後的字串
+
+/* ── 唯讀連到一覽表 ── */
 const _wikiApp=initializeApp({
   apiKey:"AIzaSyACg1t8jLtW2zIvNCDUhJPzU_SJ5vV6LUE",
   authDomain:"all-vip-wiki.firebaseapp.com",
@@ -1462,85 +1504,104 @@ const _wikiApp=initializeApp({
   appId:"1:936976436491:web:7dc06635df6d982156260e"
 },'vip-wiki');
 const wdb=getFirestore(_wikiApp);
-
 onSnapshot(collection(wdb,'officers'),snap=>{
-  WIKI=snap.docs.map(d=>({id:d.id,...d.data()}));
-  WIKI_READY=true; WIKI_ERR=false;
-  _wikiCache={};
-  if(loaded){ if(_lastMain) _lastMain(); else doSearch(); }
-  if(document.getElementById('wiki-admin-overlay').style.display==='block') wikiAdminSearch();
-},err=>{
-  WIKI_READY=true; WIKI_ERR=true;
-  console.warn('VIP wiki 連線失敗',err);
+  WIKI=snap.docs.map(d=>({id:d.id,nameZh:d.data().nameZh||'',nameEn:d.data().nameEn||'',photo:d.data().photo||null}));
+  WIKI_READY=true; WIKI_ERR=false; _wikiCache={};
+  if(loaded) refreshMain();
+  if(_wkOpen()) wikiAdminSearch();
+},err=>{ WIKI_READY=true; WIKI_ERR=true; console.warn('一覽表連線失敗',err); });
+
+/* ── 本系統自己的照片／聯絡方式 ── */
+onValue(ref(db,LOCAL_PATH),snap=>{
+  LOCAL=snap.val()||{}; _wikiCache={};
+  if(loaded) refreshMain();
+  if(_wkOpen()) wikiAdminSearch();
 });
 
 const _wnorm=s=>String(s||'').toLowerCase().replace(/[\s\u3000·,、．.·・_\-]/g,'');
+const _key=s=>_wnorm(s).replace(/[.$#\[\]\/]/g,'');   // Firebase 不吃的字元要拿掉
 let _wikiCache={};
-/* 回傳 {rec, photo, sameName} 或 null。sameName>1 代表資料庫有同名者，照片要人工確認 */
+
+/* 回傳 {name,photo,phone,note,sameName,src} 或 null */
 function findVip(seatName){
-  if(!seatName||!WIKI.length) return null;
+  if(!seatName) return null;
   if(_wikiCache.hasOwnProperty(seatName)) return _wikiCache[seatName];
   const hay=_wnorm(seatName);
+  let out=null;
+
+  // 1) 先找本系統自己建的（優先權最高）
+  let lk=Object.keys(LOCAL).filter(k=>k.length>=2&&hay.includes(k));
+  if(!lk.length) lk=Object.keys(LOCAL).filter(k=>k.length>=4&&hay.includes(k)); // 英文名較長才比
+  lk.sort((a,b)=>b.length-a.length);
+  const loc=lk.length?LOCAL[lk[0]]:null;
+
+  // 2) 再找一覽表（只取照片）
   let cands=WIKI.filter(r=>{
     const n=_wnorm(r.nameZh);
     return n.length>=2 && /[\u4e00-\u9fff]/.test(n) && hay.includes(n);
   });
   let key='nameZh';
   if(!cands.length){
-    // 外賓：整段英文姓名（去空白）出現在座位文字裡才算，避免亂配
-    cands=WIKI.filter(r=>{
-      const n=_wnorm(r.nameEn);
-      return n.length>=4 && hay.includes(n);
-    });
+    cands=WIKI.filter(r=>{ const n=_wnorm(r.nameEn); return n.length>=4 && hay.includes(n); });
     key='nameEn';
   }
-  let out=null;
+  let wikiPhoto=null, sameName=0;
   if(cands.length){
     cands.sort((a,b)=>_wnorm(b[key]).length-_wnorm(a[key]).length);
     const topName=_wnorm(cands[0][key]);
     const tied=cands.filter(r=>_wnorm(r[key])===topName);
-    const withPhoto=tied.find(r=>r.photo)||tied[0];   // 同名者優先挑有照片的
-    out={rec:withPhoto, photo:withPhoto.photo||null, sameName:tied.length};
+    const pick=tied.find(r=>r.photo)||tied[0];
+    wikiPhoto=pick.photo||null; sameName=tied.length;
+  }
+
+  if(loc||wikiPhoto){
+    out={
+      name:(loc&&loc.name)||(cands.length?cands[0][key]:'')||'',
+      key:lk.length?lk[0]:(cands.length?_key(cands[0][key]):''),
+      photo:(loc&&loc.photo)||wikiPhoto||null,
+      phone:(loc&&loc.phone)||'',
+      note:(loc&&loc.note)||'',
+      sameName:(loc&&loc.photo)?0:sameName,      // 本系統已指定照片就不用再警告同名
+      src:(loc&&loc.photo)?'local':(wikiPhoto?'wiki':'local')
+    };
   }
   _wikiCache[seatName]=out;
   return out;
 }
 function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-/* 卡片上的 onclick 只帶索引，姓名／ID 放在這張暫存表裡，避免姓名含引號時語法出錯 */
+/* 卡片上的 onclick 只帶索引，姓名放在暫存表裡，避免姓名含引號時語法出錯 */
 let _CTX=[];
 function ctx(v){ if(_CTX.length>800) _CTX=[]; return _CTX.push(v)-1; }
-/* 有照片才回傳 <img>，沒有就回空字串（卡片維持原樣） */
+
 function avatarHtml(seatName,size){
   const v=findVip(seatName);
   if(!v||!v.photo) return '';
-  const warn=v.sameName>1?' warn':'';
-  const i=ctx({id:v.rec.id,name:seatName});
-  return `<img class="avatar${warn}" style="width:${size}px;height:${size}px;" src="${v.photo}" alt=""
+  const i=ctx({name:seatName});
+  return `<img class="avatar${v.sameName>1?' warn':''}" style="width:${size}px;height:${size}px;" src="${v.photo}" alt=""
     onclick="event.stopPropagation();showPhotoView(${i})">`;
 }
 window.showPhotoView=function(i){
   const c=_CTX[i]; if(!c) return;
-  const r=WIKI.find(x=>x.id===c.id);
-  if(!r||!r.photo) return;
-  document.getElementById('pv-img').src=r.photo;
-  document.getElementById('pv-name').innerHTML=_esc(c.name||r.nameZh||'');
-  _pvId=r.id;
+  const v=findVip(c.name);
+  if(!v||!v.photo) return;
+  document.getElementById('pv-img').src=v.photo;
+  document.getElementById('pv-name').innerHTML=_esc(c.name||'');
+  const sub=[v.phone?'📞 '+v.phone:'',v.note||''].filter(Boolean).map(_esc).join('<br>');
+  document.getElementById('pv-sub').innerHTML=sub;
+  _pvName=c.name;
   document.getElementById('photo-view').classList.add('show');
 };
 window.closePhotoView=function(){ document.getElementById('photo-view').classList.remove('show'); };
-let _pvId=null;
+let _pvName=null;
 window.editPhotoFromView=function(){
-  if(!_pvId) return;
-  closePhotoView();
-  document.getElementById('wiki-admin-overlay').style.display='block';
-  document.getElementById('wk-search').value='';
-  wikiEditRecord(_pvId);
+  const n=_pvName; closePhotoView();
+  openWikiAdminForName(n);
 };
 
 /* ══════════════════════════════════════════════════════════════════
-   🎬 合影貴賓名單：點統計卡「合影貴賓報到率」進來，看誰還沒到
+   🎬 合影貴賓：依席次圖順序排的相片牆
    ══════════════════════════════════════════════════════════════════ */
-let _cerFilter='out';   // out=未報到（預設，現場最常看的）/ in=已報到 / all=全部
+let _cerFilter='out';   // out=未報到（預設）/ in=已報到 / all=全部
 window.openCeremonyList=function(f){
   if(!loaded) return;
   _cerFilter=f||_cerFilter;
@@ -1550,19 +1611,30 @@ window.openCeremonyList=function(f){
 window.setCerFilter=function(f){ _cerFilter=f; renderCeremonyList(); };
 window.backToSearch=function(){ _lastMain=null; doSearch(); };
 
+/* 席次圖順序：主桌 → 圓桌（排、桌、席）→ 方陣（區、排、席） */
+function seatOrderKey(code){
+  let m=code.match(/^H(\d+)-(\d+)$/);            if(m) return [0,+m[1],0,+m[2]];
+  m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);         if(m) return [1,+m[1],+m[2],+m[3]];
+  m=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);      if(m) return [2,m[1].toUpperCase().charCodeAt(0),+m[2],+m[3]];
+  return [3,0,0,0];
+}
 function ceremonySeats(){
   return Object.keys(TAGS)
     .filter(c=>(TAGS[c]==='ceremony'||TAGS[c]==='photo'))
-    .sort((a,b)=>a.localeCompare(b,'zh-Hant',{numeric:true}));
+    .sort((a,b)=>{
+      const x=seatOrderKey(a), y=seatOrderKey(b);
+      for(let i=0;i<4;i++){ if(x[i]!==y[i]) return x[i]-y[i]; }
+      return a.localeCompare(b);
+    });
 }
 function renderCeremonyList(){
-  _lastMain=renderCeremonyList;      // 切語言時原地重繪
+  _lastMain=renderCeremonyList;      // 資料更新或切語言時原地重繪，不會跳回搜尋
   const main=document.getElementById('main');
   const seats=ceremonySeats();
   const inList=seats.filter(c=>CHECKINS[c]);
   const outList=seats.filter(c=>!CHECKINS[c]);
 
-  let head=`<div class="cer-bar">
+  const head=`<div class="cer-bar">
     <button class="cer-tab ${_cerFilter==='out'?'on':''}" onclick="setCerFilter('out')">${t('cer_tab_out',outList.length)}</button>
     <button class="cer-tab ${_cerFilter==='in'?'on':''}" onclick="setCerFilter('in')">${t('cer_tab_in',inList.length)}</button>
     <button class="cer-tab ${_cerFilter==='all'?'on':''}" onclick="setCerFilter('all')">${t('cer_tab_all',seats.length)}</button>
@@ -1570,38 +1642,40 @@ function renderCeremonyList(){
   </div>`;
 
   if(!seats.length){ main.innerHTML=head+`<div class="no-result">${t('cer_empty')}</div>`; return; }
-
-  const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:outList.concat(inList);
+  const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
   if(!show.length){
     main.innerHTML=head+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
     return;
   }
 
-  let html=head+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="result-list">`;
+  let html=head+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="cer-grid">`;
   show.forEach(code=>{
     const name=DATA[code]||t('lbl_empty_seat');
-    const p=parseSeatCode(code);
     const v=findVip(name);
-    const ci=ctx({id:v&&v.rec?v.rec.id:null,name:name});
-    const av=(v&&v.photo)
-      ? `<img class="avatar${v.sameName>1?' warn':''}" style="width:46px;height:46px;" src="${v.photo}" alt=""
-           onclick="showPhotoView(${ci})">`
-      : `<div class="avatar-ph" style="width:46px;height:46px;">👤</div>`;
-    const warnTag=(v&&v.sameName>1)?`<div class="card-zone" style="color:#B45309;">${t('cer_same_name',v.sameName)}</div>`:'';
-    html+=`<div class="result-card has-avatar ${CHECKINS[code]?'is-checked':''}">
-      ${av}
-      <div class="card-info">
-        <div class="card-name">${_esc(name)}</div>
-        <div class="card-seat">${p.detail}　<span style="opacity:.7;">${code}</span></div>
-        ${CHECKINS[code]&&CHECKINS[code].time?`<div class="card-zone">⏱ ${_esc(CHECKINS[code].time)}</div>`:''}
-        ${warnTag}
-      </div>
-      <div class="cer-actions">
-        <button class="checkin-btn ${CHECKINS[code]?'done':''}"
-          onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
-          ${CHECKINS[code]?t('btn_checked'):t('btn_checkin')}
-        </button>
-        ${(v&&v.photo)?'':`<button class="mini-btn" onclick="openWikiAdminFor(${ci})">${t('cer_addphoto')}</button>`}
+    const done=!!CHECKINS[code];
+    const time=(done&&CHECKINS[code].time)?CHECKINS[code].time:'';
+    const i=ctx({name:name,code:code});
+    const warnCls=(v&&v.sameName>1)?' warnring':'';
+    const photo=(v&&v.photo)
+      ? `<img class="${warnCls.trim()}" src="${v.photo}" alt="" onclick="showPhotoView(${i})">`
+      : `<div class="cer-ph">👤</div>`;
+    const stamp=done?`<div class="cer-stamp"><div class="tick">✓</div><div class="txt">${t('cer_arrived')}</div>${time?`<div class="tm">${_esc(time)}</div>`:''}</div>`:'';
+    const contact=[];
+    if(v&&v.phone) contact.push(`<a href="tel:${_esc(String(v.phone).replace(/[^0-9+]/g,''))}" onclick="event.stopPropagation();">📞 ${_esc(v.phone)}</a>`);
+    if(v&&v.note) contact.push(_esc(v.note).replace(/\n/g,'<br>'));
+    html+=`<div class="cer-card ${done?'done':''}">
+      <div class="cer-photo">${photo}${stamp}</div>
+      <div class="cer-body">
+        <div class="cer-nm">${_esc(name)}</div>
+        <div class="cer-code">${_esc(code)}</div>
+        ${contact.length?`<div class="cer-ct">${contact.join('<br>')}</div>`:''}
+        ${(v&&v.sameName>1)?`<div class="cer-warn">${t('cer_same_name',v.sameName)}</div>`:''}
+        <div class="cer-btns">
+          <button class="cer-in ${done?'done':''}" onclick="toggleCheckin('${code}',${!done})">
+            ${done?t('btn_checked'):t('btn_checkin')}
+          </button>
+          <button class="cer-edit" onclick="openWikiAdminFor(${i})" title="${t('cer_addphoto')}">✎</button>
+        </div>
       </div>
     </div>`;
   });
@@ -1609,114 +1683,137 @@ function renderCeremonyList(){
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   👤 聯絡人／照片管理：直接寫回 AllVIPWiki 的共用資料庫
+   👤 照片／聯絡方式管理：只寫本系統，永遠不回寫一覽表
    ══════════════════════════════════════════════════════════════════ */
-let _wkEditingId=null, _wkPhoto=null;
-/* 從卡片「📷 補照片」進來：帶索引，取回那格的姓名當關鍵字 */
+let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false;
+function _wkOpen(){ return document.getElementById('wiki-admin-overlay').style.display==='block'; }
 window.openWikiAdminFor=function(i){
   const c=_CTX[i];
-  if(c&&c.id&&WIKI.some(r=>r.id===c.id)){
-    document.getElementById('wiki-admin-overlay').style.display='block';
-    document.getElementById('wk-search').value='';
-    wikiEditRecord(c.id);       // 已有這個人 → 直接補照片，避免建出重複資料
-    return;
-  }
-  openWikiAdmin(c?c.name:'');
+  openWikiAdminForName(c?c.name:'');
 };
-window.openWikiAdmin=function(prefill){
+/* 從卡片進來：席次圖那格文字先找得到人就直接編輯，找不到才開新增 */
+window.openWikiAdminForName=function(seatName){
   document.getElementById('wiki-admin-overlay').style.display='block';
+  document.getElementById('wk-search').value=seatName||'';
+  const v=seatName?findVip(seatName):null;
+  if(v&&v.key){ wikiEditKey(v.key, v); return; }
   wikiBackToList();
-  const box=document.getElementById('wk-search');
-  box.value=prefill?String(prefill):'';
-  wikiAdminSearch();
 };
-window.closeWikiAdmin=function(){
-  document.getElementById('wiki-admin-overlay').style.display='none';
+window.openWikiAdmin=function(){
+  document.getElementById('wiki-admin-overlay').style.display='block';
+  document.getElementById('wk-search').value='';
+  wikiBackToList();
 };
+window.closeWikiAdmin=function(){ document.getElementById('wiki-admin-overlay').style.display='none'; };
 window.wikiBackToList=function(){
-  _wkEditingId=null; _wkPhoto=null;
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false;
   document.getElementById('wk-form').style.display='none';
   document.getElementById('wk-browse').style.display='block';
   document.getElementById('wk-form-msg').textContent='';
   wikiAdminSearch();
 };
+/* 清單：本系統的在前（可編輯內容較完整），一覽表只出現在搜尋結果供補照片 */
+function mergedContacts(){
+  const out=[];
+  Object.entries(LOCAL).forEach(([k,v])=>out.push({key:k,name:v.name||k,photo:v.photo||null,phone:v.phone||'',note:v.note||'',src:'local'}));
+  const seen=new Set(out.map(x=>x.key));
+  WIKI.forEach(r=>{
+    const nm=r.nameZh||r.nameEn; if(!nm) return;
+    const k=_key(nm); if(!k||seen.has(k)) return;
+    seen.add(k);
+    out.push({key:k,name:nm,photo:r.photo||null,phone:'',note:'',src:'wiki'});
+  });
+  return out;
+}
 window.wikiAdminSearch=function(){
   const box=document.getElementById('wk-results');
   const cnt=document.getElementById('wk-count');
   if(!box) return;
-  if(WIKI_ERR){ box.innerHTML=`<div style="color:#fbbf24;font-size:13px;">${t('wk_offline')}</div>`; cnt.textContent=''; return; }
-  if(!WIKI_READY){ box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;">${t('wk_loading')}</div>`; return; }
-  cnt.textContent=t('wk_count',WIKI.length,WIKI.filter(r=>r.photo).length);
+  cnt.textContent=t('wk_count',Object.keys(LOCAL).length,WIKI.length)+(WIKI_ERR?' ⚠':'');
+  if(!WIKI_READY&&!Object.keys(LOCAL).length){ box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;">${t('wk_loading')}</div>`; return; }
   const kw=(document.getElementById('wk-search').value||'').trim().toLowerCase();
-  if(!kw){ box.innerHTML=`<div style="color:rgba(255,255,255,0.45);font-size:13px;padding:4px 2px;">${t('wk_search_hint')}</div>`; return; }
+  if(!kw){
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.45);font-size:13px;padding:4px 2px;">${t('wk_search_hint')}</div>`
+      +(WIKI_ERR?`<div style="color:#fbbf24;font-size:12.5px;margin-top:8px;line-height:1.6;">${t('wk_offline')}</div>`:'');
+    return;
+  }
   const terms=kw.split(/\s+/).filter(Boolean);
-  const hit=WIKI.filter(r=>{
-    const hay=[r.nameZh,r.nameEn,r.companyZh,r.companyEn,r.titleZh,r.titleEn].filter(Boolean).join(' ').toLowerCase();
+  const hit=mergedContacts().filter(r=>{
+    const hay=[r.name,r.phone,r.note].filter(Boolean).join(' ').toLowerCase();
     const flat=_wnorm(hay);
     return terms.every(x=>hay.includes(x)||flat.includes(_wnorm(x)));
   }).slice(0,40);
   if(!hit.length){ box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:4px 2px;">${t('wk_no_result')}</div>`; return; }
   box.innerHTML=hit.map(r=>{
+    const i=ctx({key:r.key});
     const pic=r.photo?`<img src="${r.photo}" alt="">`:`<div class="wk-noimg">👤</div>`;
-    const sub=[r.companyZh,r.titleZh].filter(Boolean).join('　');
-    return `<div class="wk-item" onclick="wikiEditRecord('${_esc(r.id)}')">
+    const sub=[r.phone,(r.note||'').split('\n')[0]].filter(Boolean).join('　');
+    return `<div class="wk-item" onclick="wikiEditByCtx(${i})">
       ${pic}
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;">${_esc(r.nameZh||r.nameEn||'(無姓名)')}</div>
+        <div style="font-weight:700;">${_esc(r.name)}</div>
         <div style="opacity:.6;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(sub)}</div>
       </div>
-      <span style="opacity:.5;">✎</span>
+      <span class="wk-src">${r.src==='local'?t('src_local'):t('src_wiki')}</span>
     </div>`;
   }).join('');
+};
+window.wikiEditByCtx=function(i){
+  const c=_CTX[i]; if(!c) return;
+  const rec=mergedContacts().find(r=>r.key===c.key);
+  if(rec) wikiEditKey(rec.key,rec);
 };
 function _wkSetPreview(dataUrl){
   document.getElementById('wk-prev').innerHTML=dataUrl
     ? `<img src="${dataUrl}" alt="">`
-    : `<span style="color:rgba(255,255,255,0.4);font-size:20px;">🖼</span>`;
+    : `<span style="color:rgba(255,255,255,0.4);font-size:26px;">🖼</span>`;
+}
+function _wkShowForm(){
+  document.getElementById('wk-browse').style.display='none';
+  document.getElementById('wk-form').style.display='block';
+  document.getElementById('wk-form-msg').textContent='';
 }
 window.wikiNewRecord=function(){
-  _wkEditingId=null; _wkPhoto=null;
-  document.getElementById('wk-browse').style.display='none';
-  document.getElementById('wk-form').style.display='block';
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false;
+  _wkShowForm();
   document.getElementById('wk-form-title').textContent=t('wk_form_new');
-  ['wk-name-zh','wk-name-en','wk-company-zh','wk-company-en','wk-title-zh','wk-title-en']
-    .forEach(id=>document.getElementById(id).value='');
-  // 從「📷 補照片」進來時，先把席次圖那格文字帶進姓名欄，讓使用者刪掉公司職稱留下姓名即可
-  const pre=(document.getElementById('wk-search').value||'').trim();
-  if(pre) document.getElementById('wk-name-zh').value=pre;
+  document.getElementById('wk-name-zh').value=(document.getElementById('wk-search').value||'').trim();
+  document.getElementById('wk-phone').value='';
+  document.getElementById('wk-note').value='';
+  document.getElementById('wk-del').style.display='none';
   _wkSetPreview(null);
-  document.getElementById('wk-form-msg').textContent='';
 };
-window.wikiEditRecord=function(id){
-  const r=WIKI.find(x=>x.id===id); if(!r) return;
-  _wkEditingId=id; _wkPhoto=r.photo||null;
-  document.getElementById('wk-browse').style.display='none';
-  document.getElementById('wk-form').style.display='block';
-  document.getElementById('wk-form-title').textContent=t('wk_form_edit',r.nameZh||r.nameEn||'');
-  document.getElementById('wk-name-zh').value=r.nameZh||'';
-  document.getElementById('wk-name-en').value=r.nameEn||'';
-  document.getElementById('wk-company-zh').value=r.companyZh||'';
-  document.getElementById('wk-company-en').value=r.companyEn||'';
-  document.getElementById('wk-title-zh').value=r.titleZh||'';
-  document.getElementById('wk-title-en').value=r.titleEn||'';
+/* rec 可來自本系統或一覽表；一覽表的只會把照片帶進預覽，存檔時才寫進本系統 */
+function wikiEditKey(key,rec){
+  const loc=LOCAL[key]||null;
+  _wkKey=key;
+  _wkPhoto=(loc&&loc.photo)||(rec&&rec.photo)||null;
+  _wkPhotoDirty=!!(loc&&loc.photo);
+  _wkShowForm();
+  const nm=(loc&&loc.name)||(rec&&rec.name)||key;
+  document.getElementById('wk-form-title').textContent=t('wk_form_edit',nm);
+  document.getElementById('wk-name-zh').value=nm;
+  document.getElementById('wk-phone').value=(loc&&loc.phone)||'';
+  document.getElementById('wk-note').value=(loc&&loc.note)||'';
+  document.getElementById('wk-del').style.display=loc?'block':'none';
   _wkSetPreview(_wkPhoto);
-  document.getElementById('wk-form-msg').textContent='';
-};
-/* 照片壓成 320×320 置中裁切的 JPEG，與一覽表的做法一致 */
+}
+/* 照片壓成 480×480 置中裁切的 JPEG */
 window.wikiPickPhoto=function(file){
   if(!file) return;
   const reader=new FileReader();
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
-      const size=320;
+      const size=480;
       const c=document.createElement('canvas');
       c.width=size; c.height=size;
-      const ctx=c.getContext('2d');
+      const ctx2=c.getContext('2d');
       const sc=Math.max(size/img.width,size/img.height);
       const w=img.width*sc, h=img.height*sc;
-      ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
-      _wkPhoto=c.toDataURL('image/jpeg',0.9);
+      ctx2.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+      _wkPhoto=c.toDataURL('image/jpeg',0.85);
+      _wkPhotoDirty=true;
       _wkSetPreview(_wkPhoto);
     };
     img.src=e.target.result;
@@ -1725,25 +1822,46 @@ window.wikiPickPhoto=function(file){
   document.getElementById('wk-photo-input').value='';
 };
 window.wikiSaveRecord=async function(){
-  const nameZh=document.getElementById('wk-name-zh').value.trim();
-  if(!nameZh){ alert(t('wk_need_name')); return; }
+  const name=document.getElementById('wk-name-zh').value.trim();
+  if(!name){ alert(t('wk_need_name')); return; }
+  const key=_key(name);
+  if(!key){ alert(t('wk_need_name')); return; }
   const rec={
-    companyZh:document.getElementById('wk-company-zh').value.trim(),
-    companyEn:document.getElementById('wk-company-en').value.trim(),
-    nameZh:nameZh,
-    nameEn:document.getElementById('wk-name-en').value.trim(),
-    titleZh:document.getElementById('wk-title-zh').value.trim(),
-    titleEn:document.getElementById('wk-title-en').value.trim(),
-    photo:_wkPhoto||null
+    name:name,
+    phone:document.getElementById('wk-phone').value.trim(),
+    note:document.getElementById('wk-note').value.trim(),
+    photo:_wkPhotoDirty?(_wkPhoto||null):((LOCAL[key]&&LOCAL[key].photo)||null),  // 沒換過照片就不把一覽表的照片複製進來
+    updated:Date.now()
   };
   const msg=document.getElementById('wk-form-msg');
   msg.style.color='#4ade80'; msg.textContent='…';
   try{
-    if(_wkEditingId) await updateDoc(fsDoc(wdb,'officers',_wkEditingId),rec);
-    else await addDoc(collection(wdb,'officers'),{...rec,createdAt:Date.now()});
-    _wikiCache={};
+    // 改了姓名等於換一筆，舊的先刪掉
+    if(_wkKey&&_wkKey!==key&&LOCAL[_wkKey]){
+      await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(_wkKey)}.json`,{method:'DELETE'});
+    }
+    const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
+      {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    LOCAL[key]=rec; _wikiCache={};
+    if(loaded) refreshMain();
     msg.textContent=t('wk_saved');
     setTimeout(()=>{ wikiBackToList(); },700);
+  }catch(e){
+    msg.style.color='#f87171';
+    msg.textContent=t('wk_save_fail',e.message||e);
+  }
+};
+window.wikiDeleteRecord=async function(){
+  if(!_wkKey||!LOCAL[_wkKey]) return;
+  if(!confirm(t('wk_del_confirm'))) return;
+  const msg=document.getElementById('wk-form-msg');
+  try{
+    const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(_wkKey)}.json`,{method:'DELETE'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    delete LOCAL[_wkKey]; _wikiCache={};
+    if(loaded) refreshMain();
+    wikiBackToList();
   }catch(e){
     msg.style.color='#f87171';
     msg.textContent=t('wk_save_fail',e.message||e);
