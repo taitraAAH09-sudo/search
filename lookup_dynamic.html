@@ -1635,6 +1635,22 @@ function cachePhoto(key,photo){
     .catch(()=>_cached.delete(key));
 }
 function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* 除錯用：這個檔案是 <script type="module">，模組內的變數（WIKI、LOCAL...）
+   瀏覽器主控台預設看不到，所以另外掛到 window 上方便查資料。
+   用法：在主控台打 _debugVip.charCodes('朱俊彰') 或 _debugVip.findByChar('彰') */
+window._debugVip = {
+  get WIKI(){ return WIKI; },
+  get LOCAL(){ return LOCAL; },
+  findVip,
+  /* 印出每個字的 Unicode 編碼，用來抓「長得一樣但其實不同」的字 */
+  charCodes(s){ return [...String(s)].map(c=>`${c} = U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')}`); },
+  /* 找出一覽表裡姓名含有某個字的所有紀錄，連同編碼一起印出 */
+  findByChar(ch){
+    return WIKI.filter(r=>String(r.nameZh).includes(ch))
+      .map(r=>({nameZh:r.nameZh, codes:this.charCodes(r.nameZh), hasPhoto:!!r.photo}));
+  }
+};
 /* 卡片上的 onclick 只帶索引，姓名放在暫存表裡，避免姓名含引號時語法出錯 */
 let _CTX=[];
 function ctx(v){ if(_CTX.length>800) _CTX=[]; return _CTX.push(v)-1; }
