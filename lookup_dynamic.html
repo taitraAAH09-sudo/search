@@ -379,6 +379,7 @@ const I18N = {
   cer_empty:"這場活動還沒有標記任何合影貴賓（請到席次圖系統標記）",
   cer_arrived:"已報到",
   cer_same_name:n=>`⚠ 資料庫同名 ${n} 位，請確認照片`,
+  cer_fuzzy_match:"⚠ 姓名模糊比對，請確認照片是否正確",
   cer_addphoto:"✎ 照片／聯絡",
   pv_close:"點任意處關閉", pv_edit:"✎ 編輯照片／聯絡方式",
   wk_title:"👤 貴賓照片／聯絡方式",
@@ -478,6 +479,7 @@ const I18N = {
   cer_empty:"No photo-call VIP is tagged for this event yet (tag them in the seating chart system)",
   cer_arrived:"CHECKED IN",
   cer_same_name:n=>`⚠ ${n} contacts share this name — verify the photo`,
+  cer_fuzzy_match:"⚠ Fuzzy name match — please verify the photo",
   cer_addphoto:"✎ Photo / contact",
   pv_close:"Tap anywhere to close", pv_edit:"✎ Edit photo / contact",
   wk_title:"👤 VIP photos & contacts",
@@ -1534,6 +1536,24 @@ const _wnorm=s=>String(s||'').toLowerCase().replace(/[\s\u3000·,、．.·・_\-
 const _key=s=>_wnorm(s).replace(/[.$#\[\]\/]/g,'');   // Firebase 不吃的字元要拿掉
 let _wikiCache={};
 
+/* ── 模糊比對：完全包含比對不到時才用 ──
+   把姓名逐字在座位文字裡「依序」找，中間可以夾雜其他字（職稱、公司），
+   回傳「姓名裡有幾個字沒依序找到」，數字越小代表越像。 */
+function _fuzzyGap(name,hay){
+  let hi=0, missed=0;
+  for(const ch of name){
+    const idx=hay.indexOf(ch,hi);
+    if(idx===-1) missed++; else hi=idx+1;
+  }
+  return missed;
+}
+/* 姓名越短，容許的差異要越嚴格，避免菜市場姓名亂配對 */
+function _fuzzyOk(nameLen,gap){
+  if(nameLen<3) return gap===0;   // 兩個字的姓名不冒險模糊比對
+  if(nameLen<=4) return gap<=1;   // 三、四個字，容許差 1 個字
+  return gap<=2;                  // 五個字以上，容許差 2 個字
+}
+
 /* 回傳 {name,photo,phone,note,sameName,src} 或 null */
 function findVip(seatName){
   if(!seatName) return null;
@@ -1547,15 +1567,30 @@ function findVip(seatName){
   lk.sort((a,b)=>b.length-a.length);
   const loc=lk.length?LOCAL[lk[0]]:null;
 
-  // 2) 再找一覽表（只取照片）
+  // 2) 再找一覽表（只取照片）— 先試「完全包含」
   let cands=WIKI.filter(r=>{
     const n=_wnorm(r.nameZh);
     return n.length>=2 && /[\u4e00-\u9fff]/.test(n) && hay.includes(n);
   });
-  let key='nameZh';
+  let key='nameZh', fuzzy=false;
   if(!cands.length){
     cands=WIKI.filter(r=>{ const n=_wnorm(r.nameEn); return n.length>=4 && hay.includes(n); });
     key='nameEn';
+  }
+  // 3) 完全包含比對不到 → 改用模糊比對中文姓名（容許一覽表姓名跟座位文字之間差一兩個字）
+  if(!cands.length){
+    const fz=WIKI.map(r=>{
+      const n=_wnorm(r.nameZh);
+      if(!n || !/[\u4e00-\u9fff]/.test(n)) return null;
+      const gap=_fuzzyGap(n,hay);
+      return _fuzzyOk(n.length,gap)?{r,gap,len:n.length}:null;
+    }).filter(Boolean);
+    if(fz.length){
+      fz.sort((a,b)=>a.gap-b.gap||b.len-a.len);            // 差異最小、姓名最長的排最前面
+      const bestGap=fz[0].gap, bestLen=fz[0].len;
+      cands=fz.filter(x=>x.gap===bestGap&&x.len===bestLen).map(x=>x.r);
+      key='nameZh'; fuzzy=true;
+    }
   }
   let wikiPhoto=null, sameName=0;
   if(cands.length){
@@ -1581,6 +1616,7 @@ function findVip(seatName){
       note:(loc&&loc.note)||'',
       hasLocal:!!loc,
       sameName:(loc&&loc.photo)?0:sameName,      // 本系統已指定照片就不用再警告同名
+      fuzzy:(loc&&loc.photo)?false:fuzzy,        // 本系統已指定照片就不用標示模糊比對
       src:(loc&&loc.photo)?'local':(wikiPhoto?'wiki':(cache?'cache':'local'))
     };
   }
@@ -1607,7 +1643,7 @@ function avatarHtml(seatName,size){
   const v=findVip(seatName);
   if(!v||!v.photo) return '';
   const i=ctx({name:seatName});
-  return `<img class="avatar${v.sameName>1?' warn':''}" style="width:${size}px;height:${size}px;" src="${v.photo}" alt=""
+  return `<img class="avatar${(v.sameName>1||v.fuzzy)?' warn':''}" style="width:${size}px;height:${size}px;" src="${v.photo}" alt=""
     onclick="event.stopPropagation();showPhotoView(${i})">`;
 }
 window.showPhotoView=function(i){
@@ -1685,7 +1721,7 @@ function renderCeremonyList(){
     const done=!!CHECKINS[code];
     const time=(done&&CHECKINS[code].time)?CHECKINS[code].time:'';
     const i=ctx({name:name,code:code});
-    const warnCls=(v&&v.sameName>1)?' warnring':'';
+    const warnCls=(v&&(v.sameName>1||v.fuzzy))?' warnring':'';
     const photo=(v&&v.photo)
       ? `<img class="${warnCls.trim()}" src="${v.photo}" alt="" onclick="showPhotoView(${i})">`
       : `<div class="cer-ph">👤</div>`;
@@ -1700,6 +1736,7 @@ function renderCeremonyList(){
         <div class="cer-code">${_esc(code)}</div>
         ${contact.length?`<div class="cer-ct">${contact.join('<br>')}</div>`:''}
         ${(v&&v.sameName>1)?`<div class="cer-warn">${t('cer_same_name',v.sameName)}</div>`:''}
+        ${(v&&v.fuzzy)?`<div class="cer-warn">${t('cer_fuzzy_match')}</div>`:''}
         <div class="cer-btns">
           <button class="cer-in ${done?'done':''}" onclick="toggleCheckin('${code}',${!done})">
             ${done?t('btn_checked'):t('btn_checkin')}
