@@ -128,18 +128,28 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-zone { margin-top:10px; }
 .cer-zone:first-of-type { margin-top:0; }
 .cer-zone-lbl { font-size:11px; color:var(--ink-2); font-family:"DM Mono",monospace; letter-spacing:.04em; margin-bottom:5px; padding-left:2px; }
-.cer-cells { display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:7px; }
-@media(min-width:820px){ .cer-cells { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); } }
-.cer-cell { aspect-ratio:3/4; min-height:104px; border-radius:9px; border:none; padding:7px 5px 5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; color:#fff; font-family:"Noto Serif TC",serif; cursor:pointer; overflow:hidden; transition:transform .12s, filter .12s; }
+.cer-cells { display:flex; gap:5px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+.cer-cells::-webkit-scrollbar { height:5px; }
+.cer-cells::-webkit-scrollbar-thumb { background:#D6D3CC; border-radius:3px; }
+/* 直式格子：字一個一個往下排，單位在上、姓名在下；整排一眼看完 */
+.cer-cell { flex:1 1 0; min-width:26px; max-width:54px; height:232px; border-radius:9px; border:none; padding:8px 3px; color:#fff; font-family:"Noto Serif TC",serif; cursor:pointer; overflow:hidden; transition:transform .12s, filter .12s;
+  writing-mode:vertical-rl; text-orientation:upright; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:7px; }
 .cer-cell:active { transform:scale(0.96); }
-.cer-cell .nm { font-size:13.5px; font-weight:700; line-height:1.3; letter-spacing:.01em; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
-.cer-cell .sub { font-family:"DM Mono",monospace; font-size:9.5px; opacity:.85; margin-top:auto; }
-.cer-cell .mk { font-size:11px; opacity:.9; }
+.cer-cell .u { font-size:13px; font-weight:500; line-height:1.05; letter-spacing:.02em; opacity:.95; }
+.cer-cell .nm { font-size:14.5px; font-weight:700; line-height:1.05; letter-spacing:.03em; }
+.cer-cell .sub { font-family:"DM Mono",monospace; font-size:9.5px; opacity:.8; margin-inline-start:auto; writing-mode:vertical-rl; text-orientation:mixed; }
+.cer-cell .mk { font-size:12px; opacity:.95; writing-mode:horizontal-tb; }
 .cer-cell.blue { background:#2563EB; }
 .cer-cell.green { background:#1A9A5F; }
 .cer-cell.gold { background:#D08700; }
 .cer-cell.done { background:#DCDAD4; color:#8A8A8A; box-shadow:inset 0 0 0 1px #CFCCC5; }
-.cer-cell.done .nm { font-weight:500; }
+.cer-cell.done .nm { font-weight:700; }
+@media(max-width:560px){
+  .cer-cell { height:210px; min-width:23px; max-width:46px; padding:7px 2px; gap:5px; }
+  .cer-cell .u { font-size:11.5px; }
+  .cer-cell .nm { font-size:13px; }
+  .cer-map { margin:6px 10px 4px; padding:10px 8px 12px; }
+}
 .cer-card.flash { animation:cerFlash 1.1s ease; }
 @keyframes cerFlash { 0%,100%{ box-shadow:0 1px 5px rgba(0,0,0,0.07);} 25%,65%{ box-shadow:0 0 0 3px var(--accent);} }
 
@@ -408,7 +418,7 @@ const I18N = {
   cer_fuzzy_match:"⚠ 姓名模糊比對，請確認照片是否正確",
   cer_addphoto:"✎ 照片／聯絡",
   cer_map_title:"🗺 合影貴賓座位方陣",
-  cer_map_hint:"只供檢視：報到請按下面照片卡的報到鈕",
+  cer_map_hint:"只供檢視（報到請按下面照片卡）／格子多時可左右滑",
   cer_map_on:"已報到",
   cer_map_off:"未報到",
   cer_map_head:"主桌",
@@ -515,7 +525,7 @@ const I18N = {
   cer_fuzzy_match:"⚠ Fuzzy name match — please verify the photo",
   cer_addphoto:"✎ Photo / contact",
   cer_map_title:"🗺 Photo-call seating grid",
-  cer_map_hint:"View only — check in from the photo cards below",
+  cer_map_hint:"View only — check in on the photo cards below; swipe if it overflows",
   cer_map_on:"Checked in",
   cer_map_off:"Not in",
   cer_map_head:"Head Table",
@@ -1751,6 +1761,36 @@ function ceremonySeats(){
 }
 /* 上方方陣格子：全部合影貴賓都畫（不受上面的篩選影響），已報到變灰、未報到亮燈
    只供檢視，點格子只會跳到下面那張照片卡，不會報到 */
+/* 把席次圖那格文字拆成「單位」＋「姓名職稱」，直式格子才能單位在上、姓名在下 */
+const CER_TITLES=['副主任委員','主任委員','政務委員','政務次長','常務次長','副秘書長','秘書長','副執行長','副總經理','副理事長','副董事長','副處長','副局長','副院長','副館長','副署長','副司長','副部長','副組長','副科長','副主委','副主任','副會長','總經理','執行長','董事長','理事長','發行人','總編輯','部長','署長','司長','處長','局長','院長','館長','校長','廳長','組長','科長','主委','次長','主任','委員','大使','代表','總裁','顧問','經理','會長','理事','監事','董事','副總'];
+const CER_ORG_SUF=['集團','中心','公司','協會','學會','大學','委員會','研究院','基金會','部','會','院','署','司','處','局','館','廳','所','團','社','行','廠','station'];
+function splitOrgName(raw){
+  const s=String(raw||'').trim();
+  if(!s) return {org:'',nm:''};
+  // 1. 本來就有分隔符（空白、／、、、|）就直接拆
+  const sp=s.split(/[\s\u3000|｜\/／、,，]+/).filter(Boolean);
+  if(sp.length>=2) return {org:sp[0], nm:sp.slice(1).join('')};
+  // 2. 用職稱結尾往回抓姓名（姓名預設 3 字，單位太短就 2 字）
+  for(const ttl of CER_TITLES){
+    if(!s.endsWith(ttl)) continue;
+    let head=s.slice(0,s.length-ttl.length), rank='';
+    const rm=head.match(/(上將|中將|少將|上校|中校|少校|博士|教授)$/);
+    if(rm){ rank=rm[1]; head=head.slice(0,head.length-rank.length); }
+    if(head.length<=3) return {org:'', nm:s};
+    const nlen=head.length>=5?3:2;
+    return { org:head.slice(0,head.length-nlen), nm:head.slice(head.length-nlen)+rank+ttl };
+  }
+  // 3. 沒職稱：找最後一個單位結尾字，後面 2~6 個字當姓名
+  for(let i=s.length-2;i>=1;i--){
+    const hit=CER_ORG_SUF.find(suf=>s.startsWith(suf,i-suf.length+1));
+    if(hit){
+      const cut=i+1, rest=s.length-cut;
+      if(rest>=2&&rest<=6) return {org:s.slice(0,cut), nm:s.slice(cut)};
+    }
+  }
+  return {org:s, nm:''};
+}
+
 function cerGroupOf(code){
   let m=code.match(/^(H\d+)-(\d+)$/);
   if(m){
@@ -1787,11 +1827,13 @@ function buildCerMap(seats){
       const name=DATA[code]||t('lbl_empty_seat');
       const done=!!CHECKINS[code];
       const p=parseSeatCode(code);
-      const time=(done&&CHECKINS[code].time)?CHECKINS[code].time:'';
+      const q=splitOrgName(name);
       h+=`<div class="cer-cell ${done?'done':p.color}" onclick="cerJump('${_esc(code)}')" title="${_esc(name)}　${_esc(p.detail)}">
-        <div class="nm">${_esc(name)}</div>
-        ${done?`<div class="mk">✓ ${time?_esc(time):t('cer_arrived')}</div>`:''}
-        <div class="sub">${_esc(p.badgeBot||code)}</div>
+        ${q.org?`<span class="u">${_esc(q.org)}</span>`:''}
+        ${q.nm?`<span class="nm">${_esc(q.nm)}</span>`:''}
+        ${(!q.org&&!q.nm)?`<span class="nm">${_esc(name)}</span>`:''}
+        ${done?`<span class="mk">✓</span>`:''}
+        <span class="sub">${_esc(p.badgeBot||code)}</span>
       </div>`;
     });
     h+='</div></div>';
