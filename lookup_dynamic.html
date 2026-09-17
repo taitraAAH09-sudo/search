@@ -117,6 +117,32 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-tab.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
 .cer-back { margin-left:auto; border:none; background:transparent; color:var(--accent); font-size:12.5px; font-family:"Noto Serif TC",serif; cursor:pointer; padding:6px 2px; }
 
+/* ── 合影貴賓：上方方陣格子（只供檢視，報到請用下面照片卡） ── */
+.cer-map { margin:6px 16px 4px; background:var(--white); border:1px solid var(--rule); border-radius:14px; padding:12px 12px 14px; box-shadow:0 1px 5px rgba(0,0,0,0.05); }
+.cer-map-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.cer-map-title { font-size:13px; font-weight:700; color:var(--ink); }
+.cer-map-hint { font-size:11px; color:var(--ink-3); }
+.cer-map-lg { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink-3); }
+.cer-map-lg i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+.cer-map-lg .on { background:#1A6B4A; } .cer-map-lg .off { background:#C9C6C0; }
+.cer-zone { margin-top:10px; }
+.cer-zone:first-of-type { margin-top:0; }
+.cer-zone-lbl { font-size:11px; color:var(--ink-2); font-family:"DM Mono",monospace; letter-spacing:.04em; margin-bottom:5px; padding-left:2px; }
+.cer-cells { display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:7px; }
+@media(min-width:820px){ .cer-cells { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); } }
+.cer-cell { aspect-ratio:3/4; min-height:104px; border-radius:9px; border:none; padding:7px 5px 5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; color:#fff; font-family:"Noto Serif TC",serif; cursor:pointer; overflow:hidden; transition:transform .12s, filter .12s; }
+.cer-cell:active { transform:scale(0.96); }
+.cer-cell .nm { font-size:13.5px; font-weight:700; line-height:1.3; letter-spacing:.01em; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+.cer-cell .sub { font-family:"DM Mono",monospace; font-size:9.5px; opacity:.85; margin-top:auto; }
+.cer-cell .mk { font-size:11px; opacity:.9; }
+.cer-cell.blue { background:#2563EB; }
+.cer-cell.green { background:#1A9A5F; }
+.cer-cell.gold { background:#D08700; }
+.cer-cell.done { background:#DCDAD4; color:#8A8A8A; box-shadow:inset 0 0 0 1px #CFCCC5; }
+.cer-cell.done .nm { font-weight:500; }
+.cer-card.flash { animation:cerFlash 1.1s ease; }
+@keyframes cerFlash { 0%,100%{ box-shadow:0 1px 5px rgba(0,0,0,0.07);} 25%,65%{ box-shadow:0 0 0 3px var(--accent);} }
+
 .cer-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:8px 16px 36px; }
 @media(min-width:560px){ .cer-grid { grid-template-columns:repeat(3,1fr); } }
 @media(min-width:820px){ .cer-grid { grid-template-columns:repeat(4,1fr); } }
@@ -381,6 +407,13 @@ const I18N = {
   cer_same_name:n=>`⚠ 資料庫同名 ${n} 位，請確認照片`,
   cer_fuzzy_match:"⚠ 姓名模糊比對，請確認照片是否正確",
   cer_addphoto:"✎ 照片／聯絡",
+  cer_map_title:"🗺 合影貴賓座位方陣",
+  cer_map_hint:"只供檢視：報到請按下面照片卡的報到鈕",
+  cer_map_on:"已報到",
+  cer_map_off:"未報到",
+  cer_map_head:"主桌",
+  cer_map_table:n=>`第 ${n} 桌`,
+  cer_map_zone:z=>`${z} 區`,
   pv_close:"點任意處關閉", pv_edit:"✎ 編輯照片／聯絡方式",
   wk_title:"👤 貴賓照片／聯絡方式",
   wk_desc:"照片會自動從「長官中英一覽表」同步進來；在這裡新增或更換，只會存在本系統，不會動到一覽表的資料。公司、姓名、職稱一律以座位系統顯示為準。",
@@ -481,6 +514,13 @@ const I18N = {
   cer_same_name:n=>`⚠ ${n} contacts share this name — verify the photo`,
   cer_fuzzy_match:"⚠ Fuzzy name match — please verify the photo",
   cer_addphoto:"✎ Photo / contact",
+  cer_map_title:"🗺 Photo-call seating grid",
+  cer_map_hint:"View only — check in from the photo cards below",
+  cer_map_on:"Checked in",
+  cer_map_off:"Not in",
+  cer_map_head:"Head Table",
+  cer_map_table:n=>`Table ${n}`,
+  cer_map_zone:z=>`Zone ${z}`,
   pv_close:"Tap anywhere to close", pv_edit:"✎ Edit photo / contact",
   wk_title:"👤 VIP photos & contacts",
   wk_desc:"Photos sync in from the Executive Bilingual Directory. Anything you add or change here stays in this system only and never writes back to the directory. Organization, name and title always come from the seating system.",
@@ -1709,6 +1749,70 @@ function ceremonySeats(){
       return a.localeCompare(b);
     });
 }
+/* 上方方陣格子：全部合影貴賓都畫（不受上面的篩選影響），已報到變灰、未報到亮燈
+   只供檢視，點格子只會跳到下面那張照片卡，不會報到 */
+function cerGroupOf(code){
+  let m=code.match(/^(H\d+)-(\d+)$/);
+  if(m){
+    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
+    return { key:m[1], label:nm?t('cer_map_table',nm):t('cer_map_head') };
+  }
+  m=code.match(/^(R\d+_T(\d+))-(\d+)$/);
+  if(m){
+    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
+    return { key:m[1], label:t('cer_map_table',nm||m[2]) };
+  }
+  m=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+  if(m) return { key:'Z'+m[1].toUpperCase(), label:t('cer_map_zone',m[1].toUpperCase()) };
+  return { key:'_', label:'—' };
+}
+function buildCerMap(seats){
+  if(!seats.length) return '';
+  const groups=[];
+  const idx={};
+  seats.forEach(code=>{
+    const g=cerGroupOf(code);
+    if(idx[g.key]===undefined){ idx[g.key]=groups.length; groups.push({label:g.label,codes:[]}); }
+    groups[idx[g.key]].codes.push(code);
+  });
+  let h=`<div class="cer-map">
+    <div class="cer-map-head">
+      <span class="cer-map-title">${t('cer_map_title')}</span>
+      <span class="cer-map-hint">${t('cer_map_hint')}</span>
+      <span class="cer-map-lg"><span><i class="off"></i>${t('cer_map_off')}</span><span><i class="on"></i>${t('cer_map_on')}</span></span>
+    </div>`;
+  groups.forEach(g=>{
+    h+=`<div class="cer-zone"><div class="cer-zone-lbl">${_esc(g.label)}</div><div class="cer-cells">`;
+    g.codes.forEach(code=>{
+      const name=DATA[code]||t('lbl_empty_seat');
+      const done=!!CHECKINS[code];
+      const p=parseSeatCode(code);
+      const time=(done&&CHECKINS[code].time)?CHECKINS[code].time:'';
+      h+=`<div class="cer-cell ${done?'done':p.color}" onclick="cerJump('${_esc(code)}')" title="${_esc(name)}　${_esc(p.detail)}">
+        <div class="nm">${_esc(name)}</div>
+        ${done?`<div class="mk">✓ ${time?_esc(time):t('cer_arrived')}</div>`:''}
+        <div class="sub">${_esc(p.badgeBot||code)}</div>
+      </div>`;
+    });
+    h+='</div></div>';
+  });
+  return h+'</div>';
+}
+/* 點方陣格子 → 捲到下面對應的照片卡（不報到）；若被篩選擋住就自動切到「全部」 */
+window.cerJump=function(code){
+  const go=()=>{
+    const el=document.getElementById('cer-card-'+code);
+    if(!el) return false;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    return true;
+  };
+  if(go()) return;
+  _cerFilter='all';
+  renderCeremonyList();
+  setTimeout(go,60);
+};
+
 function renderCeremonyList(){
   _lastMain=renderCeremonyList;      // 資料更新或切語言時原地重繪，不會跳回搜尋
   const main=document.getElementById('main');
@@ -1724,13 +1828,14 @@ function renderCeremonyList(){
   </div>`;
 
   if(!seats.length){ main.innerHTML=head+`<div class="no-result">${t('cer_empty')}</div>`; return; }
+  const map=buildCerMap(seats);      // 方陣永遠畫全部，不跟著上面的篩選跑
   const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
   if(!show.length){
-    main.innerHTML=head+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
+    main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
     return;
   }
 
-  let html=head+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="cer-grid">`;
+  let html=head+map+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="cer-grid">`;
   show.forEach(code=>{
     const name=DATA[code]||t('lbl_empty_seat');
     const v=findVip(name);
@@ -1745,7 +1850,7 @@ function renderCeremonyList(){
     const contact=[];
     if(v&&v.phone) contact.push(`<a href="tel:${_esc(String(v.phone).replace(/[^0-9+]/g,''))}" onclick="event.stopPropagation();">📞 ${_esc(v.phone)}</a>`);
     if(v&&v.note) contact.push(_esc(v.note).replace(/\n/g,'<br>'));
-    html+=`<div class="cer-card ${done?'done':''}">
+    html+=`<div class="cer-card ${done?'done':''}" id="cer-card-${_esc(code)}">
       <div class="cer-photo">${photo}${stamp}</div>
       <div class="cer-body">
         <div class="cer-nm">${_esc(name)}</div>
@@ -1941,7 +2046,7 @@ async function _wikiPersist(auto){
     name:name,
     phone:document.getElementById('wk-phone').value.trim(),
     note:document.getElementById('wk-note').value.trim(),
-    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||_wkPhoto||null),   // 沒自己換過也沒關係：只要儲存當下畫面上有照片（哪怕是從一覽表帶過來的），就視為人工已確認過，一併存成本系統照片，消除模糊比對／同名警告
+    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||null),   // 沒自己換過就不覆蓋，照片仍跟著一覽表走
     photoCache:wp||old.photoCache||null,                       // 一覽表照片的本機備份
     photoCacheAt:wp?Date.now():(old.photoCacheAt||null),
     updated:Date.now()
