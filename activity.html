@@ -2030,7 +2030,9 @@ window.doExport = async function() {
     function splitCompanyName(str) {
         if (!str) return str;
         if (str.includes('\n')) return str;
-        const idx = str.indexOf(' ');
+        // 中文輸入法常會打成全形空白（\u3000），半形空白（英文鍵盤打的一般空白）不受影響，
+        // 這裡讓兩種空白都能被辨識為公司／姓名職稱的分界，藉此修正中文常斷不開的問題。
+        const idx = str.search(/[ \u3000]/);
         if (idx === -1) return str;
         const company = str.slice(0, idx).trim();
         const rest = str.slice(idx + 1).trim();
