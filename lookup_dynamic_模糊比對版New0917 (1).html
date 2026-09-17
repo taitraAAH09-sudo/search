@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>座位查詢</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --white: #FFFFFF; --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #8A8A8A;
+  --rule: #E0DDD8; --accent: #1B4F8A; --accent-light: #EBF1F9;
+  --green: #1A6B4A; --green-light: #E8F5EE;
+  --gold: #8B6914; --gold-light: #FBF5E6;
+  --red: #B33A2A;
+}
+body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+
+.header { background:var(--accent); padding:20px 20px 16px; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,0.15); }
+.header-tag { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:2px; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-bottom:4px; }
+.header-title { font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; word-break:break-all; }
+.conn-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; }
+.conn-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); transition:background .3s; }
+.conn-dot.ok { background:#4ADE80; } .conn-dot.err { background:#F87171; }
+.conn-lbl { font-family:"DM Mono",monospace; font-size:10px; color:rgba(255,255,255,0.6); }
+
+.search-wrap { position:relative; }
+.search-input { width:100%; padding:13px 44px; border-radius:10px; border:none; background:rgba(255,255,255,0.15); color:#fff; font-size:16px; font-family:"Noto Serif TC",serif; outline:none; transition:background .2s; }
+.search-input::placeholder { color:rgba(255,255,255,0.45); }
+.search-input:focus { background:rgba(255,255,255,0.22); }
+.scan-btn2{width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:0.05em;}
+.scan-btn2:active{background:rgba(255,255,255,0.3);}
+#scan-overlay{position:fixed;inset:0;background:rgba(15,28,42,0.88);z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:#fff;font-size:15px;padding:24px;text-align:center;line-height:1.7;}
+#scan-overlay.show{display:flex;}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-src{font-size:12px;color:rgba(255,255,255,0.55);word-break:break-all;max-height:3.2em;overflow:hidden;}
+#cam-overlay{position:fixed;inset:0;background:#000;z-index:98;display:none;}
+#cam-overlay.show{display:block;}
+#cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cam-frame{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:82%;max-width:480px;aspect-ratio:2.5/1;border:2.5px solid rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 0 0 200vmax rgba(0,0,0,0.55);overflow:hidden;}
+.cam-frame::before,.cam-frame::after{content:'';position:absolute;width:26px;height:26px;border:4px solid #4ade80;}
+.cam-frame::before{left:-2px;top:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
+.cam-frame::after{right:-2px;bottom:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
+.scanline{position:absolute;left:5%;right:5%;height:2.5px;background:linear-gradient(90deg,transparent,#4ade80 30%,#4ade80 70%,transparent);box-shadow:0 0 10px #4ade80;animation:scanmove 2s ease-in-out infinite;}
+@keyframes scanmove{0%,100%{top:10%;}50%{top:86%;}}
+.cam-hint{position:absolute;left:0;right:0;top:calc(40% + 20vw);max-width:100%;text-align:center;color:#fff;font-size:14.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8);padding:0 20px;}
+@media (min-width:640px){.cam-hint{top:calc(40% + 150px);}}
+.cam-btns{position:absolute;bottom:36px;left:0;right:0;display:flex;gap:14px;justify-content:center;align-items:center;}
+.cam-shoot{padding:15px 30px;border:none;border-radius:999px;background:#4ade80;color:#0f1c2a;font-weight:800;font-size:16.5px;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(74,222,128,0.45);}
+.cam-shoot:active{transform:scale(0.96);}
+.cam-cancel{padding:14px 22px;border:1.5px solid rgba(255,255,255,0.55);border-radius:999px;background:transparent;color:#fff;font-size:15px;font-family:inherit;cursor:pointer;}
+.s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
+.clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
+.clear-btn.show { display:flex; }
+
+.stats-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:14px 16px; background:var(--white); border-bottom:1px solid var(--rule); }
+@media(min-width:480px){ .stats-bar { grid-template-columns:repeat(4,1fr); } }
+.stat { background:var(--bg); border-radius:10px; padding:10px 12px; text-align:center; border:1px solid var(--rule); }
+.stat-num { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; }
+.stat-lbl { font-size:10px; color:var(--ink-3); margin-top:1px; }
+
+.hint { padding:48px 20px; text-align:center; color:var(--ink-3); font-size:14px; line-height:1.8; }
+.hint-icon { font-size:42px; margin-bottom:12px; }
+
+.result-count { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); padding:12px 16px 6px; }
+.result-list { padding:0 16px 32px; display:flex; flex-direction:column; gap:10px; }
+
+.result-card { background:var(--white); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.06); border:1px solid var(--rule); animation:slideIn .18s ease; }
+.result-card.is-checked { opacity:0.55; }
+@keyframes slideIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;} }
+
+.seat-badge { flex-shrink:0; width:56px; height:56px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.badge-blue { background:var(--accent-light); } .badge-blue .badge-zone { color:var(--accent); }
+.badge-green { background:var(--green-light); } .badge-green .badge-zone { color:var(--green); }
+.badge-gold { background:var(--gold-light); } .badge-gold .badge-zone { color:var(--gold); }
+.badge-zone { font-family:"DM Mono",monospace; font-size:13px; font-weight:700; line-height:1.2; text-align:center; }
+.badge-seat { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+
+.card-info { flex:1; min-width:0; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
+.card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
+.card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
+.card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+.match-tag{display:inline-block;font-family:"DM Mono",monospace;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:6px;vertical-align:middle;white-space:nowrap;}
+.match-tag.high{background:var(--green-light);color:var(--green);}
+.match-tag.mid{background:var(--accent-light);color:var(--accent);}
+.match-tag.low{background:var(--gold-light);color:var(--gold);}
+
+.checkin-btn { flex-shrink:0; padding:8px 12px; border-radius:8px; border:1.5px solid var(--green); background:var(--green-light); color:var(--green); font-size:12px; font-weight:700; cursor:pointer; font-family:"Noto Serif TC",serif; white-space:nowrap; transition:all .15s; }
+.checkin-btn:hover { background:var(--green); color:#fff; }
+.checkin-btn.done { background:#D1FAE5; border-color:#6EE7B7; color:#065F46; cursor:default; }
+
+.no-result { padding:40px 20px; text-align:center; color:var(--ink-3); font-size:14px; }
+.error-box { padding:60px 24px; text-align:center; }
+.error-icon { font-size:48px; margin-bottom:16px; }
+.error-title { font-size:16px; font-weight:700; color:var(--red); margin-bottom:8px; }
+.error-msg { font-size:13px; color:var(--ink-3); line-height:1.7; }
+
+.top-row { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.lang-switch { display:flex; background:rgba(255,255,255,0.14); border-radius:999px; padding:2px; flex-shrink:0; }
+.lang-btn { border:none; background:transparent; color:rgba(255,255,255,0.62); font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:.05em; padding:4px 11px; border-radius:999px; cursor:pointer; line-height:1.5; }
+.lang-btn.on { background:rgba(255,255,255,0.92); color:var(--accent); font-weight:500; }
+.lang-btn:focus-visible { outline:2px solid #fff; outline-offset:1px; }
+html[lang="en"] .badge-zone { font-size:11px; letter-spacing:-.01em; }
+html[lang="en"] .badge-seat { font-size:9.5px; }
+html[lang="en"] .checkin-btn { font-size:11.5px; padding:8px 10px; }
+html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
+/* ── 合影貴賓：席次圖式相片牆 ── */
+.stat.clickable { cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s; }
+.stat.clickable:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.stat.clickable:active { transform:scale(0.97); }
+.stat-tap { font-family:"DM Mono",monospace; font-size:8.5px; color:var(--accent); margin-top:3px; letter-spacing:.03em; }
+
+.cer-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:14px 16px 6px; }
+.cer-tab { border:1px solid var(--rule); background:var(--white); color:var(--ink-2); border-radius:999px; padding:6px 12px; font-size:12px; font-family:"Noto Serif TC",serif; cursor:pointer; }
+.cer-tab.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+.cer-back { margin-left:auto; border:none; background:transparent; color:var(--accent); font-size:12.5px; font-family:"Noto Serif TC",serif; cursor:pointer; padding:6px 2px; }
+
+/* ── 合影貴賓：上方方陣格子（只供檢視，報到請用下面照片卡） ── */
+.cer-map { margin:6px 16px 4px; background:var(--white); border:1px solid var(--rule); border-radius:14px; padding:12px 12px 14px; box-shadow:0 1px 5px rgba(0,0,0,0.05); }
+.cer-map-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.cer-map-title { font-size:13px; font-weight:700; color:var(--ink); }
+.cer-map-hint { font-size:11px; color:var(--ink-3); }
+.cer-map-lg { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink-3); }
+.cer-map-lg i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+.cer-map-lg .on { background:#1A6B4A; } .cer-map-lg .off { background:#C9C6C0; }
+.cer-zone { margin-top:10px; }
+.cer-zone:first-of-type { margin-top:0; }
+.cer-zone-lbl { font-size:11px; color:var(--ink-2); font-family:"DM Mono",monospace; letter-spacing:.04em; margin-bottom:5px; padding-left:2px; }
+.cer-cells { display:flex; gap:5px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+.cer-cells::-webkit-scrollbar { height:5px; }
+.cer-cells::-webkit-scrollbar-thumb { background:#D6D3CC; border-radius:3px; }
+/* 直式格子：字一個一個往下排，單位在上、姓名在下；整排一眼看完 */
+.cer-cell { flex:1 1 0; min-width:26px; max-width:54px; height:232px; border-radius:9px; border:none; padding:8px 3px; color:#fff; font-family:"Noto Serif TC",serif; cursor:pointer; overflow:hidden; transition:transform .12s, filter .12s;
+  writing-mode:vertical-rl; text-orientation:upright; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:7px; }
+.cer-cell:active { transform:scale(0.96); }
+.cer-cell .u { font-size:13px; font-weight:500; line-height:1.05; letter-spacing:.02em; opacity:.95; }
+.cer-cell .nm { font-size:14.5px; font-weight:700; line-height:1.05; letter-spacing:.03em; }
+.cer-cell .sub { font-family:"DM Mono",monospace; font-size:9.5px; opacity:.8; margin-inline-start:auto; writing-mode:vertical-rl; text-orientation:mixed; }
+.cer-cell .mk { font-size:12px; opacity:.95; writing-mode:horizontal-tb; }
+.cer-cell.blue { background:#2563EB; }
+.cer-cell.green { background:#1A9A5F; }
+.cer-cell.gold { background:#D08700; }
+.cer-cell.done { background:#DCDAD4; color:#8A8A8A; box-shadow:inset 0 0 0 1px #CFCCC5; }
+.cer-cell.done .nm { font-weight:700; }
+@media(max-width:560px){
+  .cer-cell { height:210px; min-width:23px; max-width:46px; padding:7px 2px; gap:5px; }
+  .cer-cell .u { font-size:11.5px; }
+  .cer-cell .nm { font-size:13px; }
+  .cer-map { margin:6px 10px 4px; padding:10px 8px 12px; }
+}
+.cer-card.flash { animation:cerFlash 1.1s ease; }
+@keyframes cerFlash { 0%,100%{ box-shadow:0 1px 5px rgba(0,0,0,0.07);} 25%,65%{ box-shadow:0 0 0 3px var(--accent);} }
+
+.cer-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:8px 16px 36px; }
+@media(min-width:560px){ .cer-grid { grid-template-columns:repeat(3,1fr); } }
+@media(min-width:820px){ .cer-grid { grid-template-columns:repeat(4,1fr); } }
+.cer-card { background:var(--white); border:1px solid var(--rule); border-radius:14px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.07); display:flex; flex-direction:column; animation:slideIn .18s ease; }
+.cer-card.done { border:2px solid var(--green); box-shadow:0 2px 10px rgba(26,107,74,0.18); }
+.cer-photo { position:relative; width:100%; aspect-ratio:1/1; background:var(--bg); }
+.cer-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
+.cer-photo .cer-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:44px; color:#C8C4BC; }
+.cer-photo .cer-ph.warnring { box-shadow:inset 0 0 0 3px #F59E0B; }
+.cer-photo img.warnring { box-shadow:inset 0 0 0 3px #F59E0B; border:3px solid #F59E0B; }
+.cer-stamp { position:absolute; inset:0; background:rgba(26,107,74,0.45); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; gap:2px; pointer-events:none; }
+.cer-stamp .tick { font-size:40px; line-height:1; text-shadow:0 2px 10px rgba(0,0,0,0.35); }
+.cer-stamp .txt { font-size:13px; font-weight:700; letter-spacing:.06em; }
+.cer-stamp .tm { font-family:"DM Mono",monospace; font-size:11px; opacity:.92; }
+.cer-body { padding:9px 10px 10px; display:flex; flex-direction:column; gap:5px; flex:1; }
+.cer-nm { font-size:13.5px; font-weight:700; line-height:1.45; }
+.cer-code { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+.cer-ct { font-size:11.5px; color:var(--ink-2); line-height:1.55; word-break:break-word; }
+.cer-ct a { color:var(--accent); text-decoration:none; }
+.cer-warn { font-size:10.5px; color:#B45309; line-height:1.4; }
+.cer-btns { display:flex; gap:6px; margin-top:auto; padding-top:4px; }
+.cer-in { flex:1; padding:9px 4px; border-radius:8px; border:1.5px solid var(--green); background:var(--green-light); color:var(--green); font-size:12.5px; font-weight:700; font-family:"Noto Serif TC",serif; cursor:pointer; }
+.cer-in.done { background:var(--green); border-color:var(--green); color:#fff; }
+.cer-edit { flex-shrink:0; padding:9px 10px; border-radius:8px; border:1px solid var(--rule); background:var(--white); color:var(--ink-3); font-size:12px; cursor:pointer; font-family:"Noto Serif TC",serif; }
+.cer-edit:hover { border-color:var(--accent); color:var(--accent); }
+
+.avatar { flex-shrink:0; border-radius:10px; object-fit:cover; background:var(--bg); border:1.5px solid var(--rule); cursor:zoom-in; }
+.avatar.warn { border-color:#F59E0B; border-width:2px; }
+.result-card.has-avatar { gap:10px; }
+
+#photo-view { position:fixed; inset:0; background:rgba(10,14,20,0.93); z-index:110; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; padding:24px; }
+#photo-view.show { display:flex; }
+#photo-view img { max-width:90vw; max-height:66vh; border-radius:14px; box-shadow:0 8px 40px rgba(0,0,0,0.5); }
+#photo-view .pv-name { color:#fff; font-size:16px; text-align:center; line-height:1.7; max-width:90vw; }
+#photo-view .pv-sub { color:rgba(255,255,255,0.75); font-size:13px; text-align:center; line-height:1.7; }
+
+.wk-input { width:100%; padding:10px 12px; border-radius:8px; border:none; margin-bottom:8px; font-family:inherit; font-size:14px; outline:none; }
+textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
+.wk-label { color:rgba(255,255,255,0.55); font-size:11px; margin:6px 0 3px; font-family:"DM Mono",monospace; letter-spacing:.04em; }
+.wk-row { display:flex; align-items:center; gap:14px; margin:10px 0 14px; }
+.wk-prev { width:112px; height:112px; border-radius:12px; background:rgba(255,255,255,0.1); border:1px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+.wk-prev img { width:100%; height:100%; object-fit:cover; }
+.wk-btn { padding:9px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:#fff; font-size:13px; font-family:inherit; cursor:pointer; }
+.wk-save { width:100%; padding:11px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:"Noto Serif TC",serif; }
+.wk-del { width:100%; padding:10px; border:1px solid rgba(248,113,113,0.6); border-radius:8px; background:transparent; color:#f87171; font-size:13px; cursor:pointer; font-family:"Noto Serif TC",serif; margin-top:8px; }
+.wk-item { display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,0.07); border-radius:8px; margin-bottom:5px; color:#fff; font-size:13px; cursor:pointer; }
+.wk-item img { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+.wk-item .wk-noimg { width:44px; height:44px; border-radius:8px; background:rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.wk-src { font-family:"DM Mono",monospace; font-size:9px; padding:1px 5px; border-radius:20px; background:rgba(255,255,255,0.16); opacity:.8; }
+
+.footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="top-row">
+    <div class="header-tag">TAITRA · Event Lookup</div>
+    <div class="lang-switch">
+      <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
+      <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+  <div class="header-title" id="event-title">座位查詢系統</div>
+  <div class="conn-row">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="conn-lbl" id="conn-lbl" data-i18n="conn_connecting">連線中…</div>
+  </div>
+  <div class="search-wrap">
+    <span class="s-icon">🔍</span>
+    <input type="text" class="search-input" id="search"
+      data-i18n-ph="search_ph" placeholder="搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）"
+      oninput="doSearch()" autocomplete="off"
+      autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" />
+    <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+  <button class="scan-btn2" data-i18n="btn_scan" onclick="startScan()">📷 相機掃描名牌／名片 找座位</button>
+  <button class="scan-btn2" data-i18n="btn_badge_admin" style="margin-top:8px;opacity:.85;" onclick="openBadgeAdmin()">🏷️ 建立證件編號對照表</button>
+  <button class="scan-btn2" data-i18n="btn_wiki_admin" style="margin-top:8px;opacity:.85;" onclick="openWikiAdmin()">👤 貴賓聯絡人／照片管理</button>
+  <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none"
+    onchange="handleScanFile(this.files[0])">
+</div>
+
+<div id="scan-overlay">
+  <div class="spinner"></div>
+  <div id="scan-status" data-i18n="scan_preparing">準備中…</div>
+</div>
+
+<div id="cam-overlay">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <div class="cam-frame"><div class="scanline"></div></div>
+  <div class="cam-hint" data-i18n-html="cam_hint">只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光</div>
+  <div class="cam-btns">
+    <button class="cam-cancel" data-i18n="cam_cancel" onclick="stopCamera()">✕ 取消</button>
+    <button class="cam-shoot" data-i18n="cam_shoot" onclick="captureFrame()">📸 辨識框內文字</button>
+  </div>
+</div>
+
+<div id="badge-admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,28,42,0.94);z-index:100;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 20px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 data-i18n="ba_title" style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">🏷️ 建立證件編號對照</h3>
+      <button onclick="closeBadgeAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div data-i18n="ba_desc" style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
+      先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05 或 0053）。編號綁定「人」：他換座位編號會自動跟著走；他不在座位表上（未到）時，掃描與搜尋都不會顯示。
+    </div>
+    <input type="text" id="badge-guest-search" data-i18n-ph="ba_search_ph" placeholder="搜尋姓名／座位…" oninput="badgeAdminSearch()"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:8px;font-family:inherit;font-size:14px;outline:none;">
+    <div id="badge-guest-results" style="max-height:180px;overflow-y:auto;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button data-i18n="ba_import" onclick="document.getElementById('badge-excel-input').click()"
+        style="flex:1;padding:10px;border:1.5px dashed rgba(255,255,255,0.45);border-radius:8px;background:transparent;color:#fff;font-size:13.5px;font-family:inherit;cursor:pointer;">
+        📂 匯入 Excel（編號＋姓名，一次建立多筆）
+      </button>
+      <input type="file" id="badge-excel-input" accept=".xlsx,.xls,.csv" style="display:none"
+        onchange="importBadgeExcel(this.files[0])">
+    </div>
+    <div id="badge-selected-guest" style="color:#fff;font-size:13px;margin-bottom:10px;min-height:18px;"></div>
+    <input type="text" id="badge-code-input" data-i18n-ph="ba_code_ph" placeholder="輸入證件編號，例如 P-05"
+      autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+      style="width:100%;padding:10px 12px;border-radius:8px;border:none;margin-bottom:10px;font-family:'DM Mono',monospace;font-size:14px;outline:none;">
+    <button data-i18n="ba_save" onclick="submitBadgeCode()"
+      style="width:100%;padding:11px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Noto Serif TC',serif;">
+      儲存對照
+    </button>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:22px 0 14px;">
+    <div style="color:rgba(255,255,255,0.7);font-size:12.5px;margin-bottom:8px;">
+      <span data-i18n="ba_count_pre">目前已建立（</span><span id="badge-count">0</span><span data-i18n="ba_count_post"> 筆）</span>
+    </div>
+    <div id="badge-admin-list"></div>
+  </div>
+</div>
+
+<div id="photo-view" onclick="closePhotoView()">
+  <img id="pv-img" src="" alt="">
+  <div class="pv-name" id="pv-name"></div>
+  <div class="pv-sub" id="pv-sub"></div>
+  <button class="wk-btn" id="pv-edit" data-i18n="pv_edit" onclick="event.stopPropagation();editPhotoFromView()">✎ 編輯照片／聯絡方式</button>
+  <div style="color:rgba(255,255,255,0.5);font-size:12px;" data-i18n="pv_close">點任意處關閉</div>
+</div>
+
+<div id="wiki-admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,28,42,0.94);z-index:100;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 20px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 data-i18n="wk_title" style="color:#fff;margin:0;font-family:'Noto Serif TC',serif;">👤 貴賓照片／聯絡方式</h3>
+      <button onclick="closeWikiAdmin()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div data-i18n="wk_desc" style="color:rgba(255,255,255,0.6);font-size:12.5px;margin-bottom:12px;line-height:1.6;">
+      照片會自動從「長官中英一覽表」同步進來；在這裡新增或更換，只會存在本系統，不會動到一覽表的資料。公司、姓名、職稱一律以座位系統顯示為準。
+    </div>
+
+    <div id="wk-browse">
+      <input type="text" id="wk-search" data-i18n-ph="wk_search_ph" placeholder="搜尋姓名…" oninput="wikiAdminSearch()"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="wk-input">
+      <button data-i18n="wk_new" onclick="wikiNewRecord()" class="wk-save" style="margin-bottom:12px;">＋ 新增聯絡人</button>
+      <div id="wk-results"></div>
+      <div id="wk-count" style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:10px;font-family:'DM Mono',monospace;"></div>
+    </div>
+
+    <div id="wk-form" style="display:none;">
+      <div id="wk-form-title" style="color:#fff;font-size:14px;font-weight:700;margin-bottom:10px;"></div>
+      <div class="wk-row">
+        <div class="wk-prev" id="wk-prev"><span style="color:rgba(255,255,255,0.4);font-size:26px;">🖼</span></div>
+        <div>
+          <button class="wk-btn" data-i18n="wk_pick_photo" onclick="document.getElementById('wk-photo-input').click()">選擇／更換照片</button>
+          <div data-i18n="wk_photo_hint" style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:6px;line-height:1.5;">壓成 480×480，只存在本系統</div>
+          <div id="wk-photo-src" style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:4px;line-height:1.5;"></div>
+        </div>
+        <input type="file" id="wk-photo-input" accept="image/*" style="display:none" onchange="wikiPickPhoto(this.files[0])">
+      </div>
+      <div class="wk-label" data-i18n="wk_name_zh">姓名（中）＊必填，用來對應席次圖</div>
+      <input type="text" id="wk-name-zh" class="wk-input" autocomplete="off" onchange="wikiTouch(true)">
+      <div class="wk-label" data-i18n="wk_phone">電話／手機（選填，卡片上可直接點撥）</div>
+      <input type="tel" id="wk-phone" class="wk-input" autocomplete="off" inputmode="tel" oninput="wikiTouch()" onblur="wikiTouch(true)">
+      <div class="wk-label" data-i18n="wk_note">聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）</div>
+      <textarea id="wk-note" class="wk-input" oninput="wikiTouch()" onblur="wikiTouch(true)"></textarea>
+      <div data-i18n="wk_autosave_hint" style="color:rgba(255,255,255,0.45);font-size:11.5px;margin:2px 0 8px;line-height:1.6;">打完字會自動儲存，不按下面的按鈕也不會掉；按儲存只是順便回清單。</div>
+      <button class="wk-save" data-i18n="wk_save" onclick="wikiSaveRecord()" style="margin-top:6px;">💾 儲存並回清單</button>
+      <button class="wk-btn" data-i18n="wk_back" onclick="wikiBackToList()" style="width:100%;margin-top:8px;">← 回清單</button>
+      <button class="wk-del" id="wk-del" data-i18n="wk_delete" onclick="wikiDeleteRecord()" style="display:none;">🗑 刪除本系統這筆（一覽表資料不受影響）</button>
+      <div id="wk-form-msg" style="color:#4ade80;font-size:12.5px;margin-top:10px;min-height:16px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat">
+    <div class="stat-num" id="st-checkin" style="color:var(--green);">0%</div>
+    <div class="stat-lbl" data-i18n="stat_checkin">整體報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
+  </div>
+  <div class="stat clickable" onclick="openCeremonyList()">
+    <div class="stat-num" id="st-ceremony" style="color:#E11D48;">0%</div>
+    <div class="stat-lbl" data-i18n="stat_ceremony">合影貴賓報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
+    <div class="stat-tap" data-i18n="stat_tap">👆 點我看名單</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
+    <div class="stat-lbl" data-i18n="stat_empty">空位數</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-total" style="color:var(--accent);">0</div>
+    <div class="stat-lbl" data-i18n="stat_total">總席數</div>
+  </div>
+</div>
+
+<div style="padding:0 16px 14px;background:var(--white);border-bottom:1px solid var(--rule);">
+  <button data-i18n="btn_report" onclick="exportCheckinReport()"
+    style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Serif TC',serif;display:flex;align-items:center;justify-content:center;gap:8px;">
+    📋 一鍵生成報到報告表
+  </button>
+</div>
+
+<div id="main">
+  <div class="hint"><div class="hint-icon">⏳</div><div data-i18n="loading">載入資料中…</div></div>
+</div>
+
+<div class="footer" id="footer" data-i18n="footer_default">TAITRA · 座位查詢系統</div>
+
+<script>
+/* ── 中英雙語字串表 ──
+   要再加一個語言（例如土耳其文），複製 en 整個區塊改成 tr，
+   再到 .lang-switch 加一顆 <button ... onclick="setLang('tr')">TR</button> 即可。 */
+const I18N = {
+"zh-TW":{
+  doc_title_suffix:"座位查詢",
+  conn_connecting:"連線中…", conn_ok:"已連線 · 即時同步", conn_err:"連線失敗", conn_waiting:"等待活動參數",
+  search_ph:"搜尋姓名、單位或座位編號…（可用空格分隔多個關鍵字）",
+  btn_scan:"📷 相機掃描名牌／名片 找座位",
+  btn_badge_admin:"🏷️ 建立證件編號對照表",
+  btn_report:"📋 一鍵生成報到報告表",
+  scan_preparing:"準備中…",
+  cam_hint:"只需框住<b>姓名</b>那一行即可，不用整張證件、靠近對正、避免反光",
+  cam_cancel:"✕ 取消", cam_shoot:"📸 辨識框內文字",
+  ba_title:"🏷️ 建立證件編號對照",
+  ba_desc:"先搜尋並選擇賓客，再輸入證件上的編號（例如 P-05 或 0053）。編號綁定「人」：他換座位編號會自動跟著走；他不在座位表上（未到）時，掃描與搜尋都不會顯示。",
+  ba_search_ph:"搜尋姓名／座位…",
+  ba_import:"📂 匯入 Excel（編號＋姓名，一次建立多筆）",
+  ba_code_ph:"輸入證件編號，例如 P-05",
+  ba_save:"儲存對照",
+  ba_count_pre:"目前已建立（", ba_count_post:" 筆）",
+  ba_empty:"尚未建立任何對照", ba_no_guest:"找不到符合的賓客", ba_unnamed:"(未指定姓名)",
+  ba_pick_empty:"這個座位沒有賓客姓名，無法綁定編號（編號是跟「人」走的）",
+  ba_selected:(n,c)=>`已選擇：<b>${n}</b>　（目前座位 ${c}，之後換位編號會自動跟著人走）`,
+  ba_need_guest:"請先搜尋並選擇賓客", ba_need_code:"請輸入證件編號", ba_need_both:"請輸入編號並選擇賓客",
+  ba_at_seat:(n,s)=>`${n}（目前座位 ${s}）`,
+  ba_ambiguous:(v,n)=>`${v}（席次圖有 ${n} 位同名，請刪除後改用完整姓名重建）`,
+  ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
+  stat_checkin:"整體報到率", stat_ceremony:"合影貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
+  stat_tap:"👆 點我看名單",
+  btn_wiki_admin:"👤 貴賓照片／聯絡方式",
+  cer_title:"🎬 合影貴賓",
+  cer_tab_out:n=>`未報到 ${n}`, cer_tab_in:n=>`已報到 ${n}`, cer_tab_all:n=>`全部 ${n}`,
+  cer_back:"← 回搜尋",
+  cer_none_out:"🎉 合影貴賓全部到齊",
+  cer_none_in:"目前還沒有合影貴賓報到",
+  cer_empty:"這場活動還沒有標記任何合影貴賓（請到席次圖系統標記）",
+  cer_arrived:"已報到",
+  cer_same_name:n=>`⚠ 資料庫同名 ${n} 位，請確認照片`,
+  cer_fuzzy_match:"⚠ 姓名模糊比對，請確認照片是否正確",
+  cer_addphoto:"✎ 照片／聯絡",
+  cer_map_title:"🗺 合影貴賓座位方陣",
+  cer_map_hint:"只供檢視（報到請按下面照片卡）／格子多時可左右滑",
+  cer_map_on:"已報到",
+  cer_map_off:"未報到",
+  cer_map_head:"主桌",
+  cer_map_table:n=>`第 ${n} 桌`,
+  cer_map_zone:z=>`${z} 區`,
+  pv_close:"點任意處關閉", pv_edit:"✎ 編輯照片／聯絡方式",
+  wk_title:"👤 貴賓照片／聯絡方式",
+  wk_desc:"照片會自動從「長官中英一覽表」同步進來；在這裡新增或更換，只會存在本系統，不會動到一覽表的資料。公司、姓名、職稱一律以座位系統顯示為準。",
+  wk_search_ph:"搜尋姓名…",
+  wk_new:"＋ 新增聯絡人",
+  wk_pick_photo:"選擇／更換照片", wk_photo_hint:"壓成 480×480，只存在本系統",
+  wk_name_zh:"姓名（中）＊必填，用來對應席次圖",
+  wk_phone:"電話／手機（選填，卡片上可直接點撥）",
+  wk_note:"聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）",
+  wk_save:"💾 儲存並回清單", wk_back:"← 回清單",
+  wk_autosave_hint:"打完字會自動儲存，不按下面的按鈕也不會掉；按儲存只是順便回清單。",
+  wk_autosaved:tm=>`✅ 已自動儲存 ${tm}`,
+  wk_src_local:"照片來源：本系統自己上傳的（不受一覽表影響）",
+  wk_src_wiki:"照片來源：長官中英一覽表（已自動備份一份到本系統）",
+  wk_src_cache:"照片來源：本系統備份的一覽表照片（一覽表目前查無這個人）",
+  wk_delete:"🗑 刪除本系統這筆（一覽表資料不受影響）",
+  wk_del_confirm:"確定刪除本系統這筆照片／聯絡資料？（長官中英一覽表的原始資料不會被更動）",
+  wk_form_new:"新增聯絡人", wk_form_edit:n=>`編輯：${n}`,
+  wk_need_name:"請填寫中文姓名（照片是靠中文姓名對應席次圖的）",
+  wk_saved:"✅ 已儲存（只存在本系統）",
+  wk_save_fail:m=>`儲存失敗：${m}`,
+  wk_loading:"聯絡人資料載入中…",
+  wk_count:(n,m)=>`本系統 ${n} 筆／一覽表同步 ${m} 筆`,
+  wk_no_result:"找不到符合的聯絡人，可按上方「新增聯絡人」建立",
+  wk_search_hint:"輸入關鍵字搜尋，或直接按「新增聯絡人」",
+  wk_offline:"一覽表連線失敗（照片可能顯示不全），本系統自己新增的照片與聯絡方式不受影響",
+  src_local:"本系統", src_wiki:"一覽表",
+  loading:"載入資料中…", footer_default:"TAITRA · 座位查詢系統", last_sync:"最後同步",
+  err_no_event_title:"缺少活動參數",
+  err_no_event_msg:"請從前台系統點擊「🔍 手機查詢」按鈕進入，<br>或確認網址包含 ?event=活動代碼",
+  hint_search:"輸入姓名、單位或座位編號<br>即可查詢",
+  res_count:n=>`找到 ${n} 筆結果`,
+  res_none:kw=>`🔍 找不到「${kw}」相關座位`,
+  lbl_seat_code:"座位編號：", lbl_empty_seat:"（空位）",
+  btn_checkin:"報到", btn_checked:"✅ 已報到",
+  scan_no_text:"📷 沒有辨識到文字，請靠近一點、對準名字再拍一次",
+  scan_no_match:t=>`📷 辨識到「${t}」<br>但找不到相符的賓客，請改用手動搜尋`,
+  badge_exact:"🏷️ 證件編號完全比對", badge_fuzzy:"🏷️ 證件編號比對（有1個字元可能誤判，請確認）",
+  tag_badge_hit:"編號命中", tag_barcode_hit:"條碼命中",
+  barcode_hit:"🏷️ 條碼直接命中", barcode_code:c=>`　條碼編號：${c}`,
+  no_name:"(查無姓名資料)",
+  scan_other:"其他可能相關（姓名比對，依相似度排序）",
+  scan_results:(n,t,more)=>`📷 掃描比對結果：${n} 筆，依相似度排序（辨識文字：${t}${more?"…":""}）`,
+  tag_high:"高相似", tag_mid:"中相似", tag_low:"可能相關",
+  ocr_scanning:"掃描中…",
+  ocr_prepare:'準備辨識引擎…<br><span style="font-size:12px;opacity:.7;">首次使用需下載中文辨識資料（約10~30秒），之後會快很多</span>',
+  ocr_progress:p=>`辨識中… ${p}%`, ocr_loading:"載入辨識資料…",
+  ocr_fail:m=>`掃描失敗：${m}`,
+  err_ocr_engine:"辨識引擎載入失敗，請確認網路", err_barcode_lib:"條碼函式庫載入失敗",
+  err_xlsx:"Excel 元件載入失敗，請確認網路",
+  xl_not_ready:"資料尚未載入完成，請稍候再試",
+  xl_no_rows:"沒有解析到任何「編號＋姓名」的資料列，請確認 Excel 內容",
+  xl_confirm:(n,pv,more)=>`共解析到 ${n} 筆對照，例如：\n${pv}${more?"\n…":""}\n\n確定匯入？（同編號會覆蓋舊資料）`,
+  xl_done:n=>`✅ 已匯入 ${n} 筆。席次圖已排的人立即可掃；還沒排的會在排入後自動生效。`,
+  xl_fail:m=>`匯入失敗：${m}`,
+  rpt_title:e=>`${e} 報到報告`,
+  rpt_generated:"報表產生時間", rpt_item:"項目", rpt_value:"數值",
+  rpt_expected:"應到人數", rpt_in:"已報到", rpt_out:"未報到", rpt_rate:"報到率",
+  sheet_summary:"報到總覽", sheet_in:"已報到名單", sheet_out:"未報到名單",
+  col_code:"座位編號", col_desc:"座位描述", col_name:"賓客姓名／單位", col_time:"報到時間",
+  file_prefix:"報到報告"
+},
+"en":{
+  doc_title_suffix:"Seat lookup",
+  conn_connecting:"Connecting…", conn_ok:"Connected · Live sync", conn_err:"Connection failed", conn_waiting:"Waiting for event code",
+  search_ph:"Search a name, organization or seat code… (spaces separate keywords)",
+  btn_scan:"📷 Scan a badge or card to find the seat",
+  btn_badge_admin:"🏷️ Badge number mapping",
+  btn_report:"📋 Generate check-in report",
+  scan_preparing:"Preparing…",
+  cam_hint:"Frame just the <b>name</b> line — not the whole badge. Move closer, keep it straight, avoid glare.",
+  cam_cancel:"✕ Cancel", cam_shoot:"📸 Read the text in frame",
+  ba_title:"🏷️ Badge number mapping",
+  ba_desc:"Search for the guest first, then enter the number printed on the badge (for example P-05 or 0053). The number is bound to the person: if they move to another seat it follows them, and if they are not on the seating chart it will not appear in a scan or a search.",
+  ba_search_ph:"Search a name or seat…",
+  ba_import:"📂 Import Excel (number + name, many at once)",
+  ba_code_ph:"Badge number, e.g. P-05",
+  ba_save:"Save mapping",
+  ba_count_pre:"Saved mappings (", ba_count_post:")",
+  ba_empty:"No mappings yet", ba_no_guest:"No matching guest", ba_unnamed:"(No name)",
+  ba_pick_empty:"This seat has no guest name, so a number cannot be bound to it — numbers follow the person.",
+  ba_selected:(n,c)=>`Selected: <b>${n}</b>　(currently at ${c}; the number follows the guest if the seat changes)`,
+  ba_need_guest:"Search for and select a guest first", ba_need_code:"Enter the badge number",
+  ba_need_both:"Enter a number and select a guest",
+  ba_at_seat:(n,s)=>`${n} (currently at ${s})`,
+  ba_ambiguous:(v,n)=>`${v} (${n} guests on the chart share this name — delete this and re-add with the full name)`,
+  ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
+  stat_checkin:"Check-in rate", stat_ceremony:"Photo VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
+  stat_tap:"👆 Tap for the list",
+  btn_wiki_admin:"👤 VIP photos & contacts",
+  cer_title:"🎬 Photo-call VIPs",
+  cer_tab_out:n=>`Not in ${n}`, cer_tab_in:n=>`Checked in ${n}`, cer_tab_all:n=>`All ${n}`,
+  cer_back:"← Back to search",
+  cer_none_out:"🎉 Every photo-call VIP has checked in",
+  cer_none_in:"No photo-call VIP has checked in yet",
+  cer_empty:"No photo-call VIP is tagged for this event yet (tag them in the seating chart system)",
+  cer_arrived:"CHECKED IN",
+  cer_same_name:n=>`⚠ ${n} contacts share this name — verify the photo`,
+  cer_fuzzy_match:"⚠ Fuzzy name match — please verify the photo",
+  cer_addphoto:"✎ Photo / contact",
+  cer_map_title:"🗺 Photo-call seating grid",
+  cer_map_hint:"View only — check in on the photo cards below; swipe if it overflows",
+  cer_map_on:"Checked in",
+  cer_map_off:"Not in",
+  cer_map_head:"Head Table",
+  cer_map_table:n=>`Table ${n}`,
+  cer_map_zone:z=>`Zone ${z}`,
+  pv_close:"Tap anywhere to close", pv_edit:"✎ Edit photo / contact",
+  wk_title:"👤 VIP photos & contacts",
+  wk_desc:"Photos sync in from the Executive Bilingual Directory. Anything you add or change here stays in this system only and never writes back to the directory. Organization, name and title always come from the seating system.",
+  wk_search_ph:"Search a name…",
+  wk_new:"＋ New contact",
+  wk_pick_photo:"Choose / replace photo", wk_photo_hint:"Resized to 480×480, stored in this system only",
+  wk_name_zh:"Chinese name * required — this is what matches the seating chart",
+  wk_phone:"Phone / mobile (optional, tap to call from the card)",
+  wk_note:"Contact notes (optional: LINE, aide, host, which car…)",
+  wk_save:"💾 Save & back", wk_back:"← Back to list",
+  wk_autosave_hint:"Changes save automatically as you type — the button below just takes you back to the list.",
+  wk_autosaved:tm=>`✅ Auto-saved ${tm}`,
+  wk_src_local:"Photo: uploaded here (independent of the directory)",
+  wk_src_wiki:"Photo: from the directory (a copy has been backed up here)",
+  wk_src_cache:"Photo: local backup of the directory photo (not found in the directory right now)",
+  wk_delete:"🗑 Delete this record here (the directory is untouched)",
+  wk_del_confirm:"Delete this photo / contact record from this system? The Executive Bilingual Directory is not affected.",
+  wk_form_new:"New contact", wk_form_edit:n=>`Editing: ${n}`,
+  wk_need_name:"A Chinese name is required — it is what links the photo to the seating chart.",
+  wk_saved:"✅ Saved (this system only)",
+  wk_save_fail:m=>`Save failed: ${m}`,
+  wk_loading:"Loading contacts…",
+  wk_count:(n,m)=>`${n} local · ${m} synced from the directory`,
+  wk_no_result:"No contact matched. Use “New contact” above to create one.",
+  wk_search_hint:"Type to search, or create a new contact",
+  wk_offline:"The directory is unreachable (some photos may be missing). Records created here are unaffected.",
+  src_local:"local", src_wiki:"directory",
+  loading:"Loading data…", footer_default:"TAITRA · Seat lookup", last_sync:"Last sync",
+  err_no_event_title:"Missing event code",
+  err_no_event_msg:"Open this page from the 🔍 mobile lookup button in the main system,<br>or check that the URL contains ?event=YOUR_EVENT_CODE",
+  hint_search:"Enter a name, organization or seat code<br>to look it up",
+  res_count:n=>`${n} result${n>1?"s":""}`,
+  res_none:kw=>`🔍 No seat matches "${kw}"`,
+  lbl_seat_code:"Seat code: ", lbl_empty_seat:"(Empty)",
+  btn_checkin:"Check in", btn_checked:"✅ Checked in",
+  scan_no_text:"📷 No text recognized. Move closer, aim at the name and shoot again.",
+  scan_no_match:t=>`📷 Read "${t}"<br>but no guest matched. Please search by hand instead.`,
+  badge_exact:"🏷️ Exact badge number match", badge_fuzzy:"🏷️ Badge number match (1 character may be misread — please confirm)",
+  tag_badge_hit:"Badge match", tag_barcode_hit:"Barcode match",
+  barcode_hit:"🏷️ Barcode matched", barcode_code:c=>`　Barcode: ${c}`,
+  no_name:"(No name on file)",
+  scan_other:"Other possible matches (by name similarity)",
+  scan_results:(n,t,more)=>`📷 ${n} possible matches, sorted by similarity (text read: ${t}${more?"…":""})`,
+  tag_high:"High", tag_mid:"Medium", tag_low:"Possible",
+  ocr_scanning:"Scanning…",
+  ocr_prepare:'Preparing the text engine…<br><span style="font-size:12px;opacity:.7;">The first scan downloads the recognition data (about 10–30s); later scans are much faster</span>',
+  ocr_progress:p=>`Reading… ${p}%`, ocr_loading:"Loading recognition data…",
+  ocr_fail:m=>`Scan failed: ${m}`,
+  err_ocr_engine:"The text engine could not load. Check the network connection.",
+  err_barcode_lib:"The barcode library could not load.",
+  err_xlsx:"The Excel component could not load. Check the network connection.",
+  xl_not_ready:"Data is still loading. Try again in a moment.",
+  xl_no_rows:"No “number + name” rows were found. Check the Excel file.",
+  xl_confirm:(n,pv,more)=>`${n} mappings found, for example:\n${pv}${more?"\n…":""}\n\nImport them? (An existing number will be overwritten.)`,
+  xl_done:n=>`✅ Imported ${n} mappings. Guests already on the seating chart can be scanned now; the rest take effect once they are seated.`,
+  xl_fail:m=>`Import failed: ${m}`,
+  rpt_title:e=>`${e} check-in report`,
+  rpt_generated:"Generated at", rpt_item:"Item", rpt_value:"Value",
+  rpt_expected:"Expected", rpt_in:"Checked in", rpt_out:"Not checked in", rpt_rate:"Check-in rate",
+  sheet_summary:"Summary", sheet_in:"Checked in", sheet_out:"Not checked in",
+  col_code:"Seat code", col_desc:"Seat", col_name:"Guest / organization", col_time:"Time",
+  file_prefix:"Checkin_report"
+}
+};
+
+/* 語言決定順序：網址 ?lang=en → 這台裝置上次選的 → 預設中文。
+   若希望外賓開連結時自動跳英文，把 AUTO_DETECT 改成 true 即可。 */
+const AUTO_DETECT=false;
+(function(){
+  const q=(new URLSearchParams(location.search).get('lang')||'').toLowerCase();
+  let stored=null; try{ stored=localStorage.getItem('lookup_lang'); }catch(e){}
+  let init='zh-TW';
+  if(q.startsWith('en')) init='en';
+  else if(q.startsWith('zh')) init='zh-TW';
+  else if(stored==='en'||stored==='zh-TW') init=stored;
+  else if(AUTO_DETECT&&!/^zh/i.test(navigator.language||'')) init='en';
+  window.LANG=init;
+})();
+
+window.t=function(k){
+  const dict=I18N[window.LANG]||I18N['zh-TW'];
+  let v=dict[k];
+  if(v===undefined) v=I18N['zh-TW'][k];
+  if(v===undefined) return k;
+  return (typeof v==='function')?v.apply(null,[].slice.call(arguments,1)):v;
+};
+
+window.applyI18n=function(){
+  document.documentElement.lang=(window.LANG==='en')?'en':'zh-TW';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{el.innerHTML=t(el.getAttribute('data-i18n-html'));});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-ph'));});
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on',b.getAttribute('data-lang')===window.LANG));
+};
+
+window.setLang=function(l){
+  window.LANG=(l==='en')?'en':'zh-TW';
+  try{ localStorage.setItem('lookup_lang',window.LANG); }catch(e){}
+  applyI18n();
+  if(typeof window._onLangChange==='function') window._onLangChange();
+};
+applyI18n();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,onValue}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+/* 一覽表只讀不寫：這裡刻意只匯入讀取用的函式，程式裡沒有任何寫回 Firestore 的路徑 */
+import{getFirestore,collection,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const fb=initializeApp({
+  apiKey:"AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
+  authDomain:"taitra-table.firebaseapp.com",
+  databaseURL:"https://taitra-table-default-rtdb.firebaseio.com",
+  projectId:"taitra-table",
+  storageBucket:"taitra-table.firebasestorage.app",
+  messagingSenderId:"802855818617",
+  appId:"1:802855818617:web:b7cf3b45e13b70ae660ba8"
+},'lookup-dynamic');
+
+const db=getDatabase(fb);
+const DB_URL="https://taitra-table-default-rtdb.firebaseio.com";
+
+// 從網址讀取活動代碼：?event=EVENT_xxx
+const params=new URLSearchParams(window.location.search);
+const PROJECT_ID=params.get('event');
+
+if(!PROJECT_ID){
+  document.getElementById('main').innerHTML=`
+    <div class="error-box">
+      <div class="error-icon">🔗</div>
+      <div class="error-title">${t('err_no_event_title')}</div>
+      <div class="error-msg">${t('err_no_event_msg')}</div>
+    </div>`;
+  document.getElementById('conn-lbl').textContent=t('conn_waiting');
+  throw new Error('No event param');
+}
+
+const EVENT_NAME = PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,' ');
+function applyEventTitle(){
+  document.getElementById('event-title').textContent = EVENT_NAME;
+  document.title = EVENT_NAME + ' · ' + t('doc_title_suffix');
+}
+applyEventTitle();
+
+let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
+let loaded=false, _lastMain=null;   // _lastMain：記住畫面上最後一次渲染，切語言時原地重繪
+
+function setConn(ok){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-lbl');
+  if(ok){dot.className='conn-dot ok';lbl.textContent=t('conn_ok');}
+  else{dot.className='conn-dot err';lbl.textContent=t('conn_err');}
+}
+
+/* 畫面重繪：正在看合影貴賓名單或掃描結果時原地更新，否則回到搜尋結果 */
+function refreshMain(){
+  if(_lastMain) _lastMain(); else doSearch();
+}
+
+function updateStats(){
+  const total=Object.keys(DATA).length;
+  const filled=Object.values(DATA).filter(v=>v).length;
+  const checkinCount=Object.keys(CHECKINS).length;
+  const empty=total-filled;
+
+  const ceremonySeats=Object.keys(TAGS).filter(c=>TAGS[c]==='ceremony'||TAGS[c]==='photo');
+  const ceremonyCheckin=ceremonySeats.filter(c=>CHECKINS[c]).length;
+  const ceremonyTotal=ceremonySeats.length;
+
+  const checkinPct=filled>0?Math.round(checkinCount/filled*100):0;
+  const ceremonyPct=ceremonyTotal>0?Math.round(ceremonyCheckin/ceremonyTotal*100):0;
+
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-empty').textContent=empty;
+  document.getElementById('st-checkin').textContent=checkinPct+'%';
+  document.getElementById('st-checkin-sub').textContent=checkinCount+' / '+filled;
+  document.getElementById('st-ceremony').textContent=ceremonyPct+'%';
+  document.getElementById('st-ceremony-sub').textContent=ceremonyCheckin+' / '+ceremonyTotal;
+  document.getElementById('stats-bar').style.display='';
+
+  const now=new Date();
+  document.getElementById('footer').textContent=
+    PROJECT_ID+' · '+t('last_sync')+' '+
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
+
+onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
+  DATA={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>DATA[c]=n||'');
+  if(loaded){ updateStats(); refreshMain(); }
+},()=>setConn(false));
+
+onValue(ref(db,PROJECT_ID+'/assignments2026'),snap=>{
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+  if(loaded){ updateStats(); refreshMain(); }
+});
+
+onValue(ref(db,PROJECT_ID+'/tags2026'),snap=>{
+  TAGS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,t])=>{ TAGS[c]=t; });
+  if(loaded){ updateStats(); refreshMain(); }
+});
+
+onValue(ref(db,PROJECT_ID+'/table_names2026'),snap=>{
+  TABLE_NAMES={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ TABLE_NAMES[c]=v; });
+  if(loaded) refreshMain();
+});
+
+onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
+  CHECKINS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ CHECKINS[c]=v; });
+  loaded=true;
+  setConn(true);
+  updateStats();
+  refreshMain();
+},()=>{
+  loaded=true;
+  setConn(false);
+});
+
+onValue(ref(db,PROJECT_ID+'/badge_codes2026'),snap=>{
+  BADGE_MAP={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([bc,seatCode])=>{ BADGE_MAP[bc]=seatCode; });
+  if(loaded) renderBadgeAdminList();
+});
+
+function parseSeatCode(code){
+  // 主桌：H1-3（自訂名稱優先）
+  const mh=code.match(/^(H\d+)-(\d+)$/);
+  if(mh){
+    const [,tCode,seat]=mh;
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en'){
+      const tl=customName?`Table ${customName}`:'Head Table';
+      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):'HEAD', badgeBot:`S${seat}`, color:'gold' };
+    }
+    const tableLabel=customName?`第 ${customName} 桌`:'主桌';
+    const badgeLabel=customName?`第${customName}桌`:'主桌';
+    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
+  }
+  // 圓桌：R1_T2-5（用自訂桌名顯示）
+  const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
+  if(m){
+    const [,row,table,seat]=m;
+    const tCode=code.split('-')[0];
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en'){
+      const tl=customName?`Table ${customName}`:`Table ${table}`;
+      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):`T${table}`, badgeBot:`S${seat}`, color:'blue' };
+    }
+    const tableLabel=customName?`第 ${customName} 桌`:`第 ${table} 桌`;
+    const badgeLabel=customName?`第${customName}桌`:`第${table}桌`;
+    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
+  }
+  // 方陣：A1-3
+  const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+  if(m2){
+    const [,zone,row,seat]=m2;
+    if(window.LANG==='en')
+      return { detail:`Zone ${zone} · Row ${row} · Seat ${seat}`, badgeTop:zone, badgeBot:`R${row}-S${seat}`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
+    return { detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:zone, badgeBot:`${row}排${seat}席`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
+  }
+  return { detail:code, badgeTop:code, badgeBot:'', color:'blue' };
+}
+
+window.doSearch=function(){
+  const kw=(document.getElementById('search').value||'').trim();
+  document.getElementById('clear-btn').classList.toggle('show',kw.length>0);
+  const main=document.getElementById('main');
+
+  if(!loaded) return;
+  _lastMain=null;
+
+  if(!kw){
+    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>'+t('hint_search')+'</div></div>';
+    return;
+  }
+
+  // 支援空格分隔多個關鍵字（例如「台達 王」），每個字詞都要命中才算符合（AND 邏輯）
+  const terms=kw.toLowerCase().split(/\s+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>{
+    const codeL=code.toLowerCase();
+    const nameL=(name||'').toLowerCase();
+    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
+  });
+
+  // 證件編號比對：關鍵字含數字時，同時比對編號對照表。
+  // 「53」可對到「0053」：去前導零相等、後幾碼相符、或包含在編號數字中都算命中
+  const strip0=s=>s.replace(/^0+/,'')||'0';
+  const badgeSeatHits={}; // seatCode -> 命中的證件編號
+  terms.forEach(t=>{
+    const qd=t.replace(/\D/g,'');
+    if(!qd) return;
+    const qs=strip0(qd);
+    Object.keys(BADGE_MAP).forEach(bc=>{
+      const bd=bc.replace(/\D/g,'');
+      if(!bd) return;
+      const bs=strip0(bd);
+      if(bd.includes(qd)||bs===qs||bs.endsWith(qs)){
+        const r=resolveBadge(bc);            // 編號→人→目前座位；人未到就略過
+        if(r&&r.seat) badgeSeatHits[r.seat]=bc;
+      }
+    });
+  });
+  // 把編號命中、但姓名/座位沒搜到的座位補進結果（排最前面）
+  const already=new Set(results.map(([c])=>c));
+  Object.keys(badgeSeatHits).forEach(seat=>{
+    if(!already.has(seat)&&DATA.hasOwnProperty(seat)) results.unshift([seat,DATA[seat]]);
+  });
+
+  if(!results.length){
+    main.innerHTML=`<div class="no-result">${t('res_none',kw)}</div>`;
+    return;
+  }
+
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const kwE=terms.map(esc).join('|');
+  const re=new RegExp(`(${kwE})`,'gi');
+
+  let html=`<div class="result-count">${t('res_count',results.length)}</div><div class="result-list">`;
+  results.forEach(([code,name])=>{
+    const p=parseSeatCode(code);
+    const hn=name?name.replace(re,'<mark>$1</mark>'):t('lbl_empty_seat');
+    const hc=code.replace(re,'<mark>$1</mark>');
+    const av=avatarHtml(name,48);   // 中文姓名對得上貴賓資料庫時帶出照片
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''} ${av?'has-avatar':''}">
+      <div class="seat-badge badge-${p.color}">
+        <div class="badge-zone">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>${av}
+      <div class="card-info">
+        <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>
+        <div class="card-seat">${t('lbl_seat_code')}${hc}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+      <button class="checkin-btn ${CHECKINS[code]?'done':''}"
+        onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
+        ${CHECKINS[code]?t('btn_checked'):t('btn_checkin')}
+      </button>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+};
+
+window.toggleCheckin=async function(code, checkIn){
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${code}.json`;
+  if(checkIn){
+    await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({time,name:DATA[code]||''})});
+  }else{
+    await fetch(url,{method:'DELETE'});
+  }
+};
+
+/* 證件編號（如 P-05）→ 座位代碼 的對照表，手動建檔用 */
+function normBadgeCode(s){
+  return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+/* 編號跟人走：對照表存的是「賓客姓名」，查詢當下才解析他目前坐哪。
+   人換座位 → 編號自動跟過去；人不在座位表上（未到）→ 回傳 null，掃描/搜尋都不會顯示。
+   相容舊資料：值若是座位編號（舊格式），退回舊行為。 */
+function resolveBadge(bc){
+  const v=BADGE_MAP[bc];
+  if(!v) return null;
+  // 1) 完全相同（介面建檔存的是席次圖全名）
+  let seat=Object.keys(DATA).find(c=>DATA[c]===v);
+  if(seat) return {seat, name:DATA[seat]};
+  // 2) 拆詞比對（忽略空格與大小寫）：「林茂廷 理事長」拆成兩個詞，
+  //    每個詞都出現在座位姓名裡即命中——席次圖寫「林茂廷理事長」(沒空格)也對得上；
+  //    英文名（Sangchai）同樣能對到「…Mr. Sangchai Kittipumivong」
+  const _n=s=>String(s).toLowerCase().replace(/\s+/g,'');
+  const tokens=String(v).toLowerCase().split(/\s+/).filter(Boolean).map(t=>_n(t));
+  const hits=Object.keys(DATA).filter(c=>{
+    const nm=DATA[c]; if(!nm) return false;
+    const nn=_n(nm);
+    return tokens.length>0 && tokens.every(t=>nn.includes(t));
+  });
+  if(hits.length===1) return {seat:hits[0], name:DATA[hits[0]]};
+  if(hits.length>1) return {ambiguous:hits.length}; // 同名對到多人 → 不敢亂配
+  // 3) 舊格式相容：值＝座位編號
+  if(DATA.hasOwnProperty(v)&&DATA[v]) return {seat:v, name:DATA[v]};
+  return null;
+}
+
+/* ── 匯入 Excel：每一列自動辨識「編號」與「姓名」兩欄 ──
+   編號＝含數字、不含中文的欄位（0053 / P-05 / 後三碼 053 都可）；姓名＝含中文的欄位。
+   標題列自動略過。席次圖還沒排也能先匯：查詢當下才解析座位，人排入後編號自動生效。 */
+let _xlsxLoading=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(_xlsxLoading) return _xlsxLoading;
+  _xlsxLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error(t('err_xlsx')));
+    document.head.appendChild(s);
+  });
+  return _xlsxLoading;
+}
+window.importBadgeExcel=async function(file){
+  if(!file) return;
+  try{
+    await loadXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const hasCJKs=s=>/[\u4e00-\u9fff]/.test(s);
+    const pairs=[];
+    rows.forEach(row=>{
+      const cells=row.map(c=>String(c).trim()).filter(Boolean);
+      if(cells.length<2) return;
+      const badge=cells.find(c=>/\d/.test(c)&&!hasCJKs(c)&&c.length<=12);
+      let name=null;
+      const cjkCells=cells.filter(c=>hasCJKs(c)).sort((a,b)=>b.length-a.length);
+      if(cjkCells.length){
+        name=cjkCells[0]; // 中文賓客：取最長的中文欄（通常是姓名或全名）
+      }else{
+        // 外國賓客：整列沒中文 → 取「非編號、含英文字母」最長的欄位當姓名
+        const latin=cells.filter(c=>c!==badge&&/[A-Za-z]{2,}/.test(c)).sort((a,b)=>b.length-a.length);
+        if(latin.length) name=latin[0];
+      }
+      if(badge&&name) pairs.push([normBadgeCode(badge), name]);
+    });
+    if(!pairs.length){ alert(t('xl_no_rows')); return; }
+    const dup={}; pairs.forEach(([b,n])=>{ dup[b]=n; });
+    const list=Object.entries(dup);
+    const preview=list.slice(0,5).map(([b,n])=>`${b} → ${n}`).join('\n');
+    if(!confirm(t('xl_confirm',list.length,preview,list.length>5))) return;
+    const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026.json`;
+    await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(dup)});
+    alert(t('xl_done',list.length));
+  }catch(e){
+    alert(t('xl_fail',(e.message||e)));
+  }finally{
+    document.getElementById('badge-excel-input').value='';
+  }
+};
+
+window.saveBadgeCode=async function(rawBadge, seatCode){
+  const badge=normBadgeCode(rawBadge);
+  if(!badge||!seatCode) return alert(t('ba_need_both'));
+  const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026/${encodeURIComponent(badge)}.json`;
+  await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(seatCode)});
+};
+window.deleteBadgeCode=async function(badge){
+  const url=`${DB_URL}/${PROJECT_ID}/badge_codes2026/${encodeURIComponent(badge)}.json`;
+  await fetch(url,{method:'DELETE'});
+};
+
+let _badgeSelectedCode=null;
+window.openBadgeAdmin=function(){
+  document.getElementById('badge-admin-overlay').style.display='block';
+  document.getElementById('badge-guest-search').value='';
+  document.getElementById('badge-guest-results').innerHTML='';
+  document.getElementById('badge-selected-guest').textContent='';
+  document.getElementById('badge-code-input').value='';
+  _badgeSelectedCode=null;
+  renderBadgeAdminList();
+};
+window.closeBadgeAdmin=function(){
+  document.getElementById('badge-admin-overlay').style.display='none';
+};
+window.badgeAdminSearch=function(){
+  const kw=(document.getElementById('badge-guest-search').value||'').trim().toLowerCase();
+  const box=document.getElementById('badge-guest-results');
+  if(!kw){ box.innerHTML=''; return; }
+  const terms=kw.split(/\s+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>{
+    const codeL=code.toLowerCase(), nameL=(name||'').toLowerCase();
+    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
+  }).slice(0,20);
+  if(!results.length){
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">${t('ba_no_guest')}</div>`;
+    return;
+  }
+  box.innerHTML=results.map(([code,name])=>
+    `<div onclick="pickBadgeGuest('${code}')" style="padding:9px 10px;background:rgba(255,255,255,0.08);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;">
+      <span>${name||t('ba_unnamed')}</span>
+      <span style="opacity:.55;font-family:'DM Mono',monospace;">${code}</span>
+    </div>`
+  ).join('');
+};
+window.pickBadgeGuest=function(code){
+  if(!DATA[code]){ alert(t('ba_pick_empty')); return; }
+  _badgeSelectedCode=code;
+  document.getElementById('badge-selected-guest').innerHTML=t('ba_selected',DATA[code],code);
+  document.getElementById('badge-guest-results').innerHTML='';
+  document.getElementById('badge-guest-search').value='';
+  document.getElementById('badge-code-input').focus();
+};
+window.submitBadgeCode=async function(){
+  if(!_badgeSelectedCode) return alert(t('ba_need_guest'));
+  const badge=document.getElementById('badge-code-input').value;
+  if(!badge.trim()) return alert(t('ba_need_code'));
+  await saveBadgeCode(badge, DATA[_badgeSelectedCode]); // ← 存姓名：編號綁人不綁座位
+  document.getElementById('badge-code-input').value='';
+  document.getElementById('badge-selected-guest').textContent='';
+  _badgeSelectedCode=null;
+};
+function renderBadgeAdminList(){
+  const box=document.getElementById('badge-admin-list');
+  const cnt=document.getElementById('badge-count');
+  if(!box||!cnt) return;
+  const entries=Object.entries(BADGE_MAP);
+  cnt.textContent=entries.length;
+  if(!entries.length){
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.4);font-size:13px;">${t('ba_empty')}</div>`;
+    return;
+  }
+  box.innerHTML=entries.map(([badge,val])=>{
+    const r=resolveBadge(badge);
+    const label=(r&&r.seat)
+      ? t('ba_at_seat',r.name,r.seat)
+      : (r&&r.ambiguous)
+        ? `<span style="color:#fbbf24;">${t('ba_ambiguous',val,r.ambiguous)}</span>`
+        : `<span style="opacity:.55;">${t('ba_not_seated',val)}</span>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.06);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;">
+      <span><b style="font-family:'DM Mono',monospace;">${badge}</b> → ${label}</span>
+      <button onclick="deleteBadgeCode('${badge}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:2px 6px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function parseSeatLabel(code){
+  const mh=code.match(/^(H\d+)-(\d+)$/);
+  if(mh){
+    const customName=TABLE_NAMES[mh[1]]?TABLE_NAMES[mh[1]].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en') return customName?`Table ${customName} Seat ${mh[2]}`:`Head Table Seat ${mh[2]}`;
+    return customName?`第${customName}桌 第${mh[2]}席`:`主桌 第${mh[2]}席`;
+  }
+  const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
+  if(m){
+    const tCode=code.split('-')[0];
+    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
+    if(window.LANG==='en') return customName?`Table ${customName} Seat ${m[3]}`:`Table ${m[2]} Seat ${m[3]}`;
+    return customName?`第${customName}桌 第${m[3]}席`:`第${m[2]}桌 第${m[3]}席`;
+  }
+  const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+  if(m2) return window.LANG==='en'?`Zone ${m2[1]} Row ${m2[2]} Seat ${m2[3]}`:`${m2[1]}區 第${m2[2]}排 第${m2[3]}席`;
+  return code;
+}
+
+window.exportCheckinReport=function(){
+  if(!loaded || Object.keys(DATA).length===0){
+    alert(t('xl_not_ready'));
+    return;
+  }
+
+  const allSeats=Object.entries(DATA).filter(([,name])=>name);
+  const checkedIn=allSeats.filter(([code])=>CHECKINS[code]);
+  const notCheckedIn=allSeats.filter(([code])=>!CHECKINS[code]);
+
+  // 排序：依座位碼
+  const sortFn=([a],[b])=>a.localeCompare(b,'zh-Hant',{numeric:true});
+  checkedIn.sort(sortFn);
+  notCheckedIn.sort(sortFn);
+
+  const wb=XLSX.utils.book_new();
+
+  // ── Sheet 1：報到總覽 ──
+  const total=allSeats.length;
+  const inCount=checkedIn.length;
+  const pct=total>0?Math.round(inCount/total*100):0;
+  const now=new Date();
+  const nowStr=now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+
+  const summaryAoa=[
+    [t('rpt_title',EVENT_NAME)],
+    [t('rpt_generated'), nowStr],
+    [],
+    [t('rpt_item'),t('rpt_value')],
+    [t('rpt_expected'), total],
+    [t('rpt_in'), inCount],
+    [t('rpt_out'), total-inCount],
+    [t('rpt_rate'), pct+'%'],
+  ];
+  const ws0=XLSX.utils.aoa_to_sheet(summaryAoa);
+  ws0['!cols']=[{wch:16},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, ws0, t('sheet_summary'));
+
+  // ── Sheet 2：已報到名單 ──
+  const inAoa=[[t('col_code'),t('col_desc'),t('col_name'),t('col_time')]];
+  checkedIn.forEach(([code,name])=>{
+    const ci=CHECKINS[code];
+    inAoa.push([code, parseSeatLabel(code), name, ci?ci.time||'':'']);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(inAoa);
+  ws1['!cols']=[{wch:14},{wch:20},{wch:42},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws1, t('sheet_in'));
+
+  // ── Sheet 3：未報到名單 ──
+  const outAoa=[[t('col_code'),t('col_desc'),t('col_name')]];
+  notCheckedIn.forEach(([code,name])=>{
+    outAoa.push([code, parseSeatLabel(code), name]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(outAoa);
+  ws2['!cols']=[{wch:14},{wch:20},{wch:42}];
+  XLSX.utils.book_append_sheet(wb, ws2, t('sheet_out'));
+
+  const ts=now.getFullYear().toString().slice(2)+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0');
+  const eventLabel=PROJECT_ID.replace(/^EVENT_/,'').replace(/_/g,'').substring(0,16);
+  XLSX.writeFile(wb, `${t('file_prefix')}_${eventLabel}_${ts}.xlsx`);
+};
+
+/* ── 📷 相機掃描名牌：拍照 → 文字辨識(OCR) → 與座位資料模糊比對 ── */
+let _tessLoading=null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(_tessLoading) return _tessLoading;
+  _tessLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+    s.onload=res;
+    s.onerror=()=>rej(new Error(t('err_ocr_engine')));
+    document.head.appendChild(s);
+  });
+  return _tessLoading;
+}
+
+/* 條碼掃描（優先於OCR）：如果證件上貼有我們自己產生的Code128條碼，直接解碼比對座位代碼，準確率遠高於文字辨識 */
+let _zxingLoading=null;
+function loadZXing(){
+  if(window.ZXing) return Promise.resolve();
+  if(_zxingLoading) return _zxingLoading;
+  _zxingLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+    s.onload=res;
+    s.onerror=()=>rej(new Error(t('err_barcode_lib')));
+    document.head.appendChild(s);
+  });
+  return _zxingLoading;
+}
+// 嘗試解碼條碼；失敗（沒貼條碼、讀不到）一律回傳null，不影響後續OCR流程
+async function tryDecodeBarcode(canvas){
+  try{
+    await loadZXing();
+    if(!window.ZXing) return null;
+    const hints=new Map();
+    if(ZXing.DecodeHintType&&ZXing.BarcodeFormat){
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_128]);
+    }
+    const reader=new ZXing.BrowserMultiFormatReader(hints);
+    const dataUrl=canvas.toDataURL('image/png');
+    const result=await reader.decodeFromImageUrl(dataUrl);
+    return result&&result.getText?result.getText():null;
+  }catch(e){
+    return null; // 讀不到條碼是正常情況（例如證件沒貼），安靜地退回OCR即可
+  }
+}
+function downscaleImage(file,maxSide){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(img.src);
+      res(c);
+    };
+    img.src=URL.createObjectURL(file);
+  });
+}
+/* 影像前處理：解析度不足時放大、轉灰階、Otsu自動二值化，讓文字在各種名牌顏色/材質/光線下更容易被辨識 */
+function preprocessForOcr(canvas){
+  let src=canvas;
+  const minW=1000; // 解析度過低是辨識不準最常見的原因，先放大再處理
+  if(src.width<minW){
+    const scale=minW/src.width;
+    const up=document.createElement('canvas');
+    up.width=Math.round(src.width*scale);
+    up.height=Math.round(src.height*scale);
+    const uctx=up.getContext('2d');
+    uctx.imageSmoothingEnabled=true;
+    uctx.imageSmoothingQuality='high';
+    uctx.drawImage(src,0,0,up.width,up.height);
+    src=up;
+  }
+  const ctx=src.getContext('2d');
+  const imgData=ctx.getImageData(0,0,src.width,src.height);
+  const d=imgData.data;
+  const n=src.width*src.height;
+  const gray=new Uint8ClampedArray(n);
+  const hist=new Array(256).fill(0);
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+    const g=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])|0;
+    gray[p]=g; hist[g]++;
+  }
+  // Otsu 自動找出最佳黑白分界閾值（比固定閾值更適應不同光線/名牌底色）
+  let sum=0; for(let t=0;t<256;t++) sum+=t*hist[t];
+  let sumB=0,wB=0,wF=0,maxVar=0,threshold=140;
+  for(let t=0;t<256;t++){
+    wB+=hist[t]; if(wB===0) continue;
+    wF=n-wB; if(wF===0) break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB, mF=(sum-sumB)/wF;
+    const between=wB*wF*(mB-mF)*(mB-mF);
+    if(between>maxVar){ maxVar=between; threshold=t; }
+  }
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+    const v=gray[p]>threshold?255:0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(imgData,0,0);
+  return src;
+}
+
+/* 共用 OCR 流程：輸入 canvas 或圖檔 → 辨識 → 模糊比對結果 */
+/* 掃描總入口：先試條碼（快、準），讀不到才退回OCR文字辨識 */
+async function processCapturedImage(input){
+  const ov=document.getElementById('scan-overlay');
+  const st=document.getElementById('scan-status');
+  ov.classList.add('show');
+  st.textContent=t('ocr_scanning');
+  const code=await tryDecodeBarcode(input);
+  if(code){
+    // 情況一：條碼內容本身就是座位代碼（直接命中）
+    if(DATA.hasOwnProperty(code)){
+      ov.classList.remove('show');
+      renderBarcodeHit(code,code);
+      return;
+    }
+    // 情況二：條碼是流水號（如 0001），查「編號對照表」→ 編號綁人，解析他目前座位
+    let rb=resolveBadge(code);
+    if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
+    const norm=normBadgeCode(code);
+    const matchKey=Object.keys(BADGE_MAP).find(k=>normBadgeCode(k)===norm);
+    if(matchKey){
+      rb=resolveBadge(matchKey);
+      if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
+    }
+    // 純數字條碼：去前導零比對（掃到「53」也能對到「0053」）
+    const digits=(code.match(/\d+/g)||[]).join('');
+    if(digits){
+      const ds=digits.replace(/^0+/,'')||'0';
+      const mk2=Object.keys(BADGE_MAP).find(k=>{
+        const kd=k.replace(/\D/g,'');
+        return kd&&((kd.replace(/^0+/,'')||'0')===ds);
+      });
+      if(mk2){
+        rb=resolveBadge(mk2);
+        if(rb&&rb.seat){ ov.classList.remove('show'); renderBarcodeHit(rb.seat,code); return; }
+      }
+    }
+  }
+  await runOcr(input); // 沒條碼、或條碼查無資料，退回文字辨識
+}
+function renderBarcodeHit(seatCode,scannedCode){
+  _lastMain=()=>renderBarcodeHit(seatCode,scannedCode);
+  const main=document.getElementById('main');
+  const p=parseSeatCode(seatCode);
+  const name=DATA[seatCode]||t('no_name');
+  const sub=scannedCode&&scannedCode!==seatCode?t('barcode_code',scannedCode):'';
+  main.innerHTML=`<div class="result-count" style="color:#4ade80;">${t('barcode_hit')}${sub}</div>
+    <div class="result-list">
+      <div class="result-card ${CHECKINS[seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
+        <div class="seat-badge badge-${p.color}">
+          <div class="badge-zone">${p.badgeTop}</div>
+          <div class="badge-seat">${p.badgeBot}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">${name}<span class="match-tag high">${t('tag_barcode_hit')}</span></div>
+          <div class="card-seat">${t('lbl_seat_code')}${seatCode}</div>
+          <div class="card-zone">${p.detail}</div>
+        </div>
+        <button class="checkin-btn ${CHECKINS[seatCode]?'done':''}"
+          onclick="toggleCheckin('${seatCode}',${!CHECKINS[seatCode]})">
+          ${CHECKINS[seatCode]?t('btn_checked'):t('btn_checkin')}
+        </button>
+      </div>
+    </div>`;
+}
+async function runOcr(input){
+  const ov=document.getElementById('scan-overlay');
+  const st=document.getElementById('scan-status');
+  ov.classList.add('show');
+  st.innerHTML=t('ocr_prepare');
+  try{
+    await loadTesseract();
+    const proc=preprocessForOcr(input);
+    const {data}=await Tesseract.recognize(proc,'chi_tra+eng',{
+      logger:m=>{
+        if(m.status==='recognizing text') st.textContent=t('ocr_progress',Math.round((m.progress||0)*100));
+        else st.textContent=t('ocr_loading');
+      }
+    });
+    ov.classList.remove('show');
+    renderScanResults((data.text||'').replace(/\s+/g,''));
+  }catch(e){
+    ov.classList.remove('show');
+    alert(t('ocr_fail',(e.message||e)));
+  }
+}
+
+/* 頁面內即時相機（QR掃描式取景框）；無法開啟時自動退回拍照模式 */
+let camStream=null;
+window.startScan=async function(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment', width:{ideal:3840}, height:{ideal:2160}},
+      audio:false
+    });
+    document.getElementById('cam-video').srcObject=camStream;
+    document.getElementById('cam-overlay').classList.add('show');
+  }catch(e){
+    // 使用者拒絕權限或裝置不支援 → 退回原本的拍照上傳
+    document.getElementById('scan-input').click();
+  }
+};
+window.stopCamera=function(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-overlay').classList.remove('show');
+};
+window.captureFrame=async function(){
+  const v=document.getElementById('cam-video');
+  if(!v.videoWidth) return;
+  // 把畫面上取景框的位置換算回相機原始解析度，只裁切框內區域來辨識（更準）
+  const frame=document.querySelector('.cam-frame');
+  const vw=v.videoWidth, vh=v.videoHeight;
+  const elW=v.clientWidth, elH=v.clientHeight;
+  const scale=Math.max(elW/vw, elH/vh); // object-fit:cover 的縮放比
+  const offX=(vw*scale-elW)/2, offY=(vh*scale-elH)/2;
+  const r=frame.getBoundingClientRect(), vr=v.getBoundingClientRect();
+  const sx=Math.max(0,(r.left-vr.left+offX)/scale);
+  const sy=Math.max(0,(r.top-vr.top+offY)/scale);
+  const sw=Math.min(vw-sx, r.width/scale);
+  const sh=Math.min(vh-sy, r.height/scale);
+  const outScale=Math.min(1, 1400/sw);
+  const c=document.createElement('canvas');
+  c.width=Math.round(sw*outScale); c.height=Math.round(sh*outScale);
+  c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  stopCamera();
+  await processCapturedImage(c);
+};
+
+/* 拍照上傳模式（退路） */
+window.handleScanFile=async function(file){
+  if(!file) return;
+  const canvas=await downscaleImage(file,1400);
+  await processCapturedImage(canvas);
+  document.getElementById('scan-input').value='';
+};
+const _cjk=ch=>/[\u4e00-\u9fff]/.test(ch);
+/* 證件編號比對：把OCR常見的易混淆字元（O/0、I|L/1、S/5、B/8、Z/2）先校正，再用容錯比對(編輯距離<=1) */
+function ocrNormalizeBadge(s){
+  return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')
+    .replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
+}
+function _editDist(a,b){
+  const m=a.length,n=b.length;
+  const dp=[];
+  for(let i=0;i<=m;i++){ dp[i]=[i]; }
+  for(let j=0;j<=n;j++){ dp[0][j]=j; }
+  for(let i=1;i<=m;i++)
+    for(let j=1;j<=n;j++)
+      dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j-1],dp[i-1][j],dp[i][j-1]);
+  return dp[m][n];
+}
+function matchBadgeCode(text){
+  const badgeKeys=Object.keys(BADGE_MAP);
+  if(!badgeKeys.length) return null;
+  const strip0=s=>s.replace(/^0+/,'')||'0';
+  let best=null;
+  // 型一：英文字母+數字（如 P-05）→ 容錯比對（允許1個字元誤判）
+  const alnum=[...text.matchAll(/[A-Za-z]-?\d{1,4}/g)].map(m=>m[0]);
+  if(alnum.length){
+    const normKeys=badgeKeys.map(k=>({raw:k,norm:ocrNormalizeBadge(k)}));
+    alnum.forEach(cand=>{
+      const nc=ocrNormalizeBadge(cand);
+      normKeys.forEach(({raw,norm})=>{
+        const dist=_editDist(nc,norm);
+        if(dist<=1&&(!best||dist<best.dist)){
+          const r=resolveBadge(raw);
+          if(r&&r.seat) best={badge:raw,seatCode:r.seat,dist};
+        }
+      });
+    });
+  }
+  // 型二：純數字流水號（如 0053）→ 去前導零相等、或後幾碼相符即命中
+  if(!best||best.dist>0){
+    const nums=[...text.matchAll(/\d{2,6}/g)].map(m=>m[0]);
+    nums.forEach(cand=>{
+      const cs=strip0(cand);
+      badgeKeys.forEach(raw=>{
+        const bd=raw.replace(/\D/g,'');
+        if(!bd) return;
+        const bs=strip0(bd);
+        let dist=null;
+        if(bs===cs||bd===cand) dist=0;                       // 完全相同（含去前導零）
+        else if(cs.length>=2&&bs.endsWith(cs)) dist=1;       // 後幾碼相符
+        else if(bd.length>=2&&cand.endsWith(bd)) dist=1;     // 辨識多抓了前面的字
+        if(dist!==null&&(!best||dist<best.dist)){
+          const r=resolveBadge(raw);
+          if(r&&r.seat) best={badge:raw,seatCode:r.seat,dist};
+        }
+      });
+    });
+  }
+  return best;
+}
+function fuzzyScore(name,text){
+  let hit=0,bi=0;
+  const seen=new Set();
+  [...name].forEach(ch=>{
+    if(_cjk(ch)&&!seen.has(ch)&&text.includes(ch)){hit++;seen.add(ch);}
+  });
+  for(let i=0;i<name.length-1;i++){
+    const b=name.substr(i,2);
+    if(_cjk(b[0])&&_cjk(b[1])&&text.includes(b)) bi++;
+  }
+  return hit+bi*2; // 連續兩字相符加重計分
+}
+function renderScanResults(text){
+  _lastMain=()=>renderScanResults(text);
+  const main=document.getElementById('main');
+  const preview=text?text.slice(0,60):'';
+  if(!text){
+    main.innerHTML=`<div class="no-result">${t('scan_no_text')}</div>`;
+    return;
+  }
+
+  const badgeHit=matchBadgeCode(text);
+  let badgeHtml='';
+  if(badgeHit){
+    const p=parseSeatCode(badgeHit.seatCode);
+    const name=DATA[badgeHit.seatCode]||t('no_name');
+    const confLabel=badgeHit.dist===0?t('badge_exact'):t('badge_fuzzy');
+    badgeHtml=`<div class="result-count" style="color:#4ade80;">${confLabel}：${badgeHit.badge}</div>
+    <div class="result-list">
+      <div class="result-card ${CHECKINS[badgeHit.seatCode]?'is-checked':''}" style="border:1.5px solid #4ade80;">
+        <div class="seat-badge badge-${p.color}">
+          <div class="badge-zone">${p.badgeTop}</div>
+          <div class="badge-seat">${p.badgeBot}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">${name}<span class="match-tag high">${t('tag_badge_hit')}</span></div>
+          <div class="card-seat">${t('lbl_seat_code')}${badgeHit.seatCode}</div>
+          <div class="card-zone">${p.detail}</div>
+        </div>
+        <button class="checkin-btn ${CHECKINS[badgeHit.seatCode]?'done':''}"
+          onclick="toggleCheckin('${badgeHit.seatCode}',${!CHECKINS[badgeHit.seatCode]})">
+          ${CHECKINS[badgeHit.seatCode]?t('btn_checked'):t('btn_checkin')}
+        </button>
+      </div>
+    </div>`;
+  }
+
+  const scored=Object.entries(DATA)
+    .filter(([c,n])=>n)
+    .map(([code,name])=>({code,name,score:fuzzyScore(name,text)}))
+    .filter(x=>x.score>=1)   // 放寬門檻：只要沾到一個字就先列出來，依相似度排序讓使用者自己判斷
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,15);
+
+  if(!scored.length&&!badgeHit){
+    main.innerHTML=`<div class="no-result">${t('scan_no_match',preview)}</div>`;
+    return;
+  }
+  if(!scored.length){
+    main.innerHTML=badgeHtml;
+    return;
+  }
+
+  let html=badgeHtml+(badgeHit?`<div class="result-count" style="margin-top:14px;">${t('scan_other')}</div>`:`<div class="result-count">${t('scan_results',scored.length,preview,text.length>60)}</div>`)+'<div class="result-list">';
+  scored.forEach(({code,name,score})=>{
+    const p=parseSeatCode(code);
+    const hn=[...name].map(ch=>(_cjk(ch)&&text.includes(ch))?`<mark>${ch}</mark>`:ch).join('');
+    const tag=score>=4?`<span class="match-tag high">${t('tag_high')}</span>`
+      :score>=2?`<span class="match-tag mid">${t('tag_mid')}</span>`
+      :`<span class="match-tag low">${t('tag_low')}</span>`;
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
+      <div class="seat-badge badge-${p.color}">
+        <div class="badge-zone">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${hn}${tag}</div>
+        <div class="card-seat">${t('lbl_seat_code')}${code}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+      <button class="checkin-btn ${CHECKINS[code]?'done':''}"
+        onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
+        ${CHECKINS[code]?t('btn_checked'):t('btn_checkin')}
+      </button>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+}
+
+/* 切換語言：重下標題、統計、目前畫面與後台清單 */
+window._onLangChange=function(){
+  applyEventTitle();
+  if(loaded){
+    updateStats();
+    if(_lastMain) _lastMain(); else doSearch();
+  }
+  renderBadgeAdminList();
+  if(_wkOpen()) wikiAdminSearch();
+};
+
+
+/* ══════════════════════════════════════════════════════════════════
+   貴賓照片與聯絡方式（單向）
+   讀：「長官中英一覽表」AllVIPWiki（Firestore）→ 只借照片，唯讀，絕不回寫。
+   寫：本系統自己的 Firebase（vip_contacts2026）→ 照片、電話、聯絡備註。
+       本系統有的就蓋過一覽表，沒有的才用一覽表的照片。
+   對應方式：姓名（中）出現在席次圖那格文字裡就算命中
+            （席次圖常寫成「○○公司 王小明 董事長」，所以用包含比對）。
+   公司／姓名／職稱一律以座位系統顯示為準，這裡只補照片與聯絡方式。
+   ══════════════════════════════════════════════════════════════════ */
+const LOCAL_PATH='vip_contacts2026';   // 跨活動共用，換一場活動照片與聯絡方式還在
+let WIKI=[], WIKI_READY=false, WIKI_ERR=false;
+let LOCAL={};                          // key = 姓名正規化後的字串
+
+/* ── 唯讀連到一覽表 ── */
+const _wikiApp=initializeApp({
+  apiKey:"AIzaSyACg1t8jLtW2zIvNCDUhJPzU_SJ5vV6LUE",
+  authDomain:"all-vip-wiki.firebaseapp.com",
+  projectId:"all-vip-wiki",
+  storageBucket:"all-vip-wiki.firebasestorage.app",
+  messagingSenderId:"936976436491",
+  appId:"1:936976436491:web:7dc06635df6d982156260e"
+},'vip-wiki');
+const wdb=getFirestore(_wikiApp);
+onSnapshot(collection(wdb,'officers'),snap=>{
+  WIKI=snap.docs.map(d=>({id:d.id,nameZh:d.data().nameZh||'',nameEn:d.data().nameEn||'',photo:d.data().photo||null}));
+  WIKI_READY=true; WIKI_ERR=false; _wikiCache={};
+  if(loaded) refreshMain();
+  if(_wkOpen()) wikiAdminSearch();
+},err=>{ WIKI_READY=true; WIKI_ERR=true; console.warn('一覽表連線失敗',err); });
+
+/* ── 本系統自己的照片／聯絡方式 ── */
+onValue(ref(db,LOCAL_PATH),snap=>{
+  LOCAL=snap.val()||{}; _wikiCache={};
+  if(loaded) refreshMain();
+  if(_wkOpen()) wikiAdminSearch();
+});
+
+const _wnorm=s=>String(s||'').toLowerCase().replace(/[\s\u3000·,、．.·・_\-]/g,'');
+const _key=s=>_wnorm(s).replace(/[.$#\[\]\/]/g,'');   // Firebase 不吃的字元要拿掉
+let _wikiCache={};
+
+/* ── 模糊比對：完全包含比對不到時才用 ──
+   把姓名逐字在座位文字裡「依序」找，中間可以夾雜其他字（職稱、公司），
+   回傳「姓名裡有幾個字沒依序找到」，數字越小代表越像。 */
+function _fuzzyGap(name,hay){
+  let hi=0, missed=0;
+  for(const ch of name){
+    const idx=hay.indexOf(ch,hi);
+    if(idx===-1) missed++; else hi=idx+1;
+  }
+  return missed;
+}
+/* 姓名越短，容許的差異要越嚴格，避免菜市場姓名亂配對 */
+function _fuzzyOk(nameLen,gap){
+  if(nameLen<3) return gap===0;   // 兩個字的姓名不冒險模糊比對
+  if(nameLen<=4) return gap<=1;   // 三、四個字，容許差 1 個字
+  return gap<=2;                  // 五個字以上，容許差 2 個字
+}
+
+/* 回傳 {name,photo,phone,note,sameName,src} 或 null */
+function findVip(seatName){
+  if(!seatName) return null;
+  if(_wikiCache.hasOwnProperty(seatName)) return _wikiCache[seatName];
+  const hay=_wnorm(seatName);
+  let out=null;
+
+  // 1) 先找本系統自己建的（優先權最高）
+  let lk=Object.keys(LOCAL).filter(k=>k.length>=2&&hay.includes(k));
+  if(!lk.length) lk=Object.keys(LOCAL).filter(k=>k.length>=4&&hay.includes(k)); // 英文名較長才比
+  lk.sort((a,b)=>b.length-a.length);
+  const loc=lk.length?LOCAL[lk[0]]:null;
+
+  // 2) 再找一覽表（只取照片）— 先試「完全包含」
+  let cands=WIKI.filter(r=>{
+    const n=_wnorm(r.nameZh);
+    return n.length>=2 && /[\u4e00-\u9fff]/.test(n) && hay.includes(n);
+  });
+  let key='nameZh', fuzzy=false;
+  if(!cands.length){
+    cands=WIKI.filter(r=>{ const n=_wnorm(r.nameEn); return n.length>=4 && hay.includes(n); });
+    key='nameEn';
+  }
+  // 3) 完全包含比對不到 → 改用模糊比對中文姓名（容許一覽表姓名跟座位文字之間差一兩個字）
+  if(!cands.length){
+    const fz=WIKI.map(r=>{
+      const n=_wnorm(r.nameZh);
+      if(!n || !/[\u4e00-\u9fff]/.test(n)) return null;
+      const gap=_fuzzyGap(n,hay);
+      return _fuzzyOk(n.length,gap)?{r,gap,len:n.length}:null;
+    }).filter(Boolean);
+    if(fz.length){
+      fz.sort((a,b)=>a.gap-b.gap||b.len-a.len);            // 差異最小、姓名最長的排最前面
+      const bestGap=fz[0].gap, bestLen=fz[0].len;
+      cands=fz.filter(x=>x.gap===bestGap&&x.len===bestLen).map(x=>x.r);
+      key='nameZh'; fuzzy=true;
+    }
+  }
+  let wikiPhoto=null, sameName=0;
+  if(cands.length){
+    cands.sort((a,b)=>_wnorm(b[key]).length-_wnorm(a[key]).length);
+    const topName=_wnorm(cands[0][key]);
+    const tied=cands.filter(r=>_wnorm(r[key])===topName);
+    const pick=tied.find(r=>r.photo)||tied[0];
+    wikiPhoto=pick.photo||null; sameName=tied.length;
+  }
+
+  const cache=(loc&&loc.photoCache)||null;
+  if(loc||wikiPhoto){
+    const k=lk.length?lk[0]:(cands.length?_key(cands[0][key]):'');
+    // 這個人已經有聯絡人資料，就把一覽表當下的照片自動存一份到本系統（備份，不是覆蓋）
+    if(loc&&wikiPhoto&&cache!==wikiPhoto) cachePhoto(k,wikiPhoto);
+    out={
+      name:(loc&&loc.name)||(cands.length?cands[0][key]:'')||'',
+      key:k,
+      // 優先序：本系統自己換過的 → 一覽表現況 → 本系統備份的那張（一覽表刪掉或連不上時還有得用）
+      photo:(loc&&loc.photo)||wikiPhoto||cache||null,
+      wikiPhoto:wikiPhoto,
+      phone:(loc&&loc.phone)||'',
+      note:(loc&&loc.note)||'',
+      hasLocal:!!loc,
+      sameName:(loc&&loc.photo)?0:sameName,      // 本系統已指定照片就不用再警告同名
+      fuzzy:(loc&&loc.photo)?false:fuzzy,        // 本系統已指定照片就不用標示模糊比對
+      src:(loc&&loc.photo)?'local':(wikiPhoto?'wiki':(cache?'cache':'local'))
+    };
+  }
+  _wikiCache[seatName]=out;
+  return out;
+}
+/* 自動備份一覽表照片：PATCH 只加 photoCache 欄位，不碰電話與備註；同一個人每次開頁只寫一次 */
+const _cached=new Set();
+function cachePhoto(key,photo){
+  if(!key||!photo||_cached.has(key)) return;
+  _cached.add(key);
+  fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
+    {method:'PATCH',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({photoCache:photo,photoCacheAt:Date.now()})})
+    .then(r=>{ if(!r.ok) _cached.delete(key); })
+    .catch(()=>_cached.delete(key));
+}
+function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* 除錯用：這個檔案是 <script type="module">，模組內的變數（WIKI、LOCAL...）
+   瀏覽器主控台預設看不到，所以另外掛到 window 上方便查資料。
+   用法：在主控台打 _debugVip.charCodes('朱俊彰') 或 _debugVip.findByChar('彰') */
+window._debugVip = {
+  get WIKI(){ return WIKI; },
+  get LOCAL(){ return LOCAL; },
+  findVip,
+  /* 印出每個字的 Unicode 編碼，用來抓「長得一樣但其實不同」的字 */
+  charCodes(s){ return [...String(s)].map(c=>`${c} = U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')}`); },
+  /* 找出一覽表裡姓名含有某個字的所有紀錄，連同編碼一起印出 */
+  findByChar(ch){
+    return WIKI.filter(r=>String(r.nameZh).includes(ch))
+      .map(r=>({nameZh:r.nameZh, codes:this.charCodes(r.nameZh), hasPhoto:!!r.photo}));
+  }
+};
+/* 卡片上的 onclick 只帶索引，姓名放在暫存表裡，避免姓名含引號時語法出錯 */
+let _CTX=[];
+function ctx(v){ if(_CTX.length>800) _CTX=[]; return _CTX.push(v)-1; }
+
+function avatarHtml(seatName,size){
+  const v=findVip(seatName);
+  if(!v||!v.photo) return '';
+  const i=ctx({name:seatName});
+  return `<img class="avatar${(v.sameName>1||v.fuzzy)?' warn':''}" style="width:${size}px;height:${size}px;" src="${v.photo}" alt=""
+    onclick="event.stopPropagation();showPhotoView(${i})">`;
+}
+window.showPhotoView=function(i){
+  const c=_CTX[i]; if(!c) return;
+  const v=findVip(c.name);
+  if(!v||!v.photo) return;
+  document.getElementById('pv-img').src=v.photo;
+  document.getElementById('pv-name').innerHTML=_esc(c.name||'');
+  const sub=[v.phone?'📞 '+v.phone:'',v.note||''].filter(Boolean).map(_esc).join('<br>');
+  document.getElementById('pv-sub').innerHTML=sub;
+  _pvName=c.name;
+  document.getElementById('photo-view').classList.add('show');
+};
+window.closePhotoView=function(){ document.getElementById('photo-view').classList.remove('show'); };
+let _pvName=null;
+window.editPhotoFromView=function(){
+  const n=_pvName; closePhotoView();
+  openWikiAdminForName(n);
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   🎬 合影貴賓：依席次圖順序排的相片牆
+   ══════════════════════════════════════════════════════════════════ */
+let _cerFilter='out';   // out=未報到（預設）/ in=已報到 / all=全部
+window.openCeremonyList=function(f){
+  if(!loaded) return;
+  _cerFilter=f||_cerFilter;
+  renderCeremonyList();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+window.setCerFilter=function(f){ _cerFilter=f; renderCeremonyList(); };
+window.backToSearch=function(){ _lastMain=null; doSearch(); };
+
+/* 席次圖順序：主桌 → 圓桌（排、桌、席）→ 方陣（區、排、席） */
+function seatOrderKey(code){
+  let m=code.match(/^H(\d+)-(\d+)$/);            if(m) return [0,+m[1],0,+m[2]];
+  m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);         if(m) return [1,+m[1],+m[2],+m[3]];
+  m=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);      if(m) return [2,m[1].toUpperCase().charCodeAt(0),+m[2],+m[3]];
+  return [3,0,0,0];
+}
+function ceremonySeats(){
+  return Object.keys(TAGS)
+    .filter(c=>(TAGS[c]==='ceremony'||TAGS[c]==='photo'))
+    .sort((a,b)=>{
+      const x=seatOrderKey(a), y=seatOrderKey(b);
+      for(let i=0;i<4;i++){ if(x[i]!==y[i]) return x[i]-y[i]; }
+      return a.localeCompare(b);
+    });
+}
+/* 上方方陣格子：全部合影貴賓都畫（不受上面的篩選影響），已報到變灰、未報到亮燈
+   只供檢視，點格子只會跳到下面那張照片卡，不會報到 */
+/* 把席次圖那格文字拆成「單位」＋「姓名職稱」，直式格子才能單位在上、姓名在下 */
+const CER_TITLES=['副主任委員','主任委員','政務委員','政務次長','常務次長','副秘書長','秘書長','副執行長','副總經理','副理事長','副董事長','副處長','副局長','副院長','副館長','副署長','副司長','副部長','副組長','副科長','副主委','副主任','副會長','總經理','執行長','董事長','理事長','發行人','總編輯','部長','署長','司長','處長','局長','院長','館長','校長','廳長','組長','科長','主委','次長','主任','委員','大使','代表','總裁','顧問','經理','會長','理事','監事','董事','副總'];
+const CER_ORG_SUF=['集團','中心','公司','協會','學會','大學','委員會','研究院','基金會','部','會','院','署','司','處','局','館','廳','所','團','社','行','廠','station'];
+function splitOrgName(raw){
+  const s=String(raw||'').trim();
+  if(!s) return {org:'',nm:''};
+  // 1. 本來就有分隔符（空白、／、、、|）就直接拆
+  const sp=s.split(/[\s\u3000|｜\/／、,，]+/).filter(Boolean);
+  if(sp.length>=2) return {org:sp[0], nm:sp.slice(1).join('')};
+  // 2. 用職稱結尾往回抓姓名（姓名預設 3 字，單位太短就 2 字）
+  for(const ttl of CER_TITLES){
+    if(!s.endsWith(ttl)) continue;
+    let head=s.slice(0,s.length-ttl.length), rank='';
+    const rm=head.match(/(上將|中將|少將|上校|中校|少校|博士|教授)$/);
+    if(rm){ rank=rm[1]; head=head.slice(0,head.length-rank.length); }
+    if(head.length<=3) return {org:'', nm:s};
+    const nlen=head.length>=5?3:2;
+    return { org:head.slice(0,head.length-nlen), nm:head.slice(head.length-nlen)+rank+ttl };
+  }
+  // 3. 沒職稱：找最後一個單位結尾字，後面 2~6 個字當姓名
+  for(let i=s.length-2;i>=1;i--){
+    const hit=CER_ORG_SUF.find(suf=>s.startsWith(suf,i-suf.length+1));
+    if(hit){
+      const cut=i+1, rest=s.length-cut;
+      if(rest>=2&&rest<=6) return {org:s.slice(0,cut), nm:s.slice(cut)};
+    }
+  }
+  return {org:s, nm:''};
+}
+
+function cerGroupOf(code){
+  let m=code.match(/^(H\d+)-(\d+)$/);
+  if(m){
+    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
+    return { key:m[1], label:nm?t('cer_map_table',nm):t('cer_map_head') };
+  }
+  m=code.match(/^(R\d+_T(\d+))-(\d+)$/);
+  if(m){
+    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
+    return { key:m[1], label:t('cer_map_table',nm||m[2]) };
+  }
+  m=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+  if(m) return { key:'Z'+m[1].toUpperCase(), label:t('cer_map_zone',m[1].toUpperCase()) };
+  return { key:'_', label:'—' };
+}
+function buildCerMap(seats){
+  if(!seats.length) return '';
+  const groups=[];
+  const idx={};
+  seats.forEach(code=>{
+    const g=cerGroupOf(code);
+    if(idx[g.key]===undefined){ idx[g.key]=groups.length; groups.push({label:g.label,codes:[]}); }
+    groups[idx[g.key]].codes.push(code);
+  });
+  let h=`<div class="cer-map">
+    <div class="cer-map-head">
+      <span class="cer-map-title">${t('cer_map_title')}</span>
+      <span class="cer-map-hint">${t('cer_map_hint')}</span>
+      <span class="cer-map-lg"><span><i class="off"></i>${t('cer_map_off')}</span><span><i class="on"></i>${t('cer_map_on')}</span></span>
+    </div>`;
+  groups.forEach(g=>{
+    h+=`<div class="cer-zone"><div class="cer-zone-lbl">${_esc(g.label)}</div><div class="cer-cells">`;
+    g.codes.forEach(code=>{
+      const name=DATA[code]||t('lbl_empty_seat');
+      const done=!!CHECKINS[code];
+      const p=parseSeatCode(code);
+      const q=splitOrgName(name);
+      h+=`<div class="cer-cell ${done?'done':p.color}" onclick="cerJump('${_esc(code)}')" title="${_esc(name)}　${_esc(p.detail)}">
+        ${q.org?`<span class="u">${_esc(q.org)}</span>`:''}
+        ${q.nm?`<span class="nm">${_esc(q.nm)}</span>`:''}
+        ${(!q.org&&!q.nm)?`<span class="nm">${_esc(name)}</span>`:''}
+        ${done?`<span class="mk">✓</span>`:''}
+        <span class="sub">${_esc(p.badgeBot||code)}</span>
+      </div>`;
+    });
+    h+='</div></div>';
+  });
+  return h+'</div>';
+}
+/* 點方陣格子 → 捲到下面對應的照片卡（不報到）；若被篩選擋住就自動切到「全部」 */
+window.cerJump=function(code){
+  const go=()=>{
+    const el=document.getElementById('cer-card-'+code);
+    if(!el) return false;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    return true;
+  };
+  if(go()) return;
+  _cerFilter='all';
+  renderCeremonyList();
+  setTimeout(go,60);
+};
+
+function renderCeremonyList(){
+  _lastMain=renderCeremonyList;      // 資料更新或切語言時原地重繪，不會跳回搜尋
+  const main=document.getElementById('main');
+  const seats=ceremonySeats();
+  const inList=seats.filter(c=>CHECKINS[c]);
+  const outList=seats.filter(c=>!CHECKINS[c]);
+
+  const head=`<div class="cer-bar">
+    <button class="cer-tab ${_cerFilter==='out'?'on':''}" onclick="setCerFilter('out')">${t('cer_tab_out',outList.length)}</button>
+    <button class="cer-tab ${_cerFilter==='in'?'on':''}" onclick="setCerFilter('in')">${t('cer_tab_in',inList.length)}</button>
+    <button class="cer-tab ${_cerFilter==='all'?'on':''}" onclick="setCerFilter('all')">${t('cer_tab_all',seats.length)}</button>
+    <button class="cer-back" onclick="backToSearch()">${t('cer_back')}</button>
+  </div>`;
+
+  if(!seats.length){ main.innerHTML=head+`<div class="no-result">${t('cer_empty')}</div>`; return; }
+  const map=buildCerMap(seats);      // 方陣永遠畫全部，不跟著上面的篩選跑
+  const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
+  if(!show.length){
+    main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
+    return;
+  }
+
+  let html=head+map+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="cer-grid">`;
+  show.forEach(code=>{
+    const name=DATA[code]||t('lbl_empty_seat');
+    const v=findVip(name);
+    const done=!!CHECKINS[code];
+    const time=(done&&CHECKINS[code].time)?CHECKINS[code].time:'';
+    const i=ctx({name:name,code:code});
+    const warnCls=(v&&(v.sameName>1||v.fuzzy))?' warnring':'';
+    const photo=(v&&v.photo)
+      ? `<img class="${warnCls.trim()}" src="${v.photo}" alt="" onclick="showPhotoView(${i})">`
+      : `<div class="cer-ph">👤</div>`;
+    const stamp=done?`<div class="cer-stamp"><div class="tick">✓</div><div class="txt">${t('cer_arrived')}</div>${time?`<div class="tm">${_esc(time)}</div>`:''}</div>`:'';
+    const contact=[];
+    if(v&&v.phone) contact.push(`<a href="tel:${_esc(String(v.phone).replace(/[^0-9+]/g,''))}" onclick="event.stopPropagation();">📞 ${_esc(v.phone)}</a>`);
+    if(v&&v.note) contact.push(_esc(v.note).replace(/\n/g,'<br>'));
+    html+=`<div class="cer-card ${done?'done':''}" id="cer-card-${_esc(code)}">
+      <div class="cer-photo">${photo}${stamp}</div>
+      <div class="cer-body">
+        <div class="cer-nm">${_esc(name)}</div>
+        <div class="cer-code">${_esc(code)}</div>
+        ${contact.length?`<div class="cer-ct">${contact.join('<br>')}</div>`:''}
+        ${(v&&v.sameName>1)?`<div class="cer-warn">${t('cer_same_name',v.sameName)}</div>`:''}
+        ${(v&&v.fuzzy)?`<div class="cer-warn">${t('cer_fuzzy_match')}</div>`:''}
+        <div class="cer-btns">
+          <button class="cer-in ${done?'done':''}" onclick="toggleCheckin('${code}',${!done})">
+            ${done?t('btn_checked'):t('btn_checkin')}
+          </button>
+          <button class="cer-edit" onclick="openWikiAdminFor(${i})" title="${t('cer_addphoto')}">✎</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  main.innerHTML=html+'</div>';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   👤 照片／聯絡方式管理：只寫本系統，永遠不回寫一覽表
+   ══════════════════════════════════════════════════════════════════ */
+let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false, _wkSrc=null, _wkTimer=null;
+function _wkOpen(){ return document.getElementById('wiki-admin-overlay').style.display==='block'; }
+window.openWikiAdminFor=function(i){
+  const c=_CTX[i];
+  openWikiAdminForName(c?c.name:'');
+};
+/* 從卡片進來：席次圖那格文字先找得到人就直接編輯，找不到才開新增 */
+window.openWikiAdminForName=function(seatName){
+  document.getElementById('wiki-admin-overlay').style.display='block';
+  document.getElementById('wk-search').value=seatName||'';
+  const v=seatName?findVip(seatName):null;
+  if(v&&v.key){ wikiEditKey(v.key, v); return; }
+  wikiBackToList();
+};
+window.openWikiAdmin=function(){
+  document.getElementById('wiki-admin-overlay').style.display='block';
+  document.getElementById('wk-search').value='';
+  wikiBackToList();
+};
+window.closeWikiAdmin=function(){ document.getElementById('wiki-admin-overlay').style.display='none'; };
+window.wikiBackToList=function(){
+  clearTimeout(_wkTimer);
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false; _wkSrc=null;
+  document.getElementById('wk-form').style.display='none';
+  document.getElementById('wk-browse').style.display='block';
+  document.getElementById('wk-form-msg').textContent='';
+  wikiAdminSearch();
+};
+/* 清單：本系統的在前（可編輯內容較完整），一覽表只出現在搜尋結果供補照片 */
+function mergedContacts(){
+  const out=[];
+  Object.entries(LOCAL).forEach(([k,v])=>out.push({key:k,name:v.name||k,photo:v.photo||null,phone:v.phone||'',note:v.note||'',src:'local'}));
+  const seen=new Set(out.map(x=>x.key));
+  WIKI.forEach(r=>{
+    const nm=r.nameZh||r.nameEn; if(!nm) return;
+    const k=_key(nm); if(!k||seen.has(k)) return;
+    seen.add(k);
+    out.push({key:k,name:nm,photo:r.photo||null,phone:'',note:'',src:'wiki'});
+  });
+  return out;
+}
+window.wikiAdminSearch=function(){
+  const box=document.getElementById('wk-results');
+  const cnt=document.getElementById('wk-count');
+  if(!box) return;
+  cnt.textContent=t('wk_count',Object.keys(LOCAL).length,WIKI.length)+(WIKI_ERR?' ⚠':'');
+  if(!WIKI_READY&&!Object.keys(LOCAL).length){ box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;">${t('wk_loading')}</div>`; return; }
+  const kw=(document.getElementById('wk-search').value||'').trim().toLowerCase();
+  if(!kw){
+    box.innerHTML=`<div style="color:rgba(255,255,255,0.45);font-size:13px;padding:4px 2px;">${t('wk_search_hint')}</div>`
+      +(WIKI_ERR?`<div style="color:#fbbf24;font-size:12.5px;margin-top:8px;line-height:1.6;">${t('wk_offline')}</div>`:'');
+    return;
+  }
+  const terms=kw.split(/\s+/).filter(Boolean);
+  const hit=mergedContacts().filter(r=>{
+    const hay=[r.name,r.phone,r.note].filter(Boolean).join(' ').toLowerCase();
+    const flat=_wnorm(hay);
+    return terms.every(x=>hay.includes(x)||flat.includes(_wnorm(x)));
+  }).slice(0,40);
+  if(!hit.length){ box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:4px 2px;">${t('wk_no_result')}</div>`; return; }
+  box.innerHTML=hit.map(r=>{
+    const i=ctx({key:r.key});
+    const pic=r.photo?`<img src="${r.photo}" alt="">`:`<div class="wk-noimg">👤</div>`;
+    const sub=[r.phone,(r.note||'').split('\n')[0]].filter(Boolean).join('　');
+    return `<div class="wk-item" onclick="wikiEditByCtx(${i})">
+      ${pic}
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;">${_esc(r.name)}</div>
+        <div style="opacity:.6;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(sub)}</div>
+      </div>
+      <span class="wk-src">${r.src==='local'?t('src_local'):t('src_wiki')}</span>
+    </div>`;
+  }).join('');
+};
+window.wikiEditByCtx=function(i){
+  const c=_CTX[i]; if(!c) return;
+  const rec=mergedContacts().find(r=>r.key===c.key);
+  if(rec) wikiEditKey(rec.key,rec);
+};
+function _wkSetPreview(dataUrl){
+  document.getElementById('wk-prev').innerHTML=dataUrl
+    ? `<img src="${dataUrl}" alt="">`
+    : `<span style="color:rgba(255,255,255,0.4);font-size:26px;">🖼</span>`;
+}
+function _wkShowForm(){
+  document.getElementById('wk-browse').style.display='none';
+  document.getElementById('wk-form').style.display='block';
+  document.getElementById('wk-form-msg').textContent='';
+}
+window.wikiNewRecord=function(){
+  _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false; _wkSrc=null;
+  _wkShowForm();
+  document.getElementById('wk-form-title').textContent=t('wk_form_new');
+  document.getElementById('wk-name-zh').value=(document.getElementById('wk-search').value||'').trim();
+  document.getElementById('wk-phone').value='';
+  document.getElementById('wk-note').value='';
+  document.getElementById('wk-del').style.display='none';
+  _wkSetPreview(null);
+  _wkShowSrc();
+};
+/* rec 可來自本系統或一覽表；一覽表的只會把照片帶進預覽，存檔時才寫進本系統 */
+function wikiEditKey(key,rec){
+  const loc=LOCAL[key]||null;
+  _wkKey=key;
+  _wkPhoto=(loc&&loc.photo)||(rec&&rec.photo)||(loc&&loc.photoCache)||null;
+  _wkPhotoDirty=!!(loc&&loc.photo);
+  _wkSrc=(loc&&loc.photo)?'local':((rec&&rec.photo)?'wiki':((loc&&loc.photoCache)?'cache':null));
+  _wkShowForm();
+  const nm=(loc&&loc.name)||(rec&&rec.name)||key;
+  document.getElementById('wk-form-title').textContent=t('wk_form_edit',nm);
+  document.getElementById('wk-name-zh').value=nm;
+  document.getElementById('wk-phone').value=(loc&&loc.phone)||'';
+  document.getElementById('wk-note').value=(loc&&loc.note)||'';
+  document.getElementById('wk-del').style.display=loc?'block':'none';
+  _wkSetPreview(_wkPhoto);
+  _wkShowSrc();
+}
+function _wkShowSrc(){
+  const el=document.getElementById('wk-photo-src');
+  if(!el) return;
+  el.textContent=_wkSrc?t('wk_src_'+_wkSrc):'';
+}
+/* 照片壓成 480×480 置中裁切的 JPEG */
+window.wikiPickPhoto=function(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const size=480;
+      const c=document.createElement('canvas');
+      c.width=size; c.height=size;
+      const ctx2=c.getContext('2d');
+      const sc=Math.max(size/img.width,size/img.height);
+      const w=img.width*sc, h=img.height*sc;
+      ctx2.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+      _wkPhoto=c.toDataURL('image/jpeg',0.85);
+      _wkPhotoDirty=true; _wkSrc='local';
+      _wkSetPreview(_wkPhoto); _wkShowSrc();
+      wikiAutoSave(true);       // 換照片立刻存
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('wk-photo-input').value='';
+};
+/* 打字停 900 毫秒自動存；姓名欄離開焦點才存，避免打到一半就被當成新的一筆 */
+window.wikiTouch=function(now){
+  clearTimeout(_wkTimer);
+  if(now) wikiAutoSave();
+  else _wkTimer=setTimeout(()=>wikiAutoSave(),900);
+};
+async function wikiAutoSave(){
+  const name=(document.getElementById('wk-name-zh').value||'').trim();
+  if(name.length<2) return;                       // 姓名還沒填完就先不存
+  await _wikiPersist(true);
+}
+window.wikiAutoSave=wikiAutoSave;
+
+/* 實際寫檔。auto=true 是自動存（留在表單上），false 是按儲存鈕（存完回清單） */
+async function _wikiPersist(auto){
+  const name=document.getElementById('wk-name-zh').value.trim();
+  if(!name){ if(!auto) alert(t('wk_need_name')); return false; }
+  const key=_key(name);
+  if(!key){ if(!auto) alert(t('wk_need_name')); return false; }
+  const old=LOCAL[key]||{};
+  _cached.add(key);                              // 這一輪自己就會寫入，不用再另外備份一次
+  // 這個人在一覽表有照片、而本系統還沒備份過 → 建檔當下就順手存一份
+  const wp=(function(){ const v=findVip(name); return (v&&v.wikiPhoto)||null; })();
+  const rec={
+    name:name,
+    phone:document.getElementById('wk-phone').value.trim(),
+    note:document.getElementById('wk-note').value.trim(),
+    photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||null),   // 沒自己換過就不覆蓋，照片仍跟著一覽表走
+    photoCache:wp||old.photoCache||null,                       // 一覽表照片的本機備份
+    photoCacheAt:wp?Date.now():(old.photoCacheAt||null),
+    updated:Date.now()
+  };
+  const msg=document.getElementById('wk-form-msg');
+  msg.style.color='#4ade80';
+  try{
+    if(_wkKey&&_wkKey!==key&&LOCAL[_wkKey]){      // 改了姓名等於換一筆，舊的先刪掉
+      await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(_wkKey)}.json`,{method:'DELETE'});
+      delete LOCAL[_wkKey];
+    }
+    const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
+      {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    LOCAL[key]=rec; _wkKey=key; _cached.add(key); _wikiCache={};
+    if(loaded) refreshMain();
+    const d=new Date();
+    msg.textContent=auto
+      ? t('wk_autosaved',d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0'))
+      : t('wk_saved');
+    document.getElementById('wk-del').style.display='block';
+    if(!_wkSrc&&rec.photoCache) { _wkSrc='cache'; _wkShowSrc(); }
+    return true;
+  }catch(e){
+    msg.style.color='#f87171';
+    msg.textContent=t('wk_save_fail',e.message||e);
+    return false;
+  }
+}
+window.wikiSaveRecord=async function(){
+  clearTimeout(_wkTimer);
+  const ok=await _wikiPersist(false);
+  if(ok) setTimeout(()=>{ wikiBackToList(); },600);
+};
+window.wikiDeleteRecord=async function(){
+  if(!_wkKey||!LOCAL[_wkKey]) return;
+  if(!confirm(t('wk_del_confirm'))) return;
+  const msg=document.getElementById('wk-form-msg');
+  try{
+    const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(_wkKey)}.json`,{method:'DELETE'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    delete LOCAL[_wkKey]; _wikiCache={};
+    if(loaded) refreshMain();
+    wikiBackToList();
+  }catch(e){
+    msg.style.color='#f87171';
+    msg.textContent=t('wk_save_fail',e.message||e);
+  }
+};
+
+window.clearSearch=function(){
+  document.getElementById('search').value='';
+  document.getElementById('clear-btn').classList.remove('show');
+  doSearch();
+  document.getElementById('search').focus();
+};
+</script>
+</body>
+</html>
