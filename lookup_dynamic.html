@@ -125,9 +125,11 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-map-lg { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink-3); }
 .cer-map-lg i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
 .cer-map-lg .on { background:#1A6B4A; } .cer-map-lg .off { background:#C9C6C0; }
-.cer-map-sz { display:flex; gap:3px; align-items:center; }
-.cer-sz { border:1px solid var(--rule); background:var(--white); color:var(--ink-2); border-radius:6px; width:26px; height:24px; font-size:11px; font-family:"DM Mono",monospace; cursor:pointer; line-height:1; }
-.cer-sz.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+.cer-map-sz { display:flex; gap:4px; align-items:center; }
+.cer-sz { border:1px solid var(--rule); background:var(--white); color:var(--ink-2); border-radius:6px; min-width:28px; height:26px; padding:0 6px; font-size:13px; font-family:"DM Mono",monospace; cursor:pointer; line-height:1; }
+.cer-sz:active { background:var(--accent-light); }
+.cer-sz:disabled { opacity:.35; cursor:default; }
+.cer-zoom-val { min-width:46px; text-align:center; font-family:"DM Mono",monospace; font-size:11.5px; color:var(--ink-2); border:1px solid var(--rule); border-radius:6px; height:26px; line-height:24px; background:var(--white); cursor:pointer; padding:0 4px; }
 
 /* 一整條橫的：ABC 區並排在同一條，每區底下墊自己的淡色塊 */
 .cer-strip { display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; padding:2px 0 6px; cursor:grab; scrollbar-width:thin; }
@@ -154,15 +156,10 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-cell.gold { background:#D08700; }
 .cer-cell.done { background:#DCDAD4; color:#8A8A8A; box-shadow:inset 0 0 0 1px #CFCCC5; }
 .cer-cell.done .nm { font-weight:700; }
-/* 三段縮放：小／中／大 */
-.cer-map.sz-s { --cw:20px; --ch:172px; --fu:10px;   --fn:11px; }
-.cer-map.sz-m { --cw:26px; --ch:212px; --fu:12.5px; --fn:14px; }
-.cer-map.sz-l { --cw:34px; --ch:250px; --fu:16px;   --fn:18px; }
+/* 縮放：一次 10%，倍率存在這支手機的瀏覽器裡 */
+.cer-map { --z:1; --cw:calc(26px * var(--z)); --ch:calc(212px * var(--z)); --fu:calc(12.5px * var(--z)); --fn:calc(14px * var(--z)); }
 @media(max-width:560px){
-  .cer-map { margin:6px 10px 4px; padding:10px 8px 12px; }
-  .cer-map.sz-s { --cw:17px; --ch:150px; --fu:8.5px; --fn:9.5px; }
-  .cer-map.sz-m { --cw:23px; --ch:196px; --fu:11.5px; --fn:12.5px; }
-  .cer-map.sz-l { --cw:31px; --ch:236px; --fu:15px; --fn:16.5px; }
+  .cer-map { margin:6px 10px 4px; padding:10px 8px 12px; --cw:calc(23px * var(--z)); --ch:calc(196px * var(--z)); --fu:calc(11.5px * var(--z)); --fn:calc(12.5px * var(--z)); }
 }
 .cer-card.flash { animation:cerFlash 1.1s ease; }
 @keyframes cerFlash { 0%,100%{ box-shadow:0 1px 5px rgba(0,0,0,0.07);} 25%,65%{ box-shadow:0 0 0 3px var(--accent);} }
@@ -432,8 +429,8 @@ const I18N = {
   cer_fuzzy_match:"⚠ 姓名模糊比對，請確認照片是否正確",
   cer_addphoto:"✎ 照片／聯絡",
   cer_map_title:"🗺 合影貴賓座位方陣",
-  cer_map_hint:"只供檢視（報到請按下面照片卡）／可左右拉動，右邊 S M L 調大小",
-  cer_map_sz_s:"小", cer_map_sz_m:"中", cer_map_sz_l:"大",
+  cer_map_hint:"只供檢視（報到請按下面照片卡）／可左右拉動，右邊 − ＋ 每次調 10%，這支手機會記住",
+  cer_map_sz_s:"縮小 10%", cer_map_sz_l:"放大 10%", cer_map_sz_r:"點一下回到 100%",
   cer_map_on:"已報到",
   cer_map_off:"未報到",
   cer_map_head:"主桌",
@@ -540,8 +537,8 @@ const I18N = {
   cer_fuzzy_match:"⚠ Fuzzy name match — please verify the photo",
   cer_addphoto:"✎ Photo / contact",
   cer_map_title:"🗺 Photo-call seating grid",
-  cer_map_hint:"View only — check in on the photo cards below; drag sideways, S M L to resize",
-  cer_map_sz_s:"Small", cer_map_sz_m:"Medium", cer_map_sz_l:"Large",
+  cer_map_hint:"View only — check in on the photo cards below; drag sideways, − ＋ resize by 10% (remembered on this device)",
+  cer_map_sz_s:"Zoom out 10%", cer_map_sz_l:"Zoom in 10%", cer_map_sz_r:"Tap to reset to 100%",
   cer_map_on:"Checked in",
   cer_map_off:"Not in",
   cer_map_head:"Head Table",
@@ -1822,17 +1819,29 @@ function cerGroupOf(code){
   if(m) return { key:'Z'+m[1].toUpperCase(), label:t('cer_map_zone',m[1].toUpperCase()) };
   return { key:'_', label:'—' };
 }
-let _cerSize=(function(){ try{ return localStorage.getItem('cerSize')||'m'; }catch(e){ return 'm'; } })();
-window.setCerSize=function(z){
-  _cerSize=z;
-  try{ localStorage.setItem('cerSize',z); }catch(e){}
-  const m=document.querySelector('.cer-map');
-  if(m){
-    m.classList.remove('sz-s','sz-m','sz-l'); m.classList.add('sz-'+z);
-    m.querySelectorAll('.cer-sz').forEach(b=>b.classList.toggle('on',b.dataset.sz===z));
-    fitCerCells();
-  }
+let _cerZoom=(function(){
+  try{ const v=parseFloat(localStorage.getItem('cerZoom')); if(v>=0.5&&v<=2.5) return v; }catch(e){}
+  return 1;
+})();
+const CER_Z_MIN=0.5, CER_Z_MAX=2.5;
+window.setCerZoom=function(step){
+  let z=(step===0)?1:Math.round((_cerZoom+step)*100)/100;
+  z=Math.min(CER_Z_MAX,Math.max(CER_Z_MIN,z));
+  _cerZoom=z;
+  try{ localStorage.setItem('cerZoom',String(z)); }catch(e){}
+  applyCerZoom();
 };
+function applyCerZoom(){
+  const m=document.querySelector('.cer-map');
+  if(!m) return;
+  m.style.setProperty('--z',String(_cerZoom));
+  const lbl=m.querySelector('.cer-zoom-val');
+  if(lbl) lbl.textContent=Math.round(_cerZoom*100)+'%';
+  const dec=m.querySelector('[data-z="dec"]'), inc=m.querySelector('[data-z="inc"]');
+  if(dec) dec.disabled=(_cerZoom<=CER_Z_MIN+0.001);
+  if(inc) inc.disabled=(_cerZoom>=CER_Z_MAX-0.001);
+  fitCerCells();
+}
 function buildCerMap(seats){
   if(!seats.length) return '';
   const groups=[];
@@ -1842,15 +1851,15 @@ function buildCerMap(seats){
     if(idx[g.key]===undefined){ idx[g.key]=groups.length; groups.push({label:g.label,codes:[],color:parseSeatCode(code).color}); }
     groups[idx[g.key]].codes.push(code);
   });
-  let h=`<div class="cer-map sz-${_cerSize}">
+  let h=`<div class="cer-map">
     <div class="cer-map-head">
       <span class="cer-map-title">${t('cer_map_title')}</span>
       <span class="cer-map-hint">${t('cer_map_hint')}</span>
       <span class="cer-map-lg"><span><i class="off"></i>${t('cer_map_off')}</span><span><i class="on"></i>${t('cer_map_on')}</span></span>
       <span class="cer-map-sz">
-        <button class="cer-sz ${_cerSize==='s'?'on':''}" data-sz="s" onclick="setCerSize('s')" title="${t('cer_map_sz_s')}">S</button>
-        <button class="cer-sz ${_cerSize==='m'?'on':''}" data-sz="m" onclick="setCerSize('m')" title="${t('cer_map_sz_m')}">M</button>
-        <button class="cer-sz ${_cerSize==='l'?'on':''}" data-sz="l" onclick="setCerSize('l')" title="${t('cer_map_sz_l')}">L</button>
+        <button class="cer-sz" data-z="dec" onclick="setCerZoom(-0.1)" title="${t('cer_map_sz_s')}">−</button>
+        <span class="cer-zoom-val" onclick="setCerZoom(0)" title="${t('cer_map_sz_r')}">100%</span>
+        <button class="cer-sz" data-z="inc" onclick="setCerZoom(0.1)" title="${t('cer_map_sz_l')}">＋</button>
       </span>
     </div>
     <div class="cer-strip" id="cer-strip">`;
@@ -1873,25 +1882,38 @@ function buildCerMap(seats){
   });
   return h+'</div></div>';
 }
-/* 名字太長的格子自動縮字級，字不會爆出格子外（L 尤其明顯） */
+/* 1. 每區色塊的寬度用實際量到的格子寬釘死（Safari 的 max-content 不算 gap，會讓區塊互相疊到）
+   2. 名字太長的格子自動縮字級，字不會爆出格子外 */
 function fitCerCells(){
   document.querySelectorAll('.cer-map .cer-cell').forEach(el=>{
-    el.style.removeProperty('--fu'); el.style.removeProperty('--fn');
+    const u=el.querySelector('.u'), n=el.querySelector('.nm'), sb=el.querySelector('.sub');
+    if(u) u.style.fontSize='';
+    if(n) n.style.fontSize='';
     const cs=getComputedStyle(el);
-    const fu=parseFloat(cs.getPropertyValue('--fu'))||12;
-    const fn=parseFloat(cs.getPropertyValue('--fn'))||14;
-    const pad=parseFloat(cs.paddingTop||0)+parseFloat(cs.paddingBottom||0);
-    const gap=parseFloat(cs.gap||0)||6;
-    const txt=t=>((el.querySelector(t)||{}).textContent||'').trim();
-    const uL=txt('.u').length, nL=txt('.nm').length, sL=txt('.sub').length;
+    const fu=u?parseFloat(getComputedStyle(u).fontSize):0;
+    const fn=n?parseFloat(getComputedStyle(n).fontSize):0;
+    const pad=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+    const gap=parseFloat(cs.gap)||6;
+    const uL=u?u.textContent.trim().length:0;
+    const nL=n?n.textContent.trim().length:0;
+    const sL=sb?sb.textContent.trim().length:0;
     const blocks=(uL?1:0)+(nL?1:0)+(sL?1:0)+(el.querySelector('.mk')?1:0);
     const avail=el.clientHeight-pad-sL*7.6-(el.querySelector('.mk')?13:0)-gap*Math.max(0,blocks-1)-2;
     const need=uL*fu*1.06+nL*fn*1.06;
     if(need>avail && avail>0){
       const k=Math.max(0.5, avail/need);
-      el.style.setProperty('--fu',(fu*k).toFixed(1)+'px');
-      el.style.setProperty('--fn',(fn*k).toFixed(1)+'px');
+      if(u) u.style.fontSize=(fu*k).toFixed(1)+'px';
+      if(n) n.style.fontSize=(fn*k).toFixed(1)+'px';
     }
+  });
+  document.querySelectorAll('.cer-map .cer-cells').forEach(row=>{
+    row.style.width='';
+    const kids=Array.prototype.slice.call(row.children);
+    if(!kids.length) return;
+    const gap=parseFloat(getComputedStyle(row).gap)||0;
+    let w=gap*(kids.length-1);
+    kids.forEach(k=>{ w+=k.getBoundingClientRect().width; });
+    row.style.width=Math.ceil(w)+'px';
   });
 }
 
@@ -1966,7 +1988,7 @@ function renderCeremonyList(){
   const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
   if(!show.length){
     main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
-    initCerDrag(); fitCerCells();
+    initCerDrag(); applyCerZoom();
     return;
   }
 
@@ -2003,7 +2025,7 @@ function renderCeremonyList(){
     </div>`;
   });
   main.innerHTML=html+'</div>';
-  initCerDrag(); fitCerCells();
+  initCerDrag(); applyCerZoom();
 }
 
 /* ══════════════════════════════════════════════════════════════════
