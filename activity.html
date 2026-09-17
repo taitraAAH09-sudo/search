@@ -2022,11 +2022,40 @@ window.doReset = async function() {
 };
 
 window.doExport = async function() {
+    // 常見中文職稱字尾，用來在「姓名職稱」沒有空白時，找出姓名和職稱的分界。
+    // 只在整段是純中文（無英文/數字）且完全沒有任何空白時才會用到，且必須比對到才會插入空白，
+    // 比對不到就整段照舊輸出，不會亂拆，因此不影響英文的匯出結果。
+    const TITLE_KEYWORDS = [
+        '董事總經理','執行副總經理','資深副總經理','常務董事','獨立董事','副總經理','總經理特助',
+        '總經理','副總裁','總裁','執行長','營運長','技術長','財務長','資訊長','策略長','行政總監',
+        '總監','副總監','協理','副理','襄理','經理','副經理','主任','副主任','主管','課長','科長',
+        '處長','副處長','局長','副局長','署長','副署長','司長','副司長','部長','次長','市長','副市長',
+        '縣長','副縣長','鄉長','鎮長','里長','會長','副會長','理事長','副理事長','秘書長','副秘書長',
+        '執行秘書','秘書','特助','法律顧問','技術顧問','顧問','所長','副所長','院長','副院長','校長',
+        '副校長','系主任','教授','副教授','助理教授','講師','廠長','副廠長','站長','分行經理',
+        '業務代表','業務經理','業務','資深工程師','總工程師','工程師','研發經理','產品經理',
+        '行銷經理','企劃經理','公關經理','人資經理','財務經理','總務經理','採購經理','品保經理',
+        '品保主任','廠務經理','專員','執行董事','董事長'
+    ].sort((a, b) => b.length - a.length); // 長的職稱優先比對，避免「副總經理」被「總經理」搶先切到
+
+    function splitNameTitle(rest) {
+        if (!rest) return rest;
+        if (/[ \u3000]/.test(rest)) return rest; // 已經有空白分開了，不用再猜
+        if (!/^[\u4e00-\u9fa5]+$/.test(rest)) return rest; // 非純中文（混英文/數字）不猜，避免誤判
+        for (const kw of TITLE_KEYWORDS) {
+            if (rest.length > kw.length && rest.endsWith(kw)) {
+                return rest.slice(0, rest.length - kw.length) + ' ' + kw;
+            }
+        }
+        return rest; // 找不到已知職稱字尾，原樣輸出
+    }
+
     // 賓客欄位斷行規則：
     // 1. 如果字串裡已經有真正的換行（Excel 原本就打兩行），完全尊重原本的斷法，不再處理。
     // 2. 如果沒有換行（打成一行），一律用「第一個空白」當作公司／姓名職稱的分界，
     //    不管後面姓名跟職稱之間是連著打還是多打一個空白，都當成同一段（第二行），
     //    避免因為輸入習慣不一致，讓公司名稱被錯誤拆開。
+    // 3. 姓名和職稱之間如果沒打空白（純中文時），會嘗試用常見職稱字尾自動補上空白。
     function splitCompanyName(str) {
         if (!str) return str;
         if (str.includes('\n')) return str;
@@ -2035,8 +2064,9 @@ window.doExport = async function() {
         const idx = str.search(/[ \u3000]/);
         if (idx === -1) return str;
         const company = str.slice(0, idx).trim();
-        const rest = str.slice(idx + 1).trim();
+        let rest = str.slice(idx + 1).trim();
         if (!company || !rest) return str;
+        rest = splitNameTitle(rest);
         return company + '\n' + rest;
     }
 
