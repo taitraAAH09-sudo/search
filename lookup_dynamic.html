@@ -137,6 +137,8 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-strip::-webkit-scrollbar { height:6px; }
 .cer-strip::-webkit-scrollbar-thumb { background:#D6D3CC; border-radius:3px; }
 .cer-strip { align-items:flex-start; }
+/* 內層用 margin:auto 置中：放得下就置中，放不下時左邊也不會被切掉（比 justify-content:center 安全） */
+.cer-strip-inner { display:flex; gap:8px; align-items:flex-start; margin:0 auto; }
 .cer-zone { flex:0 0 auto; width:max-content; border-radius:10px; padding:3px 3px 5px; }
 .cer-zone.blue { background:var(--accent-light); }
 .cer-zone.green { background:var(--green-light); }
@@ -1862,7 +1864,7 @@ function buildCerMap(seats){
         <button class="cer-sz" data-z="inc" onclick="setCerZoom(0.1)" title="${t('cer_map_sz_l')}">＋</button>
       </span>
     </div>
-    <div class="cer-strip" id="cer-strip">`;
+    <div class="cer-strip" id="cer-strip"><div class="cer-strip-inner">`;
   groups.forEach(g=>{
     h+=`<div class="cer-zone ${g.color}"><div class="cer-zone-lbl">${_esc(g.label)}</div><div class="cer-cells">`;
     g.codes.forEach(code=>{
@@ -1880,7 +1882,7 @@ function buildCerMap(seats){
     });
     h+='</div></div>';
   });
-  return h+'</div></div>';
+  return h+'</div></div></div>';
 }
 /* 1. 每區色塊的寬度用實際量到的格子寬釘死（Safari 的 max-content 不算 gap，會讓區塊互相疊到）
    2. 名字太長的格子自動縮字級，字不會爆出格子外 */
