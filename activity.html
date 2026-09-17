@@ -2425,16 +2425,20 @@ window.doExport = async function() {
                 const col = colStarts[z] + s - 1;
                 const code = `${z}${r}-${s}`;
                 const exists = keys.includes(code);
+                // 已報到的座位：不管原本區塊是什麼顏色，整格（座位碼＋姓名）直接改成灰色
+                // 對應「白色，背景 1，較深 50%」這個 Excel 主題灰色
+                const checkedIn = exists && window.checkins && window.checkins[code];
+                const CHECKIN_GRAY = 'FF7F7F7F';
 
                 const codeCell = ws.getCell(codeRowIdx, col);
                 codeCell.value = exists ? code : '';
                 codeCell.font = { name:'Arial', size:10, bold:true };
-                codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.code} };
+                codeCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb: checkedIn ? CHECKIN_GRAY : palette.code} };
                 codeCell.alignment = { horizontal:'center', vertical:'middle' };
 
                 const fullName = rowNames[code];
                 const nameCell = ws.getCell(nameRowIdx, col);
-                nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:palette.name} };
+                nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb: checkedIn ? CHECKIN_GRAY : palette.name} };
 
                 if (useVertical) {
                     // Excel「文字由上至下排列」(textRotation=180，ExcelJS 寫 -90) ＋ 直式字型「@微軟正黑體」：
