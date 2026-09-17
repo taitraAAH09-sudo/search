@@ -130,24 +130,25 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .cer-sz.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
 
 /* 一整條橫的：ABC 區並排在同一條，每區底下墊自己的淡色塊 */
-.cer-strip { display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0 6px; cursor:grab; scrollbar-width:thin; }
+.cer-strip { display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; padding:2px 0 6px; cursor:grab; scrollbar-width:thin; }
 .cer-strip.drag { cursor:grabbing; user-select:none; scroll-behavior:auto; }
 .cer-strip::-webkit-scrollbar { height:6px; }
 .cer-strip::-webkit-scrollbar-thumb { background:#D6D3CC; border-radius:3px; }
-.cer-zone { flex:0 0 auto; border-radius:11px; padding:5px 6px 7px; }
+.cer-strip { align-items:flex-start; }
+.cer-zone { flex:0 0 auto; width:max-content; border-radius:10px; padding:3px 3px 5px; }
 .cer-zone.blue { background:var(--accent-light); }
 .cer-zone.green { background:var(--green-light); }
 .cer-zone.gold { background:var(--gold-light); }
-.cer-zone-lbl { font-size:10.5px; color:var(--ink-2); font-family:"DM Mono",monospace; letter-spacing:.04em; margin-bottom:4px; padding-left:2px; white-space:nowrap; }
-.cer-cells { display:flex; gap:4px; }
+.cer-zone-lbl { font-size:8.5px; color:var(--ink-3); font-family:"DM Mono",monospace; letter-spacing:.02em; line-height:1.3; margin-bottom:2px; padding-left:1px; white-space:nowrap; }
+.cer-cells { display:flex; gap:4px; width:max-content; }
 /* 直式格子：字一個一個往下排，單位在上、姓名在下 */
 .cer-cell { flex:0 0 auto; width:var(--cw); height:var(--ch); border-radius:8px; border:none; padding:7px 2px; color:#fff; font-family:"Noto Serif TC",serif; cursor:inherit; overflow:hidden; transition:transform .12s, filter .12s;
   writing-mode:vertical-rl; text-orientation:upright; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:6px; }
 .cer-cell:active { transform:scale(0.96); }
-.cer-cell .u { font-size:var(--fu); font-weight:500; line-height:1.04; letter-spacing:.01em; opacity:.95; }
-.cer-cell .nm { font-size:var(--fn); font-weight:700; line-height:1.04; letter-spacing:.02em; }
-.cer-cell .sub { font-family:"DM Mono",monospace; font-size:9px; opacity:.8; margin-inline-start:auto; writing-mode:vertical-rl; text-orientation:mixed; }
-.cer-cell .mk { font-size:11px; opacity:.95; writing-mode:horizontal-tb; }
+.cer-cell .u { flex:0 0 auto; white-space:nowrap; font-size:var(--fu); font-weight:500; line-height:1.04; letter-spacing:.01em; opacity:.95; }
+.cer-cell .nm { flex:0 0 auto; white-space:nowrap; font-size:var(--fn); font-weight:700; line-height:1.04; letter-spacing:.02em; }
+.cer-cell .sub { flex:0 0 auto; white-space:nowrap; font-family:"DM Mono",monospace; font-size:9px; opacity:.8; margin-inline-start:auto; writing-mode:vertical-rl; text-orientation:mixed; }
+.cer-cell .mk { flex:0 0 auto; font-size:11px; opacity:.95; writing-mode:horizontal-tb; }
 .cer-cell.blue { background:#2563EB; }
 .cer-cell.green { background:#1A9A5F; }
 .cer-cell.gold { background:#D08700; }
@@ -1829,6 +1830,7 @@ window.setCerSize=function(z){
   if(m){
     m.classList.remove('sz-s','sz-m','sz-l'); m.classList.add('sz-'+z);
     m.querySelectorAll('.cer-sz').forEach(b=>b.classList.toggle('on',b.dataset.sz===z));
+    fitCerCells();
   }
 };
 function buildCerMap(seats){
@@ -1871,6 +1873,28 @@ function buildCerMap(seats){
   });
   return h+'</div></div>';
 }
+/* 名字太長的格子自動縮字級，字不會爆出格子外（L 尤其明顯） */
+function fitCerCells(){
+  document.querySelectorAll('.cer-map .cer-cell').forEach(el=>{
+    el.style.removeProperty('--fu'); el.style.removeProperty('--fn');
+    const cs=getComputedStyle(el);
+    const fu=parseFloat(cs.getPropertyValue('--fu'))||12;
+    const fn=parseFloat(cs.getPropertyValue('--fn'))||14;
+    const pad=parseFloat(cs.paddingTop||0)+parseFloat(cs.paddingBottom||0);
+    const gap=parseFloat(cs.gap||0)||6;
+    const txt=t=>((el.querySelector(t)||{}).textContent||'').trim();
+    const uL=txt('.u').length, nL=txt('.nm').length, sL=txt('.sub').length;
+    const blocks=(uL?1:0)+(nL?1:0)+(sL?1:0)+(el.querySelector('.mk')?1:0);
+    const avail=el.clientHeight-pad-sL*7.6-(el.querySelector('.mk')?13:0)-gap*Math.max(0,blocks-1)-2;
+    const need=uL*fu*1.06+nL*fn*1.06;
+    if(need>avail && avail>0){
+      const k=Math.max(0.5, avail/need);
+      el.style.setProperty('--fu',(fu*k).toFixed(1)+'px');
+      el.style.setProperty('--fn',(fn*k).toFixed(1)+'px');
+    }
+  });
+}
+
 /* 按住左右拉：滑鼠拖曳捲動；手機本來就能滑。拖過就不算點擊，不會誤跳 */
 let _cerDragged=false;
 function initCerDrag(){
@@ -1942,7 +1966,7 @@ function renderCeremonyList(){
   const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
   if(!show.length){
     main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
-    initCerDrag();
+    initCerDrag(); fitCerCells();
     return;
   }
 
@@ -1979,7 +2003,7 @@ function renderCeremonyList(){
     </div>`;
   });
   main.innerHTML=html+'</div>';
-  initCerDrag();
+  initCerDrag(); fitCerCells();
 }
 
 /* ══════════════════════════════════════════════════════════════════
