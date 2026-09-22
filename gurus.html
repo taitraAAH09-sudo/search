@@ -89,8 +89,11 @@ select.chip:focus{outline:none;border-color:var(--ac);}
 
 .tbl-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:17.2px;}
-.desk-tbl table{table-layout:fixed;min-width:1200px;}
-.desk-tbl td.ev,.desk-tbl td.lo,.desk-tbl td.sm{word-break:break-word;white-space:normal;}
+.desk-tbl table{table-layout:fixed;min-width:1260px;}
+.desk-tbl td.lo{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;}
+.gl{display:block;padding-left:1.4em;text-indent:-1.4em;line-height:1.55;}
+.gl+.gl{margin-top:2px;}
+.desk-tbl td.ev,.desk-tbl td.sm{word-break:break-word;white-space:normal;}
 thead th{background:var(--sf2);color:var(--tx2);font-size:14.2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:8px 6px;text-align:center;border-bottom:2px solid var(--bd);white-space:nowrap;}
 th.tl,td.tl{text-align:left!important;}
 tbody tr{border-bottom:1px solid var(--bd2);transition:background .1s;}
@@ -295,6 +298,13 @@ th.expo-col{width:64px;}
   font-size:18px;font-weight:600;color:var(--tx2);transition:all .15s;}
 .expo-pick.on.pA{border-color:var(--expoA);background:var(--expoA-bg);color:var(--expoA);}
 .expo-pick.on.pB{border-color:var(--expoB);background:var(--expoB-bg);color:var(--expoB);}
+/* ── 唯讀檢視（網址加 ?view=1）── */
+body.view-only #btn-room,body.view-only #btn-settings,body.view-only #btn-add,
+body.view-only #btn-share,body.view-only #tag-row,body.view-only .ra,body.view-only .card-actions{display:none!important;}
+.room-flag{display:none;}
+body.embed .hdr{display:none!important;}
+body.embed{min-height:0!important;}
+body.view-only .room-flag{display:inline-block;margin:4px 0 2px;font-size:14px;padding:1px 8px;border-radius:9px;background:#b98a2f;color:#fff;vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -307,6 +317,7 @@ th.expo-col{width:64px;}
     </div>
     <div class="hdr-btns">
       <button class="btn" id="btn-room" onclick="toggleRoom()" title="切換 Room 1 / Room 2（兩個展同時進行用，資料互相獨立）"><span>🏠</span><span class="btn-label"> Room 1</span></button>
+      <button class="btn" id="btn-share" onclick="copyViewLink()" title="複製目前這個 Room 的唯讀連結，貼給別人或貼到專卷"><span>🔗</span><span class="btn-label" id="share-label"> 複製 Room 1 檢視連結</span></button>
       <a class="btn" href="schedule.html" target="_blank" rel="noopener" style="text-decoration:none;"><span>📅</span><span class="btn-label"> 活動一覽表</span></a>
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="切換白天/黑夜模式">🌙</button>
       <button class="btn" id="btn-toggle-filters" onclick="toggleFilters()"><span id="tf-icon">⏶</span><span class="btn-label" id="tf-label"> 隱藏篩選</span></button>
@@ -379,7 +390,7 @@ th.expo-col{width:64px;}
       <div class="fg"><label>陪同人員</label><input class="fi" id="re"></div>
       <div class="fg"><label>主政單位</label><input class="fi" id="fu"></div>
     </div>
-    <div class="fg"><label>貴賓/主講人</label><textarea class="fi" id="fgi"></textarea></div>
+    <div class="fg"><label>貴賓</label><textarea class="fi" id="fgi"></textarea></div>
     <div class="fg"><label>聯絡人</label><input class="fi" id="fc" placeholder="姓名 ext.XXXX"></div>
     <div class="mf">
       <button class="btn" onclick="closeM()">取消</button>
@@ -456,10 +467,19 @@ th.expo-col{width:64px;}
 
 <script type="module">
 
+/* ── 網址參數：?room=2 指定房間；?view=1 唯讀檢視 ── */
+const QS = new URLSearchParams(location.search);
+const URL_ROOM = ['1','2'].includes(QS.get('room')) ? QS.get('room') : null;
+const EMBED = ['1','true','yes'].includes((QS.get('embed')||'').toLowerCase());   // 嵌進專卷用：唯讀＋藏表頭
+const VIEW_ONLY = EMBED || ['1','true','yes'].includes((QS.get('view')||'').toLowerCase());
+if(EMBED) document.body.classList.add('embed');
+if(VIEW_ONLY) document.body.classList.add('view-only');
+
 /* ── PASSWORD GATE ── */
 const STAFF_PW = '2870';
 let _pwAuthed = false, _pwCallback = null;
 function requirePw(fn){
+  if(VIEW_ONLY) return; // 唯讀模式一律不能編輯
   if(_pwAuthed){fn();return;}
   _pwCallback=fn;
   document.getElementById('pw-input').value='';
@@ -548,7 +568,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 /* ── Room 1 / Room 2：兩個獨立房間，資料互不干涉（兩個展同時進行用） ──
    Room1 = 原本的 activities/settings 節點（既有資料不動）；Room2 = room2/ 底下 */
-let ROOM = localStorage.getItem('gurusRoom') || '1';
+let ROOM = URL_ROOM || localStorage.getItem('gurusRoom') || '1'; // 網址指定優先，且不寫回 localStorage
 const GP = p => ROOM === '1' ? p : 'room2/' + p;
 let ACT_REF, SETTINGS_REF;
 let _roomUnsubs = [];
@@ -862,7 +882,7 @@ function applyFiltersVisibility(){
 }
 applyFiltersVisibility();
 
-/* ── THEME ── */const saved = localStorage.getItem('theme')||'light';
+/* ── THEME ── */const saved = EMBED ? 'light' : (localStorage.getItem('theme')||'light');
 document.documentElement.setAttribute('data-theme', saved);
 document.getElementById('theme-btn').textContent = saved==='dark'?'☀️':'🌙';
 window.toggleTheme = ()=>{
@@ -909,15 +929,52 @@ function updateRoomBtn(){
   if(!b) return;
   b.querySelector('.btn-label').textContent = ' Room ' + ROOM;
   b.classList.toggle('room2-on', ROOM === '2');
+  const sl = document.getElementById('share-label');
+  if(sl) sl.textContent = ' 複製 Room ' + ROOM + ' 檢視連結';
+  // 唯讀模式看不到 Room 按鈕，標題旁標示目前是哪個房間
+  const h = document.getElementById('ui-h1');
+  if(h && VIEW_ONLY){
+    let f = document.getElementById('room-flag');
+    if(ROOM === '2'){ if(!f){ f=document.createElement('span'); f.id='room-flag'; f.className='room-flag'; h.insertAdjacentElement('afterend',f);} f.textContent='Room 2'; }
+    else if(f) f.remove();
+  }
 }
 window.toggleRoom = function(){
   const next = ROOM === '1' ? '2' : '1';
+  if(VIEW_ONLY) return;
   if(!confirm('切換到 Room ' + next + '？\n兩個房間的資料完全獨立、互不影響（適合兩個展同時進行）。')) return;
   ROOM = next;
   localStorage.setItem('gurusRoom', ROOM);
   bindRoom();
 };
 bindRoom();
+
+/* ── 複製唯讀連結（一定帶著目前的 Room，避免對方開錯房間） ── */
+window.copyViewLink = async function(){
+  const url = location.origin + location.pathname + '?room=' + ROOM + '&view=1';
+  try{ await navigator.clipboard.writeText(url); }
+  catch(e){ window.prompt('複製這個連結：', url); return; }
+  toast('✓ 已複製 Room ' + ROOM + ' 的唯讀連結', 'ok');
+};
+
+/* ── 嵌在專卷裡：把內容高度回報給外層，讓外框自動長高，不出現內捲軸 ── */
+if(EMBED && window.parent !== window){
+  let lastH = 0;
+  const report = ()=>{
+    let h = 0;
+    for(const el of document.body.children){
+      const cs = getComputedStyle(el);
+      if(cs.position === 'fixed' || cs.display === 'none') continue;
+      h = Math.max(h, el.getBoundingClientRect().bottom + window.scrollY);
+    }
+    h = Math.ceil(h) + 8;
+    if(Math.abs(h - lastH) > 2){ lastH = h; window.parent.postMessage({type:'gurus-height', h}, '*'); }
+  };
+  new ResizeObserver(report).observe(document.body);
+  new MutationObserver(()=>requestAnimationFrame(report)).observe(document.getElementById('main-content'), {childList:true, subtree:true});
+  window.addEventListener('load', report);
+  setTimeout(report, 800);
+}
 
 function setDot(s,m){
   document.getElementById('fb-dot').className='fb-dot '+s;
@@ -988,6 +1045,16 @@ function bdg(t){
 }
 function g(id){ return document.getElementById(id); }
 function pname(s){ return esc(s||'').replace(/ /g,'&nbsp;'); }
+/* 貴賓：遇到「1.」「2、」這類編號自動斷行，每位一行 */
+function splitGuest(s){
+  s=(s||'').trim(); if(!s) return [];
+  return s.split(/(?<![\d.])\s*(?=\d{1,2}\s*[.、．](?!\d))/).map(x=>x.trim()).filter(Boolean);
+}
+function fmtGuest(s){
+  const parts=splitGuest(s);
+  if(parts.length<=1) return esc(s||'');
+  return parts.map(x=>`<span class="gl">${esc(x)}</span>`).join('');
+}
 
 /* ── FILTERS ── */
 window.toggleP = el=>{
@@ -1037,10 +1104,10 @@ function render(){
         ${DUAL_MODE?`<td title="${esc(expoName(ek))}"><span class="expo-tag e${ek}">${esc(expoAbbr(ek))}</span></td>`:''}
         <td class="tm">${esc(a.time)}</td>
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
-        <td class="lo tl">${esc(a.loc)}</td>
+        <td class="lo tl" title="${esc(a.loc)}">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
         <td class="sm">${pname(a.escort)||'—'}</td>
-        <td class="sm tl">${pname(a.guest)||'—'}</td>
+        <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
         <td class="sm">${pname(a.contact)||'—'}</td>
         <td><div class="ra">
@@ -1084,16 +1151,16 @@ function render(){
         <table style="width:100%;border-collapse:collapse;font-size:17.2px">
         <colgroup>
           ${DUAL_MODE?'<col style="width:64px">':''}
-          <col style="width:86px"><col style="width:168px"><col style="width:112px">
+          <col style="width:72px"><col style="width:150px"><col style="width:220px">
           ${PEOPLE.map(()=>'<col style="width:64px">').join('')}
-          <col style="width:140px"><col style="width:150px"><col style="width:58px">
-          <col style="width:90px"><col style="width:46px">
+          <col style="width:64px"><col style="width:340px"><col style="width:84px">
+          <col style="width:100px"><col style="width:46px">
         </colgroup>
         <thead><tr>
           ${DUAL_MODE?'<th class="expo-col">展</th>':''}
           <th>時間</th><th class="tl">活動名稱</th><th class="tl">地點</th>
           ${PEOPLE.map(p=>`<th>${esc(P_LABELS[p]||p)}</th>`).join('')}
-          <th>陪同</th><th class="tl">貴賓/主講人</th><th>主政單位</th><th>聯絡人</th><th></th>
+          <th>陪同</th><th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
         </tr></thead>
         <tbody>${dRows}</tbody>
         </table>
@@ -1214,7 +1281,7 @@ window.exportCSV = ()=>{
   const XPO = DUAL_MODE ? expoFilter : '';
   const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
   const DM = (DUAL_MODE && !XPO);
-  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓/主講人','主政單位','聯絡人'];
+  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓','主政單位','聯絡人'];
   const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -1288,7 +1355,7 @@ window.exportXLSX = async ()=>{
     [totalCols-1,totalCols].forEach(c=>{ ws.getCell(2,c).font={name:FONT,size:10}; });
 
     // Row 3：表頭（動態長官欄位）
-    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓/主講人','主政單位','聯絡人'];
+    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓','主政單位','聯絡人'];
     const hr=ws.getRow(3);
     heads.forEach((h,i)=>{
       const c=hr.getCell(i+1);
