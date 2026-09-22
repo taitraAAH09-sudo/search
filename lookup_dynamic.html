@@ -481,10 +481,10 @@ const I18N = {
   vm_title_photo:"🗺 合影貴賓 · 全場席次圖", vm_title_call:"🗺 唱名貴賓 · 全場席次圖",
   vm_tab_photo:"📸 合影", vm_tab_call:"🎤 唱名",
   vm_count:(a,b)=>`已報到 ${a} / ${b}`,
-  vm_hint:"只供檢視；點亮著的座位看照片與聯絡人。可上下左右滑動，− ＋ 每次調 10%",
+  vm_hint:"席次圖只供檢視；點亮著的座位，下方照片卡可報到、編輯聯絡人。可上下左右滑動，− ＋ 每次調 10%",
   vm_lg_on:"未報到", vm_lg_done:"已報到", vm_lg_off:"非名單",
   vm_stage:"舞台 STAGE", vm_head:"主桌區",
-  vm_pick:"👆 點上面亮燈的座位，這裡會出現照片、聯絡人與電話",
+  vm_pick:"👆 點上面亮燈的座位，這裡會出現照片、聯絡人與報到按鈕",
   vm_empty_photo:"這場活動還沒有標記合影貴賓（揭幕、合影都算）", vm_empty_call:"這場活動還沒有標記唱名貴賓（揭幕、合影、唱名都算）",
   vm_tag_ceremony:"揭幕", vm_tag_photo:"合影", vm_tag_call:"唱名",
   vm_in:t=>`✓ 已報到 ${t||''}`, vm_out:"尚未報到",
@@ -602,10 +602,10 @@ const I18N = {
   vm_title_photo:"🗺 Photo-call VIPs · full map", vm_title_call:"🗺 Roll-call VIPs · full map",
   vm_tab_photo:"📸 Photo", vm_tab_call:"🎤 Roll call",
   vm_count:(a,b)=>`Checked in ${a} / ${b}`,
-  vm_hint:"View only — tap a lit seat for photo & contact. Scroll in any direction; − ＋ resize by 10%",
+  vm_hint:"Map is view only — tap a lit seat, then check in or edit contacts on the card below. Scroll in any direction; − ＋ resize by 10%",
   vm_lg_on:"Not in", vm_lg_done:"Checked in", vm_lg_off:"Not on list",
   vm_stage:"STAGE", vm_head:"Head tables",
-  vm_pick:"👆 Tap a lit seat above to see the photo, contact person and phone",
+  vm_pick:"👆 Tap a lit seat above for the photo, contact and check-in button",
   vm_empty_photo:"No photo-call VIP is tagged yet (unveiling and photo both count)", vm_empty_call:"No roll-call VIP is tagged yet (unveiling, photo and roll call all count)",
   vm_tag_ceremony:"Unveiling", vm_tag_photo:"Photo", vm_tag_call:"Roll call",
   vm_in:t=>`✓ Checked in ${t||''}`, vm_out:"Not checked in",
@@ -2242,7 +2242,10 @@ function vmDetail(){
       ${ct.length?`<div class="cer-ct">${ct.join('<br>')}</div>`:''}
       ${(v&&v.sameName>1)?`<div class="cer-warn">${t('cer_same_name',v.sameName)}</div>`:''}
       ${(v&&v.fuzzy)?`<div class="cer-warn">${t('cer_fuzzy_match')}</div>`:''}
-      <div class="cer-btns"><button class="cer-edit" style="flex:1;" onclick="openWikiAdminFor(${i})">${t('cer_addphoto')}</button></div>
+      <div class="cer-btns">
+        <button class="cer-in ${done?'done':''}" onclick="toggleCheckin('${_esc(code)}',${!done})">${done?t('btn_checked'):t('btn_checkin')}</button>
+        <button class="cer-edit" onclick="openWikiAdminFor(${i})" title="${t('cer_addphoto')}">✎</button>
+      </div>
     </div>
   </div>`;
 }
