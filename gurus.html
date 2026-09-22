@@ -413,7 +413,7 @@ body.view-only .room-flag{display:inline-block;margin:4px 0 2px;font-size:14px;p
     </div>
     <div class="fg2" id="form-fields-container"></div>
     <div class="fg2">
-      <div class="fg"><label>陪同人員</label><input class="fi" id="re"></div>
+      <div class="fg" style="display:none"><label>陪同人員</label><input class="fi" id="re"></div>
       <div class="fg"><label>主政單位</label><input class="fi" id="fu"></div>
     </div>
     <div class="fg"><label>貴賓</label><textarea class="fi" id="fgi"></textarea></div>
@@ -991,11 +991,31 @@ function loadH2C(){
   });
   return _h2cP;
 }
+/* 內容指紋：資料、長官、展名、今天日期都一樣，拍出來的圖就一樣，不用重拍 */
+function snapSig(){
+  const src=JSON.stringify({v:'snap3',ACT,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
+    ex:DUAL_MODE?[expoName('A'),expoName('B'),expoAbbr('A'),expoAbbr('B')]:0,
+    day:new Date().toDateString()});
+  let h=5381; for(let i=0;i<src.length;i++) h=((h<<5)+h+src.charCodeAt(i))|0;
+  return (h>>>0).toString(36)+'-'+src.length;
+}
+let _snapSig='', _askT=null;
 window.scheduleSnap = function(){
   if(!SNAP || window.parent===window) return;
-  clearTimeout(_snapT); _snapT=setTimeout(doSnap, 700);
+  clearTimeout(_snapT);
+  _snapT=setTimeout(()=>{
+    _snapSig=snapSig();
+    window.parent.postMessage({type:'gurus-sig', sig:_snapSig}, '*');
+    clearTimeout(_askT);
+    _askT=setTimeout(()=>doSnap(_snapSig), 2500);   // 外層是舊版專卷、沒回應 → 照拍
+  }, 700);
 };
-async function doSnap(){
+window.addEventListener('message', e=>{
+  const d=e.data; if(!SNAP||!d||d.type!=='gurus-snap-need'||d.sig!==_snapSig) return;
+  clearTimeout(_askT);
+  if(d.need) doSnap(d.sig);
+});
+async function doSnap(sig){
   try{
     await loadH2C();
     if(document.fonts && document.fonts.ready) await document.fonts.ready;
@@ -1019,7 +1039,7 @@ async function doSnap(){
     canvas.toBlob(async blob=>{
       if(!blob) return;
       const buf=await blob.arrayBuffer();
-      window.parent.postMessage({type:'gurus-snap', buf, w:canvas.width, h:canvas.height}, '*', [buf]);
+      window.parent.postMessage({type:'gurus-snap', buf, sig, w:canvas.width, h:canvas.height}, '*', [buf]);
     },'image/png');
   }catch(e){ console.error('snap failed', e); }
 }
@@ -1129,7 +1149,7 @@ function todayStr(){
 }
 function dateStatus(lbl){ const k=dk(lbl),t=todayStr(); return k<t?'past':k===t?'today':'future'; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function isNA(a){ return !PEOPLE.some(p=>a[p]) && !a.escort; }
+function isNA(a){ return !PEOPLE.some(p=>a[p]); }
 function bdg(t){
   if(!t) return `<span style="color:var(--tx3);font-size:15px">—</span>`;
   const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bpu',出差:'brd',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
@@ -1215,7 +1235,6 @@ function render(){
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl" title="${esc(a.loc)}">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
-        <td class="sm">${fmtEscort(a.escort)||'—'}</td>
         <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
         <td class="sm ct">${fmtContact(a.contact)||'—'}</td>
@@ -1262,14 +1281,14 @@ function render(){
           ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:126px"><col style="width:190px"><col style="width:190px">
           ${PEOPLE.map(()=>'<col style="width:84px">').join('')}
-          <col style="width:96px"><col style="width:260px"><col style="width:96px">
+          <col style="width:280px"><col style="width:96px">
           <col style="width:150px"><col style="width:46px">
         </colgroup>
         <thead><tr>
           ${DUAL_MODE?'<th class="expo-col">展</th>':''}
           <th>時間</th><th class="tl">活動名稱</th><th class="tl">地點</th>
           ${PEOPLE.map(p=>`<th>${esc(P_LABELS[p]||p)}</th>`).join('')}
-          <th>陪同</th><th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
+          <th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
         </tr></thead>
         <tbody>${dRows}</tbody>
         </table>
@@ -1402,8 +1421,8 @@ window.exportCSV = ()=>{
   const XPO = DUAL_MODE ? expoFilter : '';
   const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
   const DM = (DUAL_MODE && !XPO);
-  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓','主政單位','聯絡人'];
-  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '貴賓','主政單位','聯絡人'];
+  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a'); a.href=url; a.download=((XPO?expoName(XPO):(EVENT_H1||'出席一覽表'))).replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
@@ -1454,8 +1473,8 @@ window.exportXLSX = async ()=>{
     const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:3}]});
 
     const DM = (DUAL_MODE && !XPO) ? 1 : 0;
-    const nP=PEOPLE.length, totalCols=4+nP+4+DM;
-    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 14,18,10,22];
+    const nP=PEOPLE.length, totalCols=4+nP+3+DM;
+    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 32,10,22];
     const XA={font:'FF1F4E79',fill:'FFDDF0FF'}, XB={font:'FF8A3800',fill:'FFFFE9D6'};
     ws.columns=widths.map(w=>({width:w}));
 
@@ -1476,7 +1495,7 @@ window.exportXLSX = async ()=>{
     [totalCols-1,totalCols].forEach(c=>{ ws.getCell(2,c).font={name:FONT,size:10}; });
 
     // Row 3：表頭（動態長官欄位）
-    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓','主政單位','聯絡人'];
+    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'貴賓','主政單位','聯絡人'];
     const hr=ws.getRow(3);
     heads.forEach((h,i)=>{
       const c=hr.getCell(i+1);
@@ -1501,7 +1520,7 @@ window.exportXLSX = async ()=>{
       const startR=r;
       rows.forEach(a=>{
         const ek=expoOf(a);
-        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.escort||'',a.guest||'',a.unit||'',a.contact||''];
+        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.guest||'',a.unit||'',a.contact||''];
         const row=ws.getRow(r);
         vals.forEach((v,i)=>{
           const c=row.getCell(i+1);
