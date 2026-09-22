@@ -89,7 +89,10 @@ select.chip:focus{outline:none;border-color:var(--ac);}
 
 .tbl-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:17.2px;}
-.desk-tbl table{table-layout:fixed;min-width:1260px;}
+.desk-tbl table{table-layout:fixed;min-width:1400px;}
+.desk-tbl td.tm{white-space:normal!important;line-height:1.35;}
+.desk-tbl td{overflow:hidden;}
+.esc-l{display:block;white-space:nowrap;}
 .desk-tbl td.lo{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;}
 .gl{display:block;padding-left:1.4em;text-indent:-1.4em;line-height:1.55;}
 .gl+.gl{margin-top:2px;}
@@ -1045,6 +1048,12 @@ function bdg(t){
 }
 function g(id){ return document.getElementById(id); }
 function pname(s){ return esc(s||'').replace(/ /g,'&nbsp;'); }
+/* 陪同：多人用 、，/ 分隔時，一人一行 */
+function fmtEscort(s){
+  const parts=(s||'').split(/[、，,／/;；]\s*/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length<=1) return esc(s||'');
+  return parts.map(x=>`<span class="esc-l">${esc(x)}</span>`).join('');
+}
 /* 貴賓：遇到「1.」「2、」這類編號自動斷行，每位一行 */
 function splitGuest(s){
   s=(s||'').trim(); if(!s) return [];
@@ -1106,7 +1115,7 @@ function render(){
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl" title="${esc(a.loc)}">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
-        <td class="sm">${pname(a.escort)||'—'}</td>
+        <td class="sm">${fmtEscort(a.escort)||'—'}</td>
         <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
         <td class="sm">${pname(a.contact)||'—'}</td>
@@ -1151,9 +1160,9 @@ function render(){
         <table style="width:100%;border-collapse:collapse;font-size:17.2px">
         <colgroup>
           ${DUAL_MODE?'<col style="width:64px">':''}
-          <col style="width:72px"><col style="width:150px"><col style="width:220px">
+          <col style="width:126px"><col style="width:200px"><col style="width:200px">
           ${PEOPLE.map(()=>'<col style="width:64px">').join('')}
-          <col style="width:64px"><col style="width:340px"><col style="width:84px">
+          <col style="width:96px"><col style="width:300px"><col style="width:84px">
           <col style="width:100px"><col style="width:46px">
         </colgroup>
         <thead><tr>
