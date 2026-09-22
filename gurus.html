@@ -102,6 +102,13 @@ body.embed .mob-cards{display:none!important;}
 /* fit=1：整張表等比例縮到外框寬度，像一頁 PDF，不用左右拉 */
 html.fit,html.fit body{overflow:hidden;}
 body.fit{transform-origin:0 0;}
+body.snap{background:#fff;}
+body.snap .sbar{display:none!important;}
+body.snap .tbl-wrap{overflow:visible;}
+#snap-head{padding:18px 20px 12px;}
+#snap-head .sh-eb{font-size:15px;color:var(--ac);letter-spacing:.04em;}
+#snap-head .sh-t{font-size:26px;font-weight:700;margin-top:2px;}
+#snap-head .sh-m{font-size:14px;color:var(--tx3);margin-top:4px;}
 body.fit .tbl-wrap{overflow:visible;}
 body.hide-past .day-block.past-day{display:none;}
 #all-past-msg{display:none;}
@@ -491,6 +498,8 @@ const URL_ROOM = ['1','2'].includes(QS.get('room')) ? QS.get('room') : null;
 const EMBED = ['1','true','yes'].includes((QS.get('embed')||'').toLowerCase());   // 嵌進專卷用：唯讀＋藏表頭
 const VIEW_ONLY = EMBED || ['1','true','yes'].includes((QS.get('view')||'').toLowerCase());
 const FIT = EMBED && QS.get('fit')==='1';
+const SNAP = EMBED && QS.get('snap')==='1';   // 專卷在背後擷取畫面用
+if(SNAP){ document.body.classList.add('snap'); }
 if(EMBED){ document.body.classList.add('embed'); document.documentElement.classList.add('embed'); }
 if(FIT){ document.body.classList.add('fit'); document.documentElement.classList.add('fit'); }
 if(VIEW_ONLY) document.body.classList.add('view-only');
@@ -969,6 +978,50 @@ window.toggleRoom = function(){
 };
 bindRoom();
 
+/* ── 擷取畫面給專卷（snap=1）：整張表拍成 PNG 傳給外層；資料有變動再拍一次 ── */
+let _snapT=null, _h2cP=null;
+function loadH2C(){
+  if(window.html2canvas) return Promise.resolve();
+  if(!_h2cP) _h2cP=new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    sc.onload=res; sc.onerror=()=>{_h2cP=null; rej(new Error('html2canvas 載入失敗'));};
+    document.head.appendChild(sc);
+  });
+  return _h2cP;
+}
+window.scheduleSnap = function(){
+  if(!SNAP || window.parent===window) return;
+  clearTimeout(_snapT); _snapT=setTimeout(doSnap, 700);
+};
+async function doSnap(){
+  try{
+    await loadH2C();
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    const two=n=>String(n).padStart(2,'0'), d=new Date();
+    let hd=document.getElementById('snap-head');
+    if(!hd){ hd=document.createElement('div'); hd.id='snap-head'; document.getElementById('main-content').before(hd); }
+    hd.innerHTML=`<div class="sh-eb">${esc(document.getElementById('ui-eyebrow').textContent)}</div>`+
+      `<div class="sh-t">${esc(document.getElementById('ui-h1').textContent)}</div>`+
+      `<div class="sh-m">截至 ${d.getFullYear()}/${two(d.getMonth()+1)}/${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}</div>`;
+    const b=document.body;
+    b.style.width='1400px';
+    let need=1400;
+    document.querySelectorAll('.desk-tbl table').forEach(t=>{ need=Math.max(need,t.offsetWidth); });
+    need=Math.ceil(need)+2; b.style.width=need+'px';
+    const H=Math.ceil(document.getElementById('main-content').getBoundingClientRect().bottom+window.scrollY)+16;
+    const scale=Math.min(2, Math.sqrt(1.4e7/(need*H)));   // 手機 canvas 有上限，太長就自動降解析度
+    const canvas=await html2canvas(b,{scale, backgroundColor:'#ffffff', logging:false, useCORS:true,
+      width:need, height:H, windowWidth:need, windowHeight:H, x:0, y:0, scrollX:0, scrollY:0,
+      ignoreElements:el=>el.classList&&(el.classList.contains('toast')||el.classList.contains('mbg')||el.id==='pw-bg')});
+    canvas.toBlob(async blob=>{
+      if(!blob) return;
+      const buf=await blob.arrayBuffer();
+      window.parent.postMessage({type:'gurus-snap', buf, w:canvas.width, h:canvas.height}, '*', [buf]);
+    },'image/png');
+  }catch(e){ console.error('snap failed', e); }
+}
+
 /* ── 複製唯讀連結（一定帶著目前的 Room，避免對方開錯房間） ── */
 window.copyViewLink = async function(){
   const url = location.origin + location.pathname + '?room=' + ROOM + '&view=1';
@@ -1225,6 +1278,7 @@ function render(){
   g('sub').textContent = `共 ${ACT.length} 筆 · ${[...new Set(ACT.map(a=>a.date))].length} 天`;
   _cnt = {pastDays, pastRows, allDays, allRows};
   paintPast();
+  if(typeof scheduleSnap==='function') scheduleSnap();
 }
 /* 隱藏／顯示已過日期：只切 CSS，不重畫表格，畫面不會閃 */
 let _cnt = {pastDays:0,pastRows:0,allDays:0,allRows:0};
