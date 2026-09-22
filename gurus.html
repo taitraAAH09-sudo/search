@@ -93,6 +93,11 @@ table{width:100%;border-collapse:collapse;font-size:17.2px;}
 .desk-tbl td.tm{white-space:normal!important;line-height:1.35;}
 .desk-tbl td{overflow:hidden;}
 .esc-l{display:block;white-space:nowrap;}
+body.hide-past .day-block.past-day{display:none;}
+#all-past-msg{display:none;}
+body.hide-past.only-past #all-past-msg{display:flex;}
+.desk-tbl td.p-cell{padding-left:2px;padding-right:2px;}
+.desk-tbl td.p-cell .bdg{font-size:13px;padding:2px 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
 .desk-tbl td.lo{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;}
 .gl{display:block;padding-left:1.4em;text-indent:-1.4em;line-height:1.55;}
 .gl+.gl{margin-top:2px;}
@@ -1074,7 +1079,12 @@ window.togglePast = ()=>{
   hidePast=!hidePast;
   const el=g('sw-past'); el.classList.toggle('on',hidePast);
   g('sw-lbl').textContent = hidePast?'隱藏已過日期':'顯示所有日期';
-  render();
+  // 以畫面上第一個「沒過期」的日期當錨點，切換後維持它在原位，內容不會跳
+  const anchor=[...document.querySelectorAll('.day-block:not(.past-day)')]
+    .find(el=>el.getBoundingClientRect().bottom>0);
+  const before=anchor?anchor.getBoundingClientRect().top:0;
+  paintPast();
+  if(anchor){ const d=anchor.getBoundingClientRect().top-before; if(d) window.scrollBy(0,d); }
 };
 window.toggleGroup = gid=>{
   const el=g(gid), arr=g('a-'+gid);
@@ -1097,12 +1107,12 @@ function render(){
     grouped[a.date].push(a);
   });
 
-  let hiddenDays=0, shownRows=0, shownDays=0, html='';
+  let pastDays=0, pastRows=0, allDays=0, allRows=0, html='';
 
   order.forEach(date=>{
     const rows=grouped[date], st=dateStatus(date);
-    if(hidePast && st==='past'){ hiddenDays++; return; }
-    shownDays++; shownRows+=rows.length;
+    if(st==='past'){ pastDays++; pastRows+=rows.length; }
+    allDays++; allRows+=rows.length;
     const gid = 'g'+date.replace(/[^\w]/g,'_');
     const bTxt = st==='past'?'已過':st==='today'?'📅 今天':'即將';
 
@@ -1148,7 +1158,7 @@ function render(){
     }).join('');
 
     html += `
-    <div class="day-block">
+    <div class="day-block${st==='past'?' past-day':''}">
     <div class="dg-head" onclick="toggleGroup('${gid}')">
       <span class="dg-date">${esc(date)}</span>
       <span class="dg-cnt">${rows.length} 項</span>
@@ -1160,9 +1170,9 @@ function render(){
         <table style="width:100%;border-collapse:collapse;font-size:17.2px">
         <colgroup>
           ${DUAL_MODE?'<col style="width:64px">':''}
-          <col style="width:126px"><col style="width:200px"><col style="width:200px">
-          ${PEOPLE.map(()=>'<col style="width:64px">').join('')}
-          <col style="width:96px"><col style="width:300px"><col style="width:84px">
+          <col style="width:126px"><col style="width:190px"><col style="width:190px">
+          ${PEOPLE.map(()=>'<col style="width:84px">').join('')}
+          <col style="width:96px"><col style="width:260px"><col style="width:84px">
           <col style="width:100px"><col style="width:46px">
         </colgroup>
         <thead><tr>
@@ -1179,11 +1189,22 @@ function render(){
     </div>`;
   });
 
-  g('main-content').innerHTML = html || '<div class="loading" style="color:var(--tx3)">沒有符合的活動</div>';
-  g('st').textContent = shownRows;
-  g('sd').textContent = shownDays;
+  g('main-content').innerHTML = html
+    ? html + '<div class="loading" id="all-past-msg" style="color:var(--tx3)">這些日期都已經過了，打開「顯示所有日期」就看得到</div>'
+    : '<div class="loading" style="color:var(--tx3)">沒有符合的活動</div>';
   g('sub').textContent = `共 ${ACT.length} 筆 · ${[...new Set(ACT.map(a=>a.date))].length} 天`;
-  g('note').textContent = hidePast&&hiddenDays>0 ? `已隱藏 ${hiddenDays} 個過去日期` : '';
+  _cnt = {pastDays, pastRows, allDays, allRows};
+  paintPast();
+}
+/* 隱藏／顯示已過日期：只切 CSS，不重畫表格，畫面不會閃 */
+let _cnt = {pastDays:0,pastRows:0,allDays:0,allRows:0};
+function paintPast(){
+  const c=_cnt;
+  document.body.classList.toggle('hide-past', hidePast);
+  document.body.classList.toggle('only-past', c.allDays>0 && c.pastDays===c.allDays);
+  g('st').textContent = hidePast ? c.allRows-c.pastRows : c.allRows;
+  g('sd').textContent = hidePast ? c.allDays-c.pastDays : c.allDays;
+  g('note').textContent = hidePast&&c.pastDays>0 ? `已隱藏 ${c.pastDays} 個過去日期` : '';
 }
 
 /* ── MODAL ── */
