@@ -408,17 +408,17 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
     <div class="stat-lbl" data-i18n="stat_checkin">整體報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
   </div>
-  <div class="stat clickable" onclick="openCeremonyList()">
-    <div class="stat-num" id="st-ceremony" style="color:#C026D3;">0%</div>
+  <div class="stat clickable" onclick="openCeremonyList(null,'ceremony')">
+    <div class="stat-num" id="st-ceremony" style="color:#DC2626;">0%</div>
     <div class="stat-lbl" data-i18n="stat_ceremony">合影貴賓報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
     <div class="stat-tap" data-i18n="stat_tap">👆 點我看名單</div>
   </div>
-  <div class="stat clickable" onclick="openVenueView('photo')">
+  <div class="stat clickable" onclick="openCeremonyList(null,'photo')">
     <div class="stat-num" id="st-vphoto" style="color:#C026D3;">0%</div>
     <div class="stat-lbl" data-i18n="stat_vphoto">合影貴賓報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-vphoto-sub">0 / 0</div>
-    <div class="stat-tap" data-i18n="stat_tap_map">🗺 看全場席次圖</div>
+    <div class="stat-tap" data-i18n="stat_tap">👆 點我看名單</div>
   </div>
   <div class="stat clickable" onclick="openVenueView('call')">
     <div class="stat-num" id="st-vcall" style="color:#CA8A04;">0%</div>
@@ -478,7 +478,7 @@ const I18N = {
   ba_at_seat:(n,s)=>`${n}（目前座位 ${s}）`,
   ba_ambiguous:(v,n)=>`${v}（席次圖有 ${n} 位同名，請刪除後改用完整姓名重建）`,
   ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
-  stat_checkin:"整體報到率", stat_ceremony:"合影貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
+  stat_checkin:"整體報到率", stat_ceremony:"揭幕貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
   stat_tap:"👆 點我看名單",
   stat_vphoto:"合影貴賓報到率", stat_vcall:"唱名貴賓報到率", stat_tap_map:"🗺 看全場席次圖",
   vm_title_photo:"🗺 合影貴賓 · 全場席次圖", vm_title_call:"🗺 唱名貴賓 · 全場席次圖",
@@ -498,6 +498,8 @@ const I18N = {
   cer_tab_out:n=>`未報到 ${n}`, cer_tab_in:n=>`已報到 ${n}`, cer_tab_all:n=>`全部 ${n}`,
   cer_back:"← 回搜尋",
   cer_none_out:"🎉 合影貴賓全部到齊",
+  cer_title_c:"🎖 揭幕貴賓", cer_empty_c:"這場活動還沒有標記揭幕貴賓（請到席次圖系統標記）",
+  cer_map_title_c:"🗺 揭幕貴賓座位方陣", cer_none_out_c:"🎉 揭幕貴賓全部到齊", cer_none_in_c:"目前還沒有揭幕貴賓報到",
   cer_none_in:"目前還沒有合影貴賓報到",
   cer_empty:"這場活動還沒有標記任何合影貴賓（請到席次圖系統標記）",
   cer_arrived:"已報到",
@@ -599,7 +601,7 @@ const I18N = {
   ba_at_seat:(n,s)=>`${n} (currently at ${s})`,
   ba_ambiguous:(v,n)=>`${v} (${n} guests on the chart share this name — delete this and re-add with the full name)`,
   ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
-  stat_checkin:"Check-in rate", stat_ceremony:"Photo VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
+  stat_checkin:"Check-in rate", stat_ceremony:"Unveiling VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
   stat_tap:"👆 Tap for the list",
   stat_vphoto:"Photo VIP check-in", stat_vcall:"Roll-call VIP check-in", stat_tap_map:"🗺 Full seating map",
   vm_title_photo:"🗺 Photo-call VIPs · full map", vm_title_call:"🗺 Roll-call VIPs · full map",
@@ -619,6 +621,8 @@ const I18N = {
   cer_tab_out:n=>`Not in ${n}`, cer_tab_in:n=>`Checked in ${n}`, cer_tab_all:n=>`All ${n}`,
   cer_back:"← Back to search",
   cer_none_out:"🎉 Every photo-call VIP has checked in",
+  cer_title_c:"🎖 Unveiling VIPs", cer_empty_c:"No unveiling VIP is tagged for this event yet (tag them in the seating chart system)",
+  cer_map_title_c:"🗺 Unveiling seating grid", cer_none_out_c:"🎉 Every unveiling VIP has checked in", cer_none_in_c:"No unveiling VIP has checked in yet",
   cer_none_in:"No photo-call VIP has checked in yet",
   cer_empty:"No photo-call VIP is tagged for this event yet (tag them in the seating chart system)",
   cer_arrived:"CHECKED IN",
@@ -802,13 +806,15 @@ function updateStats(){
   const checkinCount=Object.keys(CHECKINS).length;
   const empty=total-filled;
 
-  const ceremonySeats=Object.keys(TAGS).filter(c=>tagLv(c)>=2&&DATA[c]);
+  const ceremonySeats=Object.keys(TAGS).filter(c=>tagLv(c)>=3&&DATA[c]);
   const ceremonyCheckin=ceremonySeats.filter(c=>CHECKINS[c]).length;
+  const photoSeats=Object.keys(TAGS).filter(c=>tagLv(c)>=2&&DATA[c]);
+  const photoCheckin=photoSeats.filter(c=>CHECKINS[c]).length;
   const callSeats=Object.keys(TAGS).filter(c=>tagLv(c)>=1&&DATA[c]);
   const callCheckin=callSeats.filter(c=>CHECKINS[c]).length;
   const pct=(a,b)=>b>0?Math.round(a/b*100):0;
-  document.getElementById('st-vphoto').textContent=pct(ceremonyCheckin,ceremonySeats.length)+'%';
-  document.getElementById('st-vphoto-sub').textContent=ceremonyCheckin+' / '+ceremonySeats.length;
+  document.getElementById('st-vphoto').textContent=pct(photoCheckin,photoSeats.length)+'%';
+  document.getElementById('st-vphoto-sub').textContent=photoCheckin+' / '+photoSeats.length;
   document.getElementById('st-vcall').textContent=pct(callCheckin,callSeats.length)+'%';
   document.getElementById('st-vcall-sub').textContent=callCheckin+' / '+callSeats.length;
   const ceremonyTotal=ceremonySeats.length;
@@ -1851,8 +1857,11 @@ window.editPhotoFromView=function(){
    🎬 合影貴賓：依席次圖順序排的相片牆
    ══════════════════════════════════════════════════════════════════ */
 let _cerFilter='out';   // out=未報到（預設）/ in=已報到 / all=全部
-window.openCeremonyList=function(f){
+let _cerKind='photo';   // ceremony=揭幕（只算揭幕）/ photo=合影（揭幕＋合影）
+const cerT=(k,...a)=>t(_cerKind==='ceremony'?k+'_c':k,...a);
+window.openCeremonyList=function(f,kind){
   if(!loaded) return;
+  if(kind&&kind!==_cerKind){ _cerKind=kind; _cerFilter='out'; }
   _cerFilter=f||_cerFilter;
   renderCeremonyList();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1869,7 +1878,7 @@ function seatOrderKey(code){
 }
 function ceremonySeats(){
   return Object.keys(TAGS)
-    .filter(c=>tagLv(c)>=2)
+    .filter(c=>tagLv(c)>=(_cerKind==='ceremony'?3:2)&&DATA[c])
     .sort((a,b)=>{
       const x=seatOrderKey(a), y=seatOrderKey(b);
       for(let i=0;i<4;i++){ if(x[i]!==y[i]) return x[i]-y[i]; }
@@ -1957,7 +1966,7 @@ function buildCerMap(seats){
   });
   let h=`<div class="cer-map">
     <div class="cer-map-head">
-      <span class="cer-map-title">${t('cer_map_title')}</span>
+      <span class="cer-map-title">${cerT('cer_map_title')}</span>
       <span class="cer-map-hint">${t('cer_map_hint')}</span>
       <span class="cer-map-lg"><span><i class="off"></i>${t('cer_map_off')}</span><span><i class="on"></i>${t('cer_map_on')}</span></span>
       <span class="cer-map-sz">
@@ -2087,16 +2096,16 @@ function renderCeremonyList(){
     <button class="cer-back" onclick="backToSearch()">${t('cer_back')}</button>
   </div>`;
 
-  if(!seats.length){ main.innerHTML=head+`<div class="no-result">${t('cer_empty')}</div>`; return; }
+  if(!seats.length){ main.innerHTML=head+`<div class="no-result">${cerT('cer_empty')}</div>`; return; }
   const map=buildCerMap(seats);      // 方陣永遠畫全部，不跟著上面的篩選跑
   const show=_cerFilter==='in'?inList:_cerFilter==='out'?outList:seats;   // 全部＝照席次圖順序
   if(!show.length){
-    main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?t('cer_none_out'):t('cer_none_in')}</div>`;
+    main.innerHTML=head+map+`<div class="no-result">${_cerFilter==='out'?cerT('cer_none_out'):cerT('cer_none_in')}</div>`;
     initCerDrag(); applyCerZoom();
     return;
   }
 
-  let html=head+map+`<div class="result-count">${t('cer_title')}　${show.length}</div><div class="cer-grid">`;
+  let html=head+map+`<div class="result-count">${cerT('cer_title')}　${show.length}</div><div class="cer-grid">`;
   show.forEach(code=>{
     const name=DATA[code]||t('lbl_empty_seat');
     const v=findVip(name);
@@ -2138,7 +2147,7 @@ function renderCeremonyList(){
    名單內的座位依標記上色亮燈、其他全灰；只供檢視，不能報到、不能改座位。
    點亮燈座位 → 下方出現照片卡，✎ 可編輯照片與聯絡人（跟合影相片牆同一套）
    ══════════════════════════════════════════════════════════════════ */
-let _vmKind='photo', _vmSel=null;
+let _vmKind='call', _vmSel=null;
 let _vmZoom=(function(){ try{ const v=parseFloat(localStorage.getItem('vmZoom')); if(v>=0.5&&v<=2.5) return v; }catch(e){} return 1; })();
 const vmMin=k=>k==='call'?1:2;
 window.openVenueView=function(kind){
@@ -2277,8 +2286,7 @@ function renderVenueView(fresh){
   const list=codes.filter(c=>DATA[c]&&tagLv(c)>=min);
   const inN=list.filter(c=>CHECKINS[c]).length;
   const head=`<div class="cer-bar">
-    <button class="cer-tab ${k==='photo'?'on':''}" onclick="openVenueView('photo')">${t('vm_tab_photo')}</button>
-    <button class="cer-tab ${k==='call'?'on':''}" onclick="openVenueView('call')">${t('vm_tab_call')}</button>
+    <span class="cer-tab on" style="cursor:default;">${t('vm_tab_call')}</span>
     <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-2);">${t('vm_count',inN,list.length)}</span>
     <button class="cer-back" onclick="backToSearch()">${t('cer_back')}</button>
   </div>`;
