@@ -55,7 +55,7 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .clear-btn.show { display:flex; }
 
 .stats-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:14px 16px; background:var(--white); border-bottom:1px solid var(--rule); }
-@media(min-width:480px){ .stats-bar { grid-template-columns:repeat(4,1fr); } }
+@media(min-width:480px){ .stats-bar { grid-template-columns:repeat(3,1fr); } }
 .stat { background:var(--bg); border-radius:10px; padding:10px 12px; text-align:center; border:1px solid var(--rule); }
 .stat-num { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; }
 .stat-lbl { font-size:10px; color:var(--ink-3); margin-top:1px; }
@@ -106,6 +106,50 @@ html[lang="en"] .badge-zone { font-size:11px; letter-spacing:-.01em; }
 html[lang="en"] .badge-seat { font-size:9.5px; }
 html[lang="en"] .checkin-btn { font-size:11.5px; padding:8px 10px; }
 html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
+/* ── 🗺 全場席次圖（合影／唱名）：名單內的座位亮燈，其他全灰；只供檢視 ── */
+.vm { margin:6px 16px 4px; background:var(--white); border:1px solid var(--rule); border-radius:14px; padding:12px 12px 14px; box-shadow:0 1px 5px rgba(0,0,0,0.05); --z:1; }
+@media(max-width:560px){ .vm { margin:6px 10px 4px; padding:10px 8px 12px; } }
+.vm-lg { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink-3); flex-wrap:wrap; }
+.vm-lg i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+.vm-lg .off { background:#E4E2DD; }
+.vm-lg .dn { opacity:.45; }
+.vm-scroll { overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; max-height:64vh; padding:2px 0 6px; }
+.vm-inner { width:max-content; margin:0 auto; }
+.vm-stage { margin:0 auto 10px; width:62%; min-width:120px; text-align:center; font-size:10px; letter-spacing:5px; color:var(--ink-3); background:var(--bg); border:1px solid var(--rule); border-radius:6px 6px 40% 40%/6px 6px 14px 14px; padding:4px 0; }
+.vm-zh, .vm-row { display:flex; align-items:center; gap:calc(10px * var(--z)); }
+.vm-row { margin-bottom:calc(3px * var(--z)); }
+.vm-zh { margin-bottom:4px; }
+.vm-rl { width:calc(18px * var(--z)); flex:0 0 auto; font-family:"DM Mono",monospace; font-size:9px; color:var(--ink-3); text-align:right; }
+.vm-zlbl { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); text-align:center; flex:0 0 auto; border-bottom:1.5px solid var(--rule); padding-bottom:2px; }
+.vm-zone { display:flex; gap:calc(2px * var(--z)); flex:0 0 auto; }
+.vs { width:calc(22px * var(--z)); height:calc(40px * var(--z)); border-radius:4px; background:#E4E2DD; flex:0 0 auto; position:relative; border:none; padding:0; }
+.vs.gap { visibility:hidden; }
+.vs.lit { cursor:pointer; color:#fff; font-family:"Noto Serif TC",serif; font-weight:700; font-size:calc(10px * var(--z)); line-height:1.02; writing-mode:vertical-rl; text-orientation:upright; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.18); }
+.vs.t-ceremony { background:#DC2626; }
+.vs.t-photo { background:#C026D3; }
+.vs.t-call { background:#FACC15; color:#1F2937; }
+.vs.lit.done { opacity:.45; }
+.vs.lit.done::after { content:"✓"; position:absolute; top:1px; right:1px; width:12px; height:12px; line-height:12px; border-radius:50%; background:#fff; color:#1A1A1A; font-size:9px; writing-mode:horizontal-tb; text-align:center; }
+.vs.sel { outline:3px solid var(--ink); outline-offset:1px; opacity:1 !important; z-index:3; }
+.vm-sect { font-size:10.5px; color:var(--ink-3); margin:4px 0 6px; text-align:center; letter-spacing:.05em; }
+.vm-trow { display:flex; gap:calc(12px * var(--z)); justify-content:center; margin-bottom:calc(8px * var(--z)); }
+.vm-table { position:relative; width:calc(112px * var(--z)); height:calc(112px * var(--z)); flex:0 0 auto; }
+.vm-tc { position:absolute; inset:24%; border-radius:50%; background:#EFEDE8; border:1px solid var(--rule); display:flex; align-items:center; justify-content:center; text-align:center; font-size:calc(9.5px * var(--z)); color:var(--ink-3); line-height:1.2; padding:2px; overflow:hidden; }
+.vm-table .vs { position:absolute; width:calc(24px * var(--z)); height:calc(24px * var(--z)); border-radius:50%; transform:translate(-50%,-50%); writing-mode:horizontal-tb; font-size:calc(8.5px * var(--z)); letter-spacing:-.02em; }
+.vm-table .vs.lit.done::after { top:-2px; right:-2px; }
+.vm-detail { padding:10px 16px 36px; }
+.vm-pick { text-align:center; color:var(--ink-3); font-size:13px; padding:18px 10px; line-height:1.7; }
+.vm-card { max-width:520px; margin:0 auto; background:var(--white); border:1px solid var(--rule); border-radius:14px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.07); display:flex; animation:slideIn .18s ease; }
+.vm-card .vm-ph { width:132px; flex:0 0 132px; aspect-ratio:1/1; background:var(--bg); position:relative; align-self:flex-start; }
+.vm-card .vm-ph img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
+.vm-card .vm-ph .cer-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:44px; color:#C8C4BC; }
+.vm-card .vm-bd { padding:10px 12px; display:flex; flex-direction:column; gap:5px; flex:1; min-width:0; }
+.vm-tag { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; color:#fff; margin-right:4px; }
+.vm-tag.t-ceremony { background:#DC2626; } .vm-tag.t-photo { background:#C026D3; } .vm-tag.t-call { background:#FACC15; color:#1F2937; }
+.vm-st { font-size:12px; font-weight:700; }
+.vm-st.in { color:var(--green); } .vm-st.out { color:var(--ink-3); }
+@media(max-width:380px){ .vm-card .vm-ph { width:104px; flex-basis:104px; } }
+
 /* ── 合影貴賓：席次圖式相片牆 ── */
 .stat.clickable { cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s; }
 .stat.clickable:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
@@ -340,6 +384,8 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
       </div>
       <div class="wk-label" data-i18n="wk_name_zh">姓名（中）＊必填，用來對應席次圖</div>
       <input type="text" id="wk-name-zh" class="wk-input" autocomplete="off" onchange="wikiTouch(true)">
+      <div class="wk-label" data-i18n="wk_contact">聯絡人（選填：秘書、隨扈、接待窗口）</div>
+      <input type="text" id="wk-contact" class="wk-input" autocomplete="off" oninput="wikiTouch()" onblur="wikiTouch(true)">
       <div class="wk-label" data-i18n="wk_phone">電話／手機（選填，卡片上可直接點撥）</div>
       <input type="tel" id="wk-phone" class="wk-input" autocomplete="off" inputmode="tel" oninput="wikiTouch()" onblur="wikiTouch(true)">
       <div class="wk-label" data-i18n="wk_note">聯絡備註（選填，隨便寫：LINE、隨行人員、接待窗口、要接哪台車…）</div>
@@ -360,10 +406,22 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
   </div>
   <div class="stat clickable" onclick="openCeremonyList()">
-    <div class="stat-num" id="st-ceremony" style="color:#E11D48;">0%</div>
+    <div class="stat-num" id="st-ceremony" style="color:#C026D3;">0%</div>
     <div class="stat-lbl" data-i18n="stat_ceremony">合影貴賓報到率</div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
     <div class="stat-tap" data-i18n="stat_tap">👆 點我看名單</div>
+  </div>
+  <div class="stat clickable" onclick="openVenueView('photo')">
+    <div class="stat-num" id="st-vphoto" style="color:#C026D3;">0%</div>
+    <div class="stat-lbl" data-i18n="stat_vphoto">合影貴賓報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-vphoto-sub">0 / 0</div>
+    <div class="stat-tap" data-i18n="stat_tap_map">🗺 看全場席次圖</div>
+  </div>
+  <div class="stat clickable" onclick="openVenueView('call')">
+    <div class="stat-num" id="st-vcall" style="color:#CA8A04;">0%</div>
+    <div class="stat-lbl" data-i18n="stat_vcall">唱名貴賓報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-vcall-sub">0 / 0</div>
+    <div class="stat-tap" data-i18n="stat_tap_map">🗺 看全場席次圖</div>
   </div>
   <div class="stat">
     <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
@@ -419,6 +477,19 @@ const I18N = {
   ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
   stat_checkin:"整體報到率", stat_ceremony:"合影貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
   stat_tap:"👆 點我看名單",
+  stat_vphoto:"合影貴賓報到率", stat_vcall:"唱名貴賓報到率", stat_tap_map:"🗺 看全場席次圖",
+  vm_title_photo:"🗺 合影貴賓 · 全場席次圖", vm_title_call:"🗺 唱名貴賓 · 全場席次圖",
+  vm_tab_photo:"📸 合影", vm_tab_call:"🎤 唱名",
+  vm_count:(a,b)=>`已報到 ${a} / ${b}`,
+  vm_hint:"只供檢視；點亮著的座位看照片與聯絡人。可上下左右滑動，− ＋ 每次調 10%",
+  vm_lg_on:"未報到", vm_lg_done:"已報到", vm_lg_off:"非名單",
+  vm_stage:"舞台 STAGE", vm_head:"主桌區",
+  vm_pick:"👆 點上面亮燈的座位，這裡會出現照片、聯絡人與電話",
+  vm_empty_photo:"這場活動還沒有標記合影貴賓（揭幕、合影都算）", vm_empty_call:"這場活動還沒有標記唱名貴賓（揭幕、合影、唱名都算）",
+  vm_tag_ceremony:"揭幕", vm_tag_photo:"合影", vm_tag_call:"唱名",
+  vm_in:t=>`✓ 已報到 ${t||''}`, vm_out:"尚未報到",
+  lbl_contact:"聯絡人",
+  wk_contact:"聯絡人（選填：秘書、隨扈、接待窗口）",
   btn_wiki_admin:"👤 貴賓照片／聯絡方式",
   cer_title:"🎬 合影貴賓",
   cer_tab_out:n=>`未報到 ${n}`, cer_tab_in:n=>`已報到 ${n}`, cer_tab_all:n=>`全部 ${n}`,
@@ -527,6 +598,19 @@ const I18N = {
   ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
   stat_checkin:"Check-in rate", stat_ceremony:"Photo VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
   stat_tap:"👆 Tap for the list",
+  stat_vphoto:"Photo VIP check-in", stat_vcall:"Roll-call VIP check-in", stat_tap_map:"🗺 Full seating map",
+  vm_title_photo:"🗺 Photo-call VIPs · full map", vm_title_call:"🗺 Roll-call VIPs · full map",
+  vm_tab_photo:"📸 Photo", vm_tab_call:"🎤 Roll call",
+  vm_count:(a,b)=>`Checked in ${a} / ${b}`,
+  vm_hint:"View only — tap a lit seat for photo & contact. Scroll in any direction; − ＋ resize by 10%",
+  vm_lg_on:"Not in", vm_lg_done:"Checked in", vm_lg_off:"Not on list",
+  vm_stage:"STAGE", vm_head:"Head tables",
+  vm_pick:"👆 Tap a lit seat above to see the photo, contact person and phone",
+  vm_empty_photo:"No photo-call VIP is tagged yet (unveiling and photo both count)", vm_empty_call:"No roll-call VIP is tagged yet (unveiling, photo and roll call all count)",
+  vm_tag_ceremony:"Unveiling", vm_tag_photo:"Photo", vm_tag_call:"Roll call",
+  vm_in:t=>`✓ Checked in ${t||''}`, vm_out:"Not checked in",
+  lbl_contact:"Contact",
+  wk_contact:"Contact person (optional: secretary, aide, liaison)",
   btn_wiki_admin:"👤 VIP photos & contacts",
   cer_title:"🎬 Photo-call VIPs",
   cer_tab_out:n=>`Not in ${n}`, cer_tab_in:n=>`Checked in ${n}`, cer_tab_all:n=>`All ${n}`,
@@ -691,7 +775,10 @@ function applyEventTitle(){
 }
 applyEventTitle();
 
-let DATA={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
+let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
+// 標記階層：揭幕 ⊃ 合影 ⊃ 唱名（席次圖系統 tags2026 只存最高那一層）
+const TAG_LV={ceremony:3, photo:2, call:1};
+function tagLv(c){ return TAG_LV[TAGS[c]]||0; }
 let loaded=false, _lastMain=null;   // _lastMain：記住畫面上最後一次渲染，切語言時原地重繪
 
 function setConn(ok){
@@ -712,8 +799,15 @@ function updateStats(){
   const checkinCount=Object.keys(CHECKINS).length;
   const empty=total-filled;
 
-  const ceremonySeats=Object.keys(TAGS).filter(c=>TAGS[c]==='ceremony'||TAGS[c]==='photo');
+  const ceremonySeats=Object.keys(TAGS).filter(c=>tagLv(c)>=2&&DATA[c]);
   const ceremonyCheckin=ceremonySeats.filter(c=>CHECKINS[c]).length;
+  const callSeats=Object.keys(TAGS).filter(c=>tagLv(c)>=1&&DATA[c]);
+  const callCheckin=callSeats.filter(c=>CHECKINS[c]).length;
+  const pct=(a,b)=>b>0?Math.round(a/b*100):0;
+  document.getElementById('st-vphoto').textContent=pct(ceremonyCheckin,ceremonySeats.length)+'%';
+  document.getElementById('st-vphoto-sub').textContent=ceremonyCheckin+' / '+ceremonySeats.length;
+  document.getElementById('st-vcall').textContent=pct(callCheckin,callSeats.length)+'%';
+  document.getElementById('st-vcall-sub').textContent=callCheckin+' / '+callSeats.length;
   const ceremonyTotal=ceremonySeats.length;
 
   const checkinPct=filled>0?Math.round(checkinCount/filled*100):0;
@@ -733,16 +827,20 @@ function updateStats(){
     now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
 }
 
-onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
+function rebuildData(){
   DATA={};
-  const d=snap.val()||{};
-  Object.entries(d).forEach(([c,n])=>DATA[c]=n||'');
+  Object.entries(MASTER).forEach(([c,n])=>DATA[c]=n||'');
+  Object.entries(ASGN).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+}
+onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
+  MASTER=snap.val()||{};
+  rebuildData();
   if(loaded){ updateStats(); refreshMain(); }
 },()=>setConn(false));
 
 onValue(ref(db,PROJECT_ID+'/assignments2026'),snap=>{
-  const d=snap.val()||{};
-  Object.entries(d).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+  ASGN=snap.val()||{};
+  rebuildData();
   if(loaded){ updateStats(); refreshMain(); }
 });
 
@@ -1678,6 +1776,7 @@ function findVip(seatName){
       photo:(loc&&loc.photo)||wikiPhoto||cache||null,
       wikiPhoto:wikiPhoto,
       phone:(loc&&loc.phone)||'',
+      contact:(loc&&loc.contact)||'',
       note:(loc&&loc.note)||'',
       hasLocal:!!loc,
       sameName:(loc&&loc.photo)?0:sameName,      // 本系統已指定照片就不用再警告同名
@@ -1733,7 +1832,7 @@ window.showPhotoView=function(i){
   if(!v||!v.photo) return;
   document.getElementById('pv-img').src=v.photo;
   document.getElementById('pv-name').innerHTML=_esc(c.name||'');
-  const sub=[v.phone?'📞 '+v.phone:'',v.note||''].filter(Boolean).map(_esc).join('<br>');
+  const sub=[v.contact?'👤 '+t('lbl_contact')+'：'+v.contact:'',v.phone?'📞 '+v.phone:'',v.note||''].filter(Boolean).map(_esc).join('<br>');
   document.getElementById('pv-sub').innerHTML=sub;
   _pvName=c.name;
   document.getElementById('photo-view').classList.add('show');
@@ -1767,7 +1866,7 @@ function seatOrderKey(code){
 }
 function ceremonySeats(){
   return Object.keys(TAGS)
-    .filter(c=>(TAGS[c]==='ceremony'||TAGS[c]==='photo'))
+    .filter(c=>tagLv(c)>=2)
     .sort((a,b)=>{
       const x=seatOrderKey(a), y=seatOrderKey(b);
       for(let i=0;i<4;i++){ if(x[i]!==y[i]) return x[i]-y[i]; }
@@ -2007,6 +2106,7 @@ function renderCeremonyList(){
       : `<div class="cer-ph">👤</div>`;
     const stamp=done?`<div class="cer-stamp"><div class="tick">✓</div><div class="txt">${t('cer_arrived')}</div>${time?`<div class="tm">${_esc(time)}</div>`:''}</div>`:'';
     const contact=[];
+    if(v&&v.contact) contact.push(`👤 ${_esc(v.contact)}`);
     if(v&&v.phone) contact.push(`<a href="tel:${_esc(String(v.phone).replace(/[^0-9+]/g,''))}" onclick="event.stopPropagation();">📞 ${_esc(v.phone)}</a>`);
     if(v&&v.note) contact.push(_esc(v.note).replace(/\n/g,'<br>'));
     html+=`<div class="cer-card ${done?'done':''}" id="cer-card-${_esc(code)}">
@@ -2028,6 +2128,167 @@ function renderCeremonyList(){
   });
   main.innerHTML=html+'</div>';
   initCerDrag(); applyCerZoom();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🗺 全場席次圖：合影（揭幕＋合影）／唱名（揭幕＋合影＋唱名）
+   名單內的座位依標記上色亮燈、其他全灰；只供檢視，不能報到、不能改座位。
+   點亮燈座位 → 下方出現照片卡，✎ 可編輯照片與聯絡人（跟合影相片牆同一套）
+   ══════════════════════════════════════════════════════════════════ */
+let _vmKind='photo', _vmSel=null;
+let _vmZoom=(function(){ try{ const v=parseFloat(localStorage.getItem('vmZoom')); if(v>=0.5&&v<=2.5) return v; }catch(e){} return 1; })();
+const vmMin=k=>k==='call'?1:2;
+window.openVenueView=function(kind){
+  if(!loaded) return;
+  if(kind!==_vmKind) _vmSel=null;
+  _vmKind=kind||_vmKind;
+  renderVenueView(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+window.setVmZoom=function(step){
+  let z=(step===0)?1:Math.round((_vmZoom+step)*100)/100;
+  _vmZoom=Math.min(2.5,Math.max(0.5,z));
+  try{ localStorage.setItem('vmZoom',String(_vmZoom)); }catch(e){}
+  paintVmZoom();
+};
+function paintVmZoom(){
+  const m=document.querySelector('.vm'); if(!m) return;
+  m.style.setProperty('--z',String(_vmZoom));
+  m.querySelector('.cer-zoom-val').textContent=Math.round(_vmZoom*100)+'%';
+  m.querySelector('[data-z="dec"]').disabled=_vmZoom<=0.501;
+  m.querySelector('[data-z="inc"]').disabled=_vmZoom>=2.499;
+}
+function vmLabel(code,round){
+  const raw=DATA[code]||''; const q=splitOrgName(raw);
+  let nm=(q.nm||raw).replace(/\s+/g,'');
+  // 格子太小，只留姓名：把尾巴的職稱拿掉（「王小明部長」→「王小明」）
+  const ttl=CER_TITLES.find(x=>nm.endsWith(x)&&nm.length>x.length);
+  if(ttl) nm=nm.slice(0,nm.length-ttl.length);
+  return round?nm.slice(0,2):nm.slice(0,4);
+}
+function vmSeat(code,round,style){
+  const lv=tagLv(code), on=!!DATA[code]&&lv>=vmMin(_vmKind);
+  if(!on) return `<div class="vs"${style?` style="${style}"`:''}></div>`;
+  const done=!!CHECKINS[code];
+  return `<button type="button" class="vs lit t-${TAGS[code]}${done?' done':''}${_vmSel===code?' sel':''}"${style?` style="${style}"`:''}
+    onclick="vmPick('${_esc(code)}')" title="${_esc(DATA[code])}　${_esc(parseSeatCode(code).detail)}">${_esc(vmLabel(code,round))}</button>`;
+}
+function vmGrid(codes){
+  const Z={}; let maxRow=0;
+  codes.forEach(c=>{ const m=c.match(/^([A-Za-z]+)(\d+)-(\d+)$/); if(!m) return;
+    const z=m[1].toUpperCase(), r=+m[2], n=+m[3];
+    Z[z]=Math.max(Z[z]||0,n); maxRow=Math.max(maxRow,r); });
+  const zones=Object.keys(Z).sort(); if(!zones.length) return '';
+  const set=new Set(codes);
+  // 區名用第一排實際寬度：每格 22 + 間距 2（隨縮放）
+  let h=`<div class="vm-zh"><div class="vm-rl"></div>`+zones.map(z=>
+    `<div class="vm-zlbl" style="width:calc(${Z[z]*22+(Z[z]-1)*2}px * var(--z));">${_esc(t('cer_map_zone',z))}</div>`).join('')+`</div>`;
+  for(let r=1;r<=maxRow;r++){
+    h+=`<div class="vm-row"><div class="vm-rl">${r}</div>`;
+    zones.forEach(z=>{
+      h+='<div class="vm-zone">';
+      for(let n=1;n<=Z[z];n++){ const c=`${z}${r}-${n}`; h+=set.has(c)?vmSeat(c,false):'<div class="vs gap"></div>'; }
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+function vmRound(codes){
+  const T={};
+  codes.forEach(c=>{ const tc=c.split('-')[0]; (T[tc]=T[tc]||[]).push(c); });
+  const num=s=>{ const m=s.match(/T(\d+)/)||s.match(/(\d+)/); return m?+m[1]:0; };
+  const heads=Object.keys(T).filter(k=>/^H/.test(k)).sort((a,b)=>num(a)-num(b));
+  const rows={};
+  Object.keys(T).filter(k=>!/^H/.test(k)).forEach(k=>{ const m=k.match(/^R(\d+)_/); const r=m?+m[1]:1; (rows[r]=rows[r]||[]).push(k); });
+  const table=(tc,isHead)=>{
+    const seats=T[tc].sort((a,b)=>+a.split('-')[1]-+b.split('-')[1]);
+    const nm=TABLE_NAMES[tc]?TABLE_NAMES[tc].replace(/\.+$/,'').trim():'';
+    const lbl=nm?t('cer_map_table',nm):(isHead?t('cer_map_head'):t('cer_map_table',num(tc)));
+    let h=`<div class="vm-table"><div class="vm-tc">${_esc(lbl)}</div>`;
+    seats.forEach((c,i)=>{
+      const a=(i*360/seats.length-90)*Math.PI/180;
+      h+=vmSeat(c,true,`left:${(50+40*Math.cos(a)).toFixed(2)}%;top:${(50+40*Math.sin(a)).toFixed(2)}%;`);
+    });
+    return h+'</div>';
+  };
+  let h='';
+  if(heads.length) h+=`<div class="vm-sect">👑 ${t('vm_head')}</div><div class="vm-trow">${heads.map(k=>table(k,true)).join('')}</div>`;
+  Object.keys(rows).sort((a,b)=>a-b).forEach(r=>{
+    h+=`<div class="vm-trow">${rows[r].sort((a,b)=>num(a)-num(b)).map(k=>table(k,false)).join('')}</div>`;
+  });
+  return h;
+}
+function vmDetail(){
+  const code=_vmSel;
+  if(!code||!DATA[code]||tagLv(code)<vmMin(_vmKind)) return `<div class="vm-pick">${t('vm_pick')}</div>`;
+  const name=DATA[code], v=findVip(name), done=!!CHECKINS[code];
+  const i=ctx({name:name,code:code}), p=parseSeatCode(code);
+  const warn=(v&&(v.sameName>1||v.fuzzy))?' class="warnring"':'';
+  const photo=(v&&v.photo)?`<img${warn} src="${v.photo}" alt="" onclick="showPhotoView(${i})">`:`<div class="cer-ph">👤</div>`;
+  const ct=[];
+  if(v&&v.contact) ct.push(`👤 ${t('lbl_contact')}：${_esc(v.contact)}`);
+  if(v&&v.phone) ct.push(`<a href="tel:${_esc(String(v.phone).replace(/[^0-9+]/g,''))}">📞 ${_esc(v.phone)}</a>`);
+  if(v&&v.note) ct.push(_esc(v.note).replace(/\n/g,'<br>'));
+  const lv=tagLv(code);
+  const chips=['ceremony','photo','call'].filter(k=>TAG_LV[k]<=lv).map(k=>`<span class="vm-tag t-${k}">${t('vm_tag_'+k)}</span>`).join('');
+  return `<div class="vm-card" id="vm-card">
+    <div class="vm-ph">${photo}</div>
+    <div class="vm-bd">
+      <div class="cer-nm">${_esc(name)}</div>
+      <div class="cer-code">${_esc(p.detail)}　${_esc(code)}</div>
+      <div>${chips}</div>
+      <div class="vm-st ${done?'in':'out'}">${done?t('vm_in',CHECKINS[code].time):t('vm_out')}</div>
+      ${ct.length?`<div class="cer-ct">${ct.join('<br>')}</div>`:''}
+      ${(v&&v.sameName>1)?`<div class="cer-warn">${t('cer_same_name',v.sameName)}</div>`:''}
+      ${(v&&v.fuzzy)?`<div class="cer-warn">${t('cer_fuzzy_match')}</div>`:''}
+      <div class="cer-btns"><button class="cer-edit" style="flex:1;" onclick="openWikiAdminFor(${i})">${t('cer_addphoto')}</button></div>
+    </div>
+  </div>`;
+}
+window.vmPick=function(code){
+  _vmSel=(_vmSel===code)?null:code;
+  document.querySelectorAll('.vm .vs.sel').forEach(el=>el.classList.remove('sel'));
+  if(_vmSel){ const el=[...document.querySelectorAll('.vm .vs.lit')].find(x=>x.getAttribute('onclick')===`vmPick('${code}')`); if(el) el.classList.add('sel'); }
+  const box=document.getElementById('vm-detail'); if(!box) return;
+  box.innerHTML=vmDetail();
+  if(_vmSel){ const c=document.getElementById('vm-card'); if(c) c.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+};
+function renderVenueView(fresh){
+  const oldSc=document.querySelector('.vm-scroll');
+  const keep=(!fresh&&oldSc)?[oldSc.scrollLeft,oldSc.scrollTop]:null;   // 資料更新時畫面不要跳
+  _lastMain=()=>renderVenueView(false);
+  const main=document.getElementById('main');
+  const k=_vmKind, min=vmMin(k);
+  const codes=Object.keys(DATA);
+  const list=codes.filter(c=>DATA[c]&&tagLv(c)>=min);
+  const inN=list.filter(c=>CHECKINS[c]).length;
+  const head=`<div class="cer-bar">
+    <button class="cer-tab ${k==='photo'?'on':''}" onclick="openVenueView('photo')">${t('vm_tab_photo')}</button>
+    <button class="cer-tab ${k==='call'?'on':''}" onclick="openVenueView('call')">${t('vm_tab_call')}</button>
+    <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-2);">${t('vm_count',inN,list.length)}</span>
+    <button class="cer-back" onclick="backToSearch()">${t('cer_back')}</button>
+  </div>`;
+  if(!list.length){ main.innerHTML=head+`<div class="no-result">${t(k==='call'?'vm_empty_call':'vm_empty_photo')}</div>`; return; }
+  const round=codes.some(c=>/_T|^H\d|^T\d/.test(c));
+  const lgc=k==='call'?'t-call':'t-photo';
+  const body=round?vmRound(codes):vmGrid(codes);
+  main.innerHTML=head+`<div class="vm" style="--z:${_vmZoom}">
+    <div class="cer-map-head">
+      <span class="cer-map-title">${t(k==='call'?'vm_title_call':'vm_title_photo')}</span>
+      <span class="cer-map-hint">${t('vm_hint')}</span>
+      <span class="vm-lg"><span><i class="vs ${lgc}" style="width:11px;height:11px;"></i>${t('vm_lg_on')}</span><span><i class="vs ${lgc} dn" style="width:11px;height:11px;"></i>${t('vm_lg_done')}</span><span><i class="off"></i>${t('vm_lg_off')}</span></span>
+      <span class="cer-map-sz">
+        <button class="cer-sz" data-z="dec" onclick="setVmZoom(-0.1)" title="${t('cer_map_sz_s')}">−</button>
+        <span class="cer-zoom-val" onclick="setVmZoom(0)" title="${t('cer_map_sz_r')}">100%</span>
+        <button class="cer-sz" data-z="inc" onclick="setVmZoom(0.1)" title="${t('cer_map_sz_l')}">＋</button>
+      </span>
+    </div>
+    <div class="vm-scroll"><div class="vm-inner"><div class="vm-stage">${t('vm_stage')}</div>${body}</div></div>
+  </div>
+  <div class="vm-detail" id="vm-detail">${vmDetail()}</div>`;
+  paintVmZoom();
+  if(keep){ const sc=document.querySelector('.vm-scroll'); if(sc){ sc.scrollLeft=keep[0]; sc.scrollTop=keep[1]; } }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2064,7 +2325,7 @@ window.wikiBackToList=function(){
 /* 清單：本系統的在前（可編輯內容較完整），一覽表只出現在搜尋結果供補照片 */
 function mergedContacts(){
   const out=[];
-  Object.entries(LOCAL).forEach(([k,v])=>out.push({key:k,name:v.name||k,photo:v.photo||null,phone:v.phone||'',note:v.note||'',src:'local'}));
+  Object.entries(LOCAL).forEach(([k,v])=>out.push({key:k,name:v.name||k,photo:v.photo||v.photoCache||null,phone:v.phone||'',contact:v.contact||'',note:v.note||'',src:'local'}));
   const seen=new Set(out.map(x=>x.key));
   WIKI.forEach(r=>{
     const nm=r.nameZh||r.nameEn; if(!nm) return;
@@ -2088,7 +2349,7 @@ window.wikiAdminSearch=function(){
   }
   const terms=kw.split(/\s+/).filter(Boolean);
   const hit=mergedContacts().filter(r=>{
-    const hay=[r.name,r.phone,r.note].filter(Boolean).join(' ').toLowerCase();
+    const hay=[r.name,r.contact,r.phone,r.note].filter(Boolean).join(' ').toLowerCase();
     const flat=_wnorm(hay);
     return terms.every(x=>hay.includes(x)||flat.includes(_wnorm(x)));
   }).slice(0,40);
@@ -2096,7 +2357,7 @@ window.wikiAdminSearch=function(){
   box.innerHTML=hit.map(r=>{
     const i=ctx({key:r.key});
     const pic=r.photo?`<img src="${r.photo}" alt="">`:`<div class="wk-noimg">👤</div>`;
-    const sub=[r.phone,(r.note||'').split('\n')[0]].filter(Boolean).join('　');
+    const sub=[r.contact,r.phone,(r.note||'').split('\n')[0]].filter(Boolean).join('　');
     return `<div class="wk-item" onclick="wikiEditByCtx(${i})">
       ${pic}
       <div style="flex:1;min-width:0;">
@@ -2127,6 +2388,7 @@ window.wikiNewRecord=function(){
   _wkShowForm();
   document.getElementById('wk-form-title').textContent=t('wk_form_new');
   document.getElementById('wk-name-zh').value=(document.getElementById('wk-search').value||'').trim();
+  document.getElementById('wk-contact').value='';
   document.getElementById('wk-phone').value='';
   document.getElementById('wk-note').value='';
   document.getElementById('wk-del').style.display='none';
@@ -2144,6 +2406,7 @@ function wikiEditKey(key,rec){
   const nm=(loc&&loc.name)||(rec&&rec.name)||key;
   document.getElementById('wk-form-title').textContent=t('wk_form_edit',nm);
   document.getElementById('wk-name-zh').value=nm;
+  document.getElementById('wk-contact').value=(loc&&loc.contact)||'';
   document.getElementById('wk-phone').value=(loc&&loc.phone)||'';
   document.getElementById('wk-note').value=(loc&&loc.note)||'';
   document.getElementById('wk-del').style.display=loc?'block':'none';
@@ -2204,6 +2467,7 @@ async function _wikiPersist(auto){
   const wp=(function(){ const v=findVip(name); return (v&&v.wikiPhoto)||null; })();
   const rec={
     name:name,
+    contact:document.getElementById('wk-contact').value.trim(),
     phone:document.getElementById('wk-phone').value.trim(),
     note:document.getElementById('wk-note').value.trim(),
     photo:_wkPhotoDirty?(_wkPhoto||null):(old.photo||null),   // 沒自己換過就不覆蓋，照片仍跟著一覽表走
