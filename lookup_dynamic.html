@@ -122,20 +122,23 @@ html[lang="en"] .stat-lbl { font-size:9.5px; line-height:1.35; }
 .vm-rl { width:calc(18px * var(--z)); flex:0 0 auto; font-family:"DM Mono",monospace; font-size:9px; color:var(--ink-3); text-align:right; }
 .vm-zlbl { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); text-align:center; flex:0 0 auto; border-bottom:1.5px solid var(--rule); padding-bottom:2px; }
 .vm-zone { display:flex; gap:calc(2px * var(--z)); flex:0 0 auto; }
-.vs { width:calc(22px * var(--z)); height:calc(40px * var(--z)); border-radius:4px; background:#E4E2DD; flex:0 0 auto; position:relative; border:none; padding:0; }
+.vs { box-sizing:border-box; width:calc(22px * var(--z)); min-width:0; max-width:calc(22px * var(--z)); height:calc(40px * var(--z)); border-radius:4px; background:#E4E2DD; flex:0 0 auto; position:relative; border:none; padding:0; margin:0; overflow:hidden; }
 .vs.gap { visibility:hidden; }
-.vs.lit { cursor:pointer; color:#fff; font-family:"Noto Serif TC",serif; font-weight:700; font-size:calc(10px * var(--z)); line-height:1.02; writing-mode:vertical-rl; text-orientation:upright; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.18); }
+/* 亮燈格子的尺寸完全跟灰格一樣：字放在裡面的 span，字再長也只會被裁掉，不會把格子撐寬 */
+.vs.lit { cursor:pointer; color:#fff; font-family:"Noto Serif TC",serif; font-weight:700; font-size:calc(10px * var(--z)); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.18); -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+.vs .vt { display:block; writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap; line-height:1.02; letter-spacing:0; max-height:100%; overflow:hidden; pointer-events:none; }
 .vs.t-ceremony { background:#DC2626; }
 .vs.t-photo { background:#C026D3; }
 .vs.t-call { background:#FACC15; color:#1F2937; }
 .vs.lit.done { opacity:.45; }
-.vs.lit.done::after { content:"✓"; position:absolute; top:1px; right:1px; width:12px; height:12px; line-height:12px; border-radius:50%; background:#fff; color:#1A1A1A; font-size:9px; writing-mode:horizontal-tb; text-align:center; }
-.vs.sel { outline:3px solid var(--ink); outline-offset:1px; opacity:1 !important; z-index:3; }
+.vs.lit.done::after { content:"✓"; position:absolute; top:1px; right:1px; width:11px; height:11px; line-height:11px; border-radius:50%; background:#fff; color:#1A1A1A; font-size:8px; text-align:center; }
+.vs.sel { box-shadow:inset 0 0 0 2.5px #1A1A1A, 0 0 0 2px #fff; opacity:1 !important; z-index:3; }
 .vm-sect { font-size:10.5px; color:var(--ink-3); margin:4px 0 6px; text-align:center; letter-spacing:.05em; }
 .vm-trow { display:flex; gap:calc(12px * var(--z)); justify-content:center; margin-bottom:calc(8px * var(--z)); }
 .vm-table { position:relative; width:calc(112px * var(--z)); height:calc(112px * var(--z)); flex:0 0 auto; }
 .vm-tc { position:absolute; inset:24%; border-radius:50%; background:#EFEDE8; border:1px solid var(--rule); display:flex; align-items:center; justify-content:center; text-align:center; font-size:calc(9.5px * var(--z)); color:var(--ink-3); line-height:1.2; padding:2px; overflow:hidden; }
-.vm-table .vs { position:absolute; width:calc(24px * var(--z)); height:calc(24px * var(--z)); border-radius:50%; transform:translate(-50%,-50%); writing-mode:horizontal-tb; font-size:calc(8.5px * var(--z)); letter-spacing:-.02em; }
+.vm-table .vs { position:absolute; width:calc(24px * var(--z)); max-width:calc(24px * var(--z)); height:calc(24px * var(--z)); border-radius:50%; transform:translate(-50%,-50%); font-size:calc(8.5px * var(--z)); }
+.vm-table .vs .vt { writing-mode:horizontal-tb; letter-spacing:-.02em; }
 .vm-table .vs.lit.done::after { top:-2px; right:-2px; }
 .vm-detail { padding:10px 16px 36px; }
 .vm-pick { text-align:center; color:var(--ink-3); font-size:13px; padding:18px 10px; line-height:1.7; }
@@ -2157,6 +2160,13 @@ function paintVmZoom(){
   m.querySelector('.cer-zoom-val').textContent=Math.round(_vmZoom*100)+'%';
   m.querySelector('[data-z="dec"]').disabled=_vmZoom<=0.501;
   m.querySelector('[data-z="inc"]').disabled=_vmZoom>=2.499;
+  fitVmZones();
+}
+/* 區名那條線的寬度用第一排實際量到的寬度釘死，縮放後也不會跟格子錯開 */
+function fitVmZones(){
+  const row=document.querySelector('.vm .vm-row'); if(!row) return;
+  const zs=row.querySelectorAll('.vm-zone'), ls=document.querySelectorAll('.vm .vm-zh .vm-zlbl');
+  zs.forEach((z,i)=>{ if(ls[i]) ls[i].style.width=z.getBoundingClientRect().width+'px'; });
 }
 function vmLabel(code,round){
   const raw=DATA[code]||''; const q=splitOrgName(raw);
@@ -2170,8 +2180,8 @@ function vmSeat(code,round,style){
   const lv=tagLv(code), on=!!DATA[code]&&lv>=vmMin(_vmKind);
   if(!on) return `<div class="vs"${style?` style="${style}"`:''}></div>`;
   const done=!!CHECKINS[code];
-  return `<button type="button" class="vs lit t-${TAGS[code]}${done?' done':''}${_vmSel===code?' sel':''}"${style?` style="${style}"`:''}
-    onclick="vmPick('${_esc(code)}')" title="${_esc(DATA[code])}　${_esc(parseSeatCode(code).detail)}">${_esc(vmLabel(code,round))}</button>`;
+  return `<div role="button" class="vs lit t-${TAGS[code]}${done?' done':''}${_vmSel===code?' sel':''}"${style?` style="${style}"`:''}
+    data-code="${_esc(code)}" onclick="vmPick('${_esc(code)}')" title="${_esc(DATA[code])}　${_esc(parseSeatCode(code).detail)}"><span class="vt">${_esc(vmLabel(code,round))}</span></div>`;
 }
 function vmGrid(codes){
   const Z={}; let maxRow=0;
@@ -2252,7 +2262,7 @@ function vmDetail(){
 window.vmPick=function(code){
   _vmSel=(_vmSel===code)?null:code;
   document.querySelectorAll('.vm .vs.sel').forEach(el=>el.classList.remove('sel'));
-  if(_vmSel){ const el=[...document.querySelectorAll('.vm .vs.lit')].find(x=>x.getAttribute('onclick')===`vmPick('${code}')`); if(el) el.classList.add('sel'); }
+  if(_vmSel){ const el=[...document.querySelectorAll('.vm .vs.lit')].find(x=>x.dataset.code===code); if(el) el.classList.add('sel'); }
   const box=document.getElementById('vm-detail'); if(!box) return;
   box.innerHTML=vmDetail();
   if(_vmSel){ const c=document.getElementById('vm-card'); if(c) c.scrollIntoView({behavior:'smooth',block:'nearest'}); }
