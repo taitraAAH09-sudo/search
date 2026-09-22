@@ -236,19 +236,6 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .tag-hint{font-size:11px;color:#9CA3AF;margin:-4px 0 10px;}
 .tag-row.occ-row .tag-btn{flex:0 0 auto;padding:7px 14px;font-size:12px;}
 #modal-bg .modal{max-height:92vh;overflow-y:auto;}
-/* 貴賓資料（聯絡人／照片） */
-.vip-sec{border:1px solid #E5E7EB;border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#FAFAF9;}
-.vip-top{display:flex;gap:10px;align-items:flex-start;}
-.vip-photo{width:74px;height:92px;flex:0 0 74px;border-radius:8px;border:1.5px dashed #CBD5E1;background:#fff center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:11px;color:#94A3B8;text-align:center;cursor:pointer;position:relative;overflow:hidden;}
-.vip-photo.has{border-style:solid;border-color:#E5E7EB;color:transparent;}
-.vip-photo .vx{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(15,23,42,.7);color:#fff;font-size:11px;cursor:pointer;display:none;}
-.vip-photo.has .vx{display:block;}
-.vip-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;}
-.vip-fields input,.vip-fields textarea{width:100%;box-sizing:border-box;font-size:13px;padding:7px 9px;border:1px solid #D1D5DB;border-radius:8px;outline:none;font-family:inherit;background:#fff;}
-.vip-fields textarea{resize:vertical;min-height:38px;}
-.vip-fields input:focus,.vip-fields textarea:focus{border-color:#1B4F8A;}
-.vip-fields input[readonly],.vip-fields textarea[readonly]{background:#F3F4F6;color:#374151;}
-.vip-st{font-size:11px;color:#9CA3AF;margin-top:6px;text-align:right;min-height:14px;}
 .th-vip{display:flex;gap:14px;font-size:12px;color:#CBD5E1;}
 .th-vip b{font-size:15px;}
 .th-vip .p b{color:#E879F9;} .th-vip .c b{color:#FDE047;}
@@ -390,25 +377,6 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
       <div class="tag-row occ-row">
         <button class="tag-btn occ-btn" id="btn-occ" onclick="toggleOccupied()">🪑 佔用</button>
       </div>
-    </div>
-    <div class="vip-sec" id="m-vip-sec" style="display:none;">
-      <div class="modal-section" style="margin-bottom:8px;">貴賓資料（手機查詢同步顯示）</div>
-      <div class="vip-top">
-        <label class="vip-photo" id="vip-photo" title="點選上傳照片">
-          <span id="vip-photo-txt">＋照片</span>
-          <button type="button" class="vx" onclick="event.preventDefault();event.stopPropagation();clearVipPhoto()">✕</button>
-          <input type="file" id="vip-file" accept="image/*" style="display:none;" onchange="onVipPhoto(this)">
-        </label>
-        <div class="vip-fields">
-          <input type="text" id="vip-title" placeholder="職稱／單位" oninput="vipDirty()">
-          <input type="text" id="vip-contact" placeholder="聯絡人（秘書／隨扈）" oninput="vipDirty()">
-          <input type="tel" id="vip-phone" placeholder="聯絡電話" oninput="vipDirty()">
-        </div>
-      </div>
-      <div class="vip-fields" style="margin-top:6px;">
-        <textarea id="vip-note" rows="2" placeholder="備註（抵達時間、座車、特殊需求…）" oninput="vipDirty()"></textarea>
-      </div>
-      <div class="vip-st" id="vip-st"></div>
     </div>
     <button id="m-checkin-btn" class="checkin-modal-btn" onclick="toggleModalCheckin()" style="display:none;"></button>
     <button class="modal-close" onclick="closeModal()">關閉</button>
@@ -755,7 +723,6 @@ function clearLocalData() {
   Object.keys(seatMap).forEach(k=>delete seatMap[k]);
   Object.keys(asgn).forEach(k=>delete asgn[k]);
   Object.keys(tags).forEach(k=>delete tags[k]);
-  Object.keys(vipInfo).forEach(k=>delete vipInfo[k]);
   Object.keys(occupied).forEach(k=>delete occupied[k]);
   Object.keys(tableNames).forEach(k=>delete tableNames[k]);
   if (window.checkins) Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
@@ -922,13 +889,6 @@ window.confirmEventSelect = async function() {
     if(masterLoaded)refreshAll();
   }));
 
-  activeListeners.push(onValue(ref(db, PROJECT_ID+'/vip_info2026'), snap=>{
-    const d=snap.val()||{};
-    Object.keys(vipInfo).forEach(k=>delete vipInfo[k]);
-    Object.entries(d).forEach(([c,v])=>{vipInfo[c]=v;});
-    if(modalCode&&!vipEditing) paintVip(modalCode);
-  }));
-
   activeListeners.push(onValue(occRef, snap=>{
     const d=snap.val()||{};
     Object.keys(occupied).forEach(k=>delete occupied[k]);
@@ -992,7 +952,7 @@ function updateRefs() {
 }
 
 let layoutMode = 'grid'; 
-const seatMap={}, asgn={}, tags={}, occupied={}, tableNames={}, vipInfo={};
+const seatMap={}, asgn={}, tags={}, occupied={}, tableNames={};
 // 標記階層：揭幕 ⊃ 合影 ⊃ 唱名（tags2026 仍只存一個值，手機查詢舊版照樣讀得懂）
 const TAG_LV={ceremony:3, photo:2, call:1};
 const TAG_NAME={ceremony:'揭幕', photo:'合影', call:'唱名'};
@@ -1288,8 +1248,8 @@ function onDP(e){
   e.preventDefault();const toId=this.dataset.id;if(!dragFrom){clearDO();return;}
   const toG=asgn[toId]||null;
   if(dragGuest){
-    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];moveVip(dragFrom,toId,true);toast('↔ 互換完成','tin');}
-    else{const tf=tags[dragFrom];delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;if(tf)tags[toId]=tf;else delete tags[toId];moveVip(dragFrom,toId,false);toast('✓ 移動完成','tok');}
+    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];toast('↔ 互換完成','tin');}
+    else{const tf=tags[dragFrom];delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;if(tf)tags[toId]=tf;else delete tags[toId];toast('✓ 移動完成','tok');}
   }
   dragGuest=null;dragFrom=null;hideTip();clearDO();refreshAll();scheduleSave();
 }
@@ -1303,7 +1263,6 @@ function chipDrag(chip,g){
 
 window.openModal = function(code){
   clearLocator();
-  if(modalCode!==code) flushVip();
   modalCode=code;
   const g=asgn[code]||'', occ=occupied[code], tag=tags[code]||'';
   document.getElementById('m-code').innerHTML=`<span class="bz ${layoutMode==='round'?'bzb':'bza'}">${layoutMode==='round'?'圓桌':'方陣'}</span> 座位 ${code}`;
@@ -1319,7 +1278,6 @@ window.openModal = function(code){
     document.getElementById('m-tag-hint').style.display='none';
     document.getElementById('btn-occ').style.display='';
     document.getElementById('btn-occ').classList.toggle('active', !!occupied[code]);
-    paintVip(code);
     const ci0=window.checkins&&window.checkins[code];
     const ciBtn0=document.getElementById('m-checkin-btn');
     if(g){
@@ -1353,7 +1311,6 @@ window.openModal = function(code){
     document.getElementById('btn-occ').style.display='';
     document.getElementById('btn-occ').classList.add('active');
   }
-  paintVip(code);
   const ci=window.checkins&&window.checkins[code];
   const ciBtn=document.getElementById('m-checkin-btn');
   if(g){
@@ -1644,10 +1601,10 @@ function placeTheaterModal(){
 })();
 
 window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
-window.closeModal=function(){if(window.flushVip)flushVip();document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
+window.closeModal=function(){document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
 window.doAssignModal=function(g){
   if(!modalCode)return;
-  if(g===''){delete asgn[modalCode];delete tags[modalCode];dropVip(modalCode);}else{if(asgn[modalCode]&&asgn[modalCode]!==g)dropVip(modalCode);asgn[modalCode]=g;delete occupied[modalCode];}
+  if(g===''){delete asgn[modalCode];delete tags[modalCode];}else{asgn[modalCode]=g;delete occupied[modalCode];}
   refreshAll();scheduleSave();openModal(modalCode);
 };
 window.toggleModalCheckin=async function(){
@@ -1661,92 +1618,7 @@ window.toggleModalCheckin=async function(){
   refreshAll(); openModal(code);
 };
 
-// ── 👤 貴賓資料：vip_info2026/{座位}，有標記（揭幕／合影／唱名）的座位才顯示 ──
-let vipEditing=false, vipTimer=null, vipPhotoData=null, vipPending=null;
-// 換座位或關閉視窗前，把還沒送出的輸入立刻存掉
-function flushVip(){ if(!vipTimer) return; clearTimeout(vipTimer); vipTimer=null; saveVip(vipPending); }
-window.flushVip=flushVip;
-function vipRef(c){ return ref(db, PROJECT_ID+'/vip_info2026/'+c); }
-function moveVip(from,to,swap){
-  const a=vipInfo[from], b=vipInfo[to];
-  if(!a && !b) return;
-  const nf=(swap&&b)?{...b,name:asgn[from]||''}:null, nt=a?{...a,name:asgn[to]||''}:null;
-  if(nf) vipInfo[from]=nf; else delete vipInfo[from];
-  if(nt) vipInfo[to]=nt; else delete vipInfo[to];
-  set(vipRef(from), vipInfo[from]||null).catch(()=>{});
-  set(vipRef(to), vipInfo[to]||null).catch(()=>{});
-}
-function dropVip(c){ if(!vipInfo[c]) return; delete vipInfo[c]; set(vipRef(c),null).catch(()=>{}); }
-function paintVip(code){
-  const sec=document.getElementById('m-vip-sec'); if(!sec) return;
-  const show=!!(code&&asgn[code]&&!occupied[code]&&tagLv(code)>0);
-  sec.style.display=show?'':'none';
-  if(!show) return;
-  const v=vipInfo[code]||{};
-  const ro=!isAdmin;
-  ['title','contact','phone','note'].forEach(k=>{
-    const el=document.getElementById('vip-'+k);
-    if(document.activeElement!==el) el.value=v[k]||'';
-    if(el.dataset.ph===undefined) el.dataset.ph=el.placeholder;
-    el.readOnly=ro; el.placeholder=ro?'—':el.dataset.ph;
-  });
-  vipPhotoData=v.photo||null;
-  const ph=document.getElementById('vip-photo');
-  ph.style.backgroundImage=vipPhotoData?'url('+vipPhotoData+')':'';
-  ph.classList.toggle('has',!!vipPhotoData);
-  document.getElementById('vip-photo-txt').textContent=ro?'無照片':'＋照片';
-  ph.style.pointerEvents=ro&&!vipPhotoData?'none':'';
-  document.getElementById('vip-file').disabled=ro;
-  ph.querySelector('.vx').style.visibility=ro?'hidden':'';
-  document.getElementById('vip-st').textContent=v.updated?('最後更新 '+v.updated):'';
-}
-window.vipDirty=function(){
-  if(!isAdmin||!modalCode) return;
-  vipEditing=true; document.getElementById('vip-st').textContent='儲存中…';
-  vipPending=modalCode;
-  clearTimeout(vipTimer); vipTimer=setTimeout(()=>{vipTimer=null;saveVip(vipPending);},700);
-};
-async function saveVip(code){
-  if(!code||!asgn[code]) { vipEditing=false; return; }
-  const g=k=>document.getElementById('vip-'+k).value.trim();
-  const d={title:g('title'),contact:g('contact'),phone:g('phone'),note:g('note'),photo:vipPhotoData||''};
-  const empty=!d.title&&!d.contact&&!d.phone&&!d.note&&!d.photo;
-  const now=new Date(), ts=(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  const data=empty?null:{...d,name:asgn[code],updated:ts};
-  try{
-    await set(vipRef(code),data);
-    if(data) vipInfo[code]=data; else delete vipInfo[code];
-    document.getElementById('vip-st').textContent=empty?'已清空':'✓ 已同步 '+ts;
-  }catch(e){ document.getElementById('vip-st').textContent='⚠️ 儲存失敗，請檢查網路'; }
-  vipEditing=false;
-}
-// 照片：裁成直式 300×375、JPEG 壓到約 30KB 再存，手機查詢載入不會卡
-window.onVipPhoto=function(inp){
-  const f=inp.files&&inp.files[0]; inp.value=''; if(!f||!isAdmin) return;
-  const img=new Image(), url=URL.createObjectURL(f);
-  img.onload=()=>{
-    const W=300,H=375, r=Math.max(W/img.width,H/img.height);
-    const sw=W/r, sh=H/r, sx=(img.width-sw)/2, sy=Math.max(0,(img.height-sh)*0.3);
-    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-    cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,W,H);
-    let q=0.8, out=cv.toDataURL('image/jpeg',q);
-    while(out.length>60000&&q>0.4){ q-=0.1; out=cv.toDataURL('image/jpeg',q); }
-    URL.revokeObjectURL(url);
-    vipPhotoData=out;
-    const ph=document.getElementById('vip-photo'); ph.style.backgroundImage='url('+out+')'; ph.classList.add('has');
-    vipDirty();
-  };
-  img.onerror=()=>{ URL.revokeObjectURL(url); toast('照片讀取失敗','ter'); };
-  img.src=url;
-};
-window.clearVipPhoto=function(){
-  if(!isAdmin) return;
-  vipPhotoData=null;
-  const ph=document.getElementById('vip-photo'); ph.style.backgroundImage=''; ph.classList.remove('has');
-  vipDirty();
-};
-
-window.clearSeat=function(){ if(!modalCode)return; delete asgn[modalCode]; delete tags[modalCode]; dropVip(modalCode); refreshAll();scheduleSave();openModal(modalCode); };
+window.clearSeat=function(){ if(!modalCode)return; delete asgn[modalCode]; delete tags[modalCode];  refreshAll();scheduleSave();openModal(modalCode); };
 // 三顆燈依階層亮：揭幕→三顆全亮；合影→合影＋唱名；唱名→只亮唱名
 function paintTagBtns(code){
   const lv=tagLv(code);
@@ -1760,14 +1632,14 @@ window.toggleTag=function(t){
   if(!modalCode)return;
   if(tags[modalCode]===t)delete tags[modalCode];else tags[modalCode]=t;
   refreshAll();scheduleSave();
-  paintTagBtns(modalCode); paintVip(modalCode);
+  paintTagBtns(modalCode);
   const cur=tags[modalCode];
   toast(cur?('已標記：'+(cur==='ceremony'?'揭幕＋合影＋唱名':cur==='photo'?'合影＋唱名':'唱名')):'已清除標記','tok');
 };
 window.toggleOccupied=function(){
   if(!modalCode)return;
   if(occupied[modalCode]){delete occupied[modalCode];toast('已取消佔用','tin');}
-  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];dropVip(modalCode);toast('🪑 已標記佔用','tok');}
+  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];toast('🪑 已標記佔用','tok');}
   refreshAll();scheduleSave();openModal(modalCode);
 };
 
@@ -2197,7 +2069,7 @@ window.renderChips=function renderChips(){
 function removeGuest(g){
   if (!isAdmin) return;
   const idx=guests.indexOf(g);if(idx===-1)return;guests.splice(idx,1);
-  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];dropVip(c);}});
+  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];}});
   Object.entries(seatMap).forEach(([c,n])=>{if(n===g){seatMap[c]='';}});
   refreshAll();scheduleSave();toast('已移除：'+g.substring(0,15)+'...','tin');
 }
