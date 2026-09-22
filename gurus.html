@@ -1077,7 +1077,7 @@ function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function isNA(a){ return !PEOPLE.some(p=>a[p]) && !a.escort; }
 function bdg(t){
   if(!t) return `<span style="color:var(--tx3);font-size:15px">—</span>`;
-  const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bgr',出差:'brd',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
+  const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bpu',出差:'brd',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
   const k=Object.keys(m).find(k=>t.includes(k));
   return `<span class="bdg ${m[k]||'bbl'}">${esc(t)}</span>`;
 }
@@ -1365,7 +1365,7 @@ function loadExcelJS(){
 function xlsRoleStyle(t){
   if(!t) return null;
   if(t.includes('致詞')||t.includes('揭幕')) return {font:'FF375623',fill:'FFE2EFDA'};   // 綠
-  if(t.includes('陪同'))                       return {font:'FF404040',fill:'FFF2F2F2'}; // 灰
+  if(t.includes('陪同'))                       return {font:'FF5B2E91',fill:'FFEDE3F7'}; // 紫（跟快速指派標籤同色）
   if(t.includes('出差'))                       return {font:'FF9B2226',fill:'FFFCE4E4'}; // 紅
   if(t.includes('彩排')||t.includes('受訪'))   return {font:'FF7F6000',fill:'FFFFF2CC'}; // 琥珀
   if(t.includes('接')||t.includes('致意'))     return {font:'FF5B2E91',fill:'FFEDE3F7'}; // 紫
