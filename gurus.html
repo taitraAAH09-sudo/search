@@ -93,6 +93,9 @@ table{width:100%;border-collapse:collapse;font-size:17.2px;}
 .desk-tbl td.tm{white-space:normal!important;line-height:1.35;}
 .desk-tbl td{overflow:hidden;}
 .esc-l{display:block;white-space:nowrap;}
+/* 固定保留捲軸位置：內容變短、捲軸消失時，版面寬度不變，上方按鈕不會重新排版 */
+html{scrollbar-gutter:stable;}
+html.embed{scrollbar-gutter:auto;}
 body.hide-past .day-block.past-day{display:none;}
 #all-past-msg{display:none;}
 body.hide-past.only-past #all-past-msg{display:flex;}
@@ -480,7 +483,7 @@ const QS = new URLSearchParams(location.search);
 const URL_ROOM = ['1','2'].includes(QS.get('room')) ? QS.get('room') : null;
 const EMBED = ['1','true','yes'].includes((QS.get('embed')||'').toLowerCase());   // 嵌進專卷用：唯讀＋藏表頭
 const VIEW_ONLY = EMBED || ['1','true','yes'].includes((QS.get('view')||'').toLowerCase());
-if(EMBED) document.body.classList.add('embed');
+if(EMBED){ document.body.classList.add('embed'); document.documentElement.classList.add('embed'); }
 if(VIEW_ONLY) document.body.classList.add('view-only');
 
 /* ── PASSWORD GATE ── */
