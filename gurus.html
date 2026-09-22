@@ -96,6 +96,13 @@ table{width:100%;border-collapse:collapse;font-size:17.2px;}
 /* 固定保留捲軸位置：內容變短、捲軸消失時，版面寬度不變，上方按鈕不會重新排版 */
 html{scrollbar-gutter:stable;}
 html.embed{scrollbar-gutter:auto;}
+/* 嵌入時一律用桌機表格（手機也一樣），不切成卡片 */
+body.embed .desk-tbl{display:block!important;}
+body.embed .mob-cards{display:none!important;}
+/* fit=1：整張表等比例縮到外框寬度，像一頁 PDF，不用左右拉 */
+html.fit,html.fit body{overflow:hidden;}
+body.fit{transform-origin:0 0;}
+body.fit .tbl-wrap{overflow:visible;}
 body.hide-past .day-block.past-day{display:none;}
 #all-past-msg{display:none;}
 body.hide-past.only-past #all-past-msg{display:flex;}
@@ -483,7 +490,9 @@ const QS = new URLSearchParams(location.search);
 const URL_ROOM = ['1','2'].includes(QS.get('room')) ? QS.get('room') : null;
 const EMBED = ['1','true','yes'].includes((QS.get('embed')||'').toLowerCase());   // 嵌進專卷用：唯讀＋藏表頭
 const VIEW_ONLY = EMBED || ['1','true','yes'].includes((QS.get('view')||'').toLowerCase());
+const FIT = EMBED && QS.get('fit')==='1';
 if(EMBED){ document.body.classList.add('embed'); document.documentElement.classList.add('embed'); }
+if(FIT){ document.body.classList.add('fit'); document.documentElement.classList.add('fit'); }
 if(VIEW_ONLY) document.body.classList.add('view-only');
 
 /* ── PASSWORD GATE ── */
@@ -969,9 +978,27 @@ window.copyViewLink = async function(){
 };
 
 /* ── 嵌在專卷裡：把內容高度回報給外層，讓外框自動長高，不出現內捲軸 ── */
+/* fit：以整張表實際寬度為準，等比例縮到 iframe 寬度 */
+let _fitBusy=false;
+function applyFit(){
+  if(!FIT || _fitBusy) return;
+  _fitBusy=true;
+  const b=document.body;
+  b.style.transform=''; b.style.width='1400px';
+  let need=1400;
+  document.querySelectorAll('.desk-tbl table').forEach(t=>{ need=Math.max(need, t.offsetWidth); });
+  need=Math.ceil(need)+2;
+  const W=document.documentElement.clientWidth||window.innerWidth;
+  if(W>=need){ b.style.width=''; }
+  else{ b.style.width=need+'px'; b.style.transform='scale('+(W/need)+')'; }
+  _fitBusy=false;
+}
+if(FIT){ window.addEventListener('resize', ()=>{ applyFit(); }); }
+
 if(EMBED && window.parent !== window){
   let lastH = 0;
   const report = ()=>{
+    applyFit();
     let h = 0;
     for(const el of document.body.children){
       const cs = getComputedStyle(el);
