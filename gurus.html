@@ -93,6 +93,7 @@ table{width:100%;border-collapse:collapse;font-size:17.2px;}
 .desk-tbl td.tm{white-space:normal!important;line-height:1.35;}
 .desk-tbl td{overflow:hidden;}
 .esc-l{display:block;white-space:nowrap;}
+.nw{white-space:nowrap;}
 /* 固定保留捲軸位置：內容變短、捲軸消失時，版面寬度不變，上方按鈕不會重新排版 */
 html{scrollbar-gutter:stable;}
 html.embed{scrollbar-gutter:auto;}
@@ -1005,10 +1006,11 @@ async function doSnap(){
       `<div class="sh-t">${esc(document.getElementById('ui-h1').textContent)}</div>`+
       `<div class="sh-m">截至 ${d.getFullYear()}/${two(d.getMonth()+1)}/${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}</div>`;
     const b=document.body;
-    b.style.width='1400px';
-    let need=1400;
+    const SNAP_W=1900;   // 擷取寬度＝一般桌機全螢幕，字不會被擠到斷行
+    b.style.width=SNAP_W+'px';
+    let need=SNAP_W;
     document.querySelectorAll('.desk-tbl table').forEach(t=>{ need=Math.max(need,t.offsetWidth); });
-    need=Math.ceil(need)+2; b.style.width=need+'px';
+    need=Math.ceil(need); b.style.width=need+'px';
     const H=Math.ceil(document.getElementById('main-content').getBoundingClientRect().bottom+window.scrollY)+16;
     const scale=Math.min(2, Math.sqrt(1.4e7/(need*H)));   // 手機 canvas 有上限，太長就自動降解析度
     const canvas=await html2canvas(b,{scale, backgroundColor:'#ffffff', logging:false, useCORS:true,
@@ -1136,6 +1138,11 @@ function bdg(t){
 }
 function g(id){ return document.getElementById(id); }
 function pname(s){ return esc(s||'').replace(/ /g,'&nbsp;'); }
+/* 聯絡人：只在空白處換行，電話號碼、分機不會被切開 */
+function fmtContact(s){
+  const t=(s||'').trim(); if(!t) return '';
+  return t.split(/\s+/).map(x=>`<span class="nw">${esc(x)}</span>`).join(' ');
+}
 /* 陪同：多人用 、，/ 分隔時，一人一行 */
 function fmtEscort(s){
   const parts=(s||'').split(/[、，,／/;；]\s*/).map(x=>x.trim()).filter(Boolean);
@@ -1211,7 +1218,7 @@ function render(){
         <td class="sm">${fmtEscort(a.escort)||'—'}</td>
         <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
-        <td class="sm">${pname(a.contact)||'—'}</td>
+        <td class="sm ct">${fmtContact(a.contact)||'—'}</td>
         <td><div class="ra">
           <button class="ab" onclick="openEdit('${a.id}')" title="編輯">✎</button>
           <button class="ab dl" onclick="delE('${a.id}')" title="刪除">✕</button>
@@ -1255,8 +1262,8 @@ function render(){
           ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:126px"><col style="width:190px"><col style="width:190px">
           ${PEOPLE.map(()=>'<col style="width:84px">').join('')}
-          <col style="width:96px"><col style="width:260px"><col style="width:84px">
-          <col style="width:100px"><col style="width:46px">
+          <col style="width:96px"><col style="width:260px"><col style="width:96px">
+          <col style="width:150px"><col style="width:46px">
         </colgroup>
         <thead><tr>
           ${DUAL_MODE?'<th class="expo-col">展</th>':''}
