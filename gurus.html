@@ -41,7 +41,7 @@
 body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC',sans-serif;font-size:19.5px;min-height:100vh;transition:background .2s,color .2s;}
 
 .hdr{padding:14px 20px 12px;border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
-.hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.hdr-top{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-bottom:10px;}
 .eyebrow{font-size:15px;font-family:'DM Mono',monospace;letter-spacing:.12em;color:var(--ac);text-transform:uppercase;margin-bottom:3px;}
 h1{font-size:25.5px;font-weight:700;letter-spacing:-.3px;}
 .sub{font-size:16.5px;color:var(--tx2);margin-top:2px;}
@@ -998,7 +998,7 @@ function loadH2C(){
 }
 /* 內容指紋：資料、長官、展名、今天日期都一樣，拍出來的圖就一樣，不用重拍 */
 function snapSig(){
-  const src=JSON.stringify({v:'snap5',ACT,filterDate,activeP,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
+  const src=JSON.stringify({v:'snap6',ACT,filterDate,activeP,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
     ex:DUAL_MODE?[expoName('A'),expoName('B'),expoAbbr('A'),expoAbbr('B')]:0,
     day:new Date().toDateString()});
   let h=5381; for(let i=0;i<src.length;i++) h=((h<<5)+h+src.charCodeAt(i))|0;
@@ -1203,6 +1203,7 @@ window.togglePast = ()=>{
   const anchor=[...document.querySelectorAll('.day-block:not(.past-day)')]
     .find(el=>el.getBoundingClientRect().bottom>0);
   const before=anchor?anchor.getBoundingClientRect().top:0;
+  if(_escF.all!==_escF.future){ render(); return; }   // 陪同欄會跟著出現／消失，需要重畫
   paintPast();
   if(anchor){ const d=anchor.getBoundingClientRect().top-before; if(d) window.scrollBy(0,d); }
 };
@@ -1228,7 +1229,9 @@ function render(){
   });
 
   // 陪同：目前看到的活動都沒填就整欄不出現；只要有一場填了，整張表都會有這一欄
-  const HAS_ESC = src.some(a=>(a.escort||'').trim());
+  const hasEsc = list => list.some(a=>(a.escort||'').trim());
+  _escF = { all: hasEsc(src), future: hasEsc(src.filter(a=>dateStatus(a.date)!=='past')) };
+  const HAS_ESC = hidePast ? _escF.future : _escF.all;
 
   let pastDays=0, pastRows=0, allDays=0, allRows=0, html='';
 
@@ -1322,6 +1325,7 @@ function render(){
 }
 /* 隱藏／顯示已過日期：只切 CSS，不重畫表格，畫面不會閃 */
 let _cnt = {pastDays:0,pastRows:0,allDays:0,allRows:0};
+let _escF = {all:false, future:false};
 function paintPast(){
   const c=_cnt;
   document.body.classList.toggle('hide-past', hidePast);
