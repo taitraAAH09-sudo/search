@@ -998,7 +998,7 @@ function loadH2C(){
 }
 /* 內容指紋：資料、長官、展名、今天日期都一樣，拍出來的圖就一樣，不用重拍 */
 function snapSig(){
-  const src=JSON.stringify({v:'snap4',ACT,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
+  const src=JSON.stringify({v:'snap5',ACT,filterDate,activeP,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
     ex:DUAL_MODE?[expoName('A'),expoName('B'),expoAbbr('A'),expoAbbr('B')]:0,
     day:new Date().toDateString()});
   let h=5381; for(let i=0;i<src.length;i++) h=((h<<5)+h+src.charCodeAt(i))|0;
@@ -1227,6 +1227,9 @@ function render(){
     grouped[a.date].push(a);
   });
 
+  // 陪同：目前看到的活動都沒填就整欄不出現；只要有一場填了，整張表都會有這一欄
+  const HAS_ESC = src.some(a=>(a.escort||'').trim());
+
   let pastDays=0, pastRows=0, allDays=0, allRows=0, html='';
 
   order.forEach(date=>{
@@ -1245,7 +1248,7 @@ function render(){
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl" title="${esc(a.loc)}">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
-        <td class="sm esc">${fmtEscort(a.escort)||'—'}</td>
+        ${HAS_ESC?`<td class="sm esc">${fmtEscort(a.escort)||'—'}</td>`:''}
         <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
         <td class="sm ct">${fmtContact(a.contact)||'—'}</td>
@@ -1292,14 +1295,14 @@ function render(){
           ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:126px"><col style="width:190px"><col style="width:190px">
           ${PEOPLE.map(()=>'<col style="width:84px">').join('')}
-          <col style="width:140px"><col style="width:260px"><col style="width:96px">
+          ${HAS_ESC?'<col style="width:140px">':''}<col style="width:260px"><col style="width:96px">
           <col style="width:150px"><col style="width:46px">
         </colgroup>
         <thead><tr>
           ${DUAL_MODE?'<th class="expo-col">展</th>':''}
           <th>時間</th><th class="tl">活動名稱</th><th class="tl">地點</th>
           ${PEOPLE.map(p=>`<th>${esc(P_LABELS[p]||p)}</th>`).join('')}
-          <th>陪同</th><th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
+          ${HAS_ESC?'<th>陪同</th>':''}<th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
         </tr></thead>
         <tbody>${dRows}</tbody>
         </table>
