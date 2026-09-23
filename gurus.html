@@ -92,7 +92,12 @@ table{width:100%;border-collapse:collapse;font-size:17.2px;}
 .desk-tbl table{table-layout:fixed;min-width:1400px;}
 .desk-tbl td.tm{white-space:normal!important;line-height:1.35;}
 .desk-tbl td{overflow:hidden;}
-.esc-l{display:block;white-space:nowrap;}
+.pchip{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;line-height:1.5;
+  padding:2px 7px;border-radius:7px;background:hsl(var(--h) 72% 93%);color:hsl(var(--h) 55% 30%);
+  border:1px solid hsl(var(--h) 60% 82%);}
+.pchip+.pchip{margin-top:3px;}
+[data-theme="dark"] .pchip{background:hsl(var(--h) 40% 22%);color:hsl(var(--h) 75% 80%);border-color:hsl(var(--h) 35% 36%);}
+.desk-tbl td.esc{padding-left:5px;padding-right:5px;}
 .nw{white-space:nowrap;}
 /* 固定保留捲軸位置：內容變短、捲軸消失時，版面寬度不變，上方按鈕不會重新排版 */
 html{scrollbar-gutter:stable;}
@@ -413,7 +418,7 @@ body.view-only .room-flag{display:inline-block;margin:4px 0 2px;font-size:14px;p
     </div>
     <div class="fg2" id="form-fields-container"></div>
     <div class="fg2">
-      <div class="fg" style="display:none"><label>陪同人員</label><input class="fi" id="re"></div>
+      <div class="fg"><label>陪同人員</label><input class="fi" id="re" placeholder="多人用「、」分隔，例：楊東華組長、李建緯組長"></div>
       <div class="fg"><label>主政單位</label><input class="fi" id="fu"></div>
     </div>
     <div class="fg"><label>貴賓</label><textarea class="fi" id="fgi"></textarea></div>
@@ -993,7 +998,7 @@ function loadH2C(){
 }
 /* 內容指紋：資料、長官、展名、今天日期都一樣，拍出來的圖就一樣，不用重拍 */
 function snapSig(){
-  const src=JSON.stringify({v:'snap3',ACT,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
+  const src=JSON.stringify({v:'snap4',ACT,PEOPLE,P_LABELS,EVENT_H1,EVENT_EYEBROW,DUAL_MODE,hidePast,
     ex:DUAL_MODE?[expoName('A'),expoName('B'),expoAbbr('A'),expoAbbr('B')]:0,
     day:new Date().toDateString()});
   let h=5381; for(let i=0;i<src.length;i++) h=((h<<5)+h+src.charCodeAt(i))|0;
@@ -1149,7 +1154,7 @@ function todayStr(){
 }
 function dateStatus(lbl){ const k=dk(lbl),t=todayStr(); return k<t?'past':k===t?'today':'future'; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function isNA(a){ return !PEOPLE.some(p=>a[p]); }
+function isNA(a){ return !PEOPLE.some(p=>a[p]) && !a.escort; }
 function bdg(t){
   if(!t) return `<span style="color:var(--tx3);font-size:15px">—</span>`;
   const m={'出席/致詞':'bgn','出席/觀禮':'bbl',致詞:'bgn',揭幕:'bgn',陪同:'bpu',出差:'brd',彩排:'bam',受訪:'bam',主持:'btl',主人:'btl',致意:'bpu',接待:'bpu',接:'bpu',出席:'bbl'};
@@ -1164,10 +1169,15 @@ function fmtContact(s){
   return t.split(/\s+/).map(x=>`<span class="nw">${esc(x)}</span>`).join(' ');
 }
 /* 陪同：多人用 、，/ 分隔時，一人一行 */
+function nameHue(n){
+  let h=2166136261;
+  for(let i=0;i<n.length;i++){ h^=n.charCodeAt(i); h=Math.imul(h,16777619); }
+  return (h>>>0)%360;
+}
 function fmtEscort(s){
   const parts=(s||'').split(/[、，,／/;；]\s*/).map(x=>x.trim()).filter(Boolean);
-  if(parts.length<=1) return esc(s||'');
-  return parts.map(x=>`<span class="esc-l">${esc(x)}</span>`).join('');
+  if(!parts.length) return '';
+  return parts.map(x=>`<span class="pchip" style="--h:${nameHue(x)}">${esc(x)}</span>`).join('');
 }
 /* 貴賓：遇到「1.」「2、」這類編號自動斷行，每位一行 */
 function splitGuest(s){
@@ -1235,6 +1245,7 @@ function render(){
         <td class="ev tl">${esc(a.event)}${na?'<span class="na-badge">⚠️ 未指派</span>':''}</td>
         <td class="lo tl" title="${esc(a.loc)}">${esc(a.loc)}</td>
         ${PEOPLE.map(p=>`<td class="p-cell" data-aid="${a.id}" data-pid="${p}" ondragover="tagOver(event)" ondragleave="tagLeave(event)" ondrop="tagDrop(event)">${bdg(a[p])}</td>`).join('')}
+        <td class="sm esc">${fmtEscort(a.escort)||'—'}</td>
         <td class="sm tl">${fmtGuest(a.guest)||'—'}</td>
         <td style="font-size:15px;color:var(--tx2);text-align:center">${esc(a.unit||'—')}</td>
         <td class="sm ct">${fmtContact(a.contact)||'—'}</td>
@@ -1281,14 +1292,14 @@ function render(){
           ${DUAL_MODE?'<col style="width:64px">':''}
           <col style="width:126px"><col style="width:190px"><col style="width:190px">
           ${PEOPLE.map(()=>'<col style="width:84px">').join('')}
-          <col style="width:280px"><col style="width:96px">
+          <col style="width:140px"><col style="width:260px"><col style="width:96px">
           <col style="width:150px"><col style="width:46px">
         </colgroup>
         <thead><tr>
           ${DUAL_MODE?'<th class="expo-col">展</th>':''}
           <th>時間</th><th class="tl">活動名稱</th><th class="tl">地點</th>
           ${PEOPLE.map(p=>`<th>${esc(P_LABELS[p]||p)}</th>`).join('')}
-          <th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
+          <th>陪同</th><th class="tl">貴賓</th><th>主政單位</th><th>聯絡人</th><th></th>
         </tr></thead>
         <tbody>${dRows}</tbody>
         </table>
@@ -1421,8 +1432,8 @@ window.exportCSV = ()=>{
   const XPO = DUAL_MODE ? expoFilter : '';
   const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
   const DM = (DUAL_MODE && !XPO);
-  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '貴賓','主政單位','聯絡人'];
-  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓','主政單位','聯絡人'];
+  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a'); a.href=url; a.download=((XPO?expoName(XPO):(EVENT_H1||'出席一覽表'))).replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
@@ -1441,6 +1452,18 @@ function loadExcelJS(){
     document.head.appendChild(s);
   });
   return _xlsjsP;
+}
+function hsl2argb(h,sPct,lPct){
+  const sv=sPct/100,lv=lPct/100,a=sv*Math.min(lv,1-lv);
+  const f=n=>{ const k=(n+h/30)%12, c=lv-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));
+    return Math.round(255*c).toString(16).padStart(2,'0').toUpperCase(); };
+  return 'FF'+f(0)+f(8)+f(4);
+}
+function xlsEscortStyle(t){
+  const first=(t||'').split(/[、，,／/;；]\s*/)[0].trim();
+  if(!first) return null;
+  const h=nameHue(first);
+  return {font:hsl2argb(h,55,30), fill:hsl2argb(h,72,93)};
 }
 function xlsRoleStyle(t){
   if(!t) return null;
@@ -1473,8 +1496,8 @@ window.exportXLSX = async ()=>{
     const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:3}]});
 
     const DM = (DUAL_MODE && !XPO) ? 1 : 0;
-    const nP=PEOPLE.length, totalCols=4+nP+3+DM;
-    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 32,10,22];
+    const nP=PEOPLE.length, totalCols=4+nP+4+DM;
+    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 16,30,10,22];
     const XA={font:'FF1F4E79',fill:'FFDDF0FF'}, XB={font:'FF8A3800',fill:'FFFFE9D6'};
     ws.columns=widths.map(w=>({width:w}));
 
@@ -1495,7 +1518,7 @@ window.exportXLSX = async ()=>{
     [totalCols-1,totalCols].forEach(c=>{ ws.getCell(2,c).font={name:FONT,size:10}; });
 
     // Row 3：表頭（動態長官欄位）
-    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'貴賓','主政單位','聯絡人'];
+    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓','主政單位','聯絡人'];
     const hr=ws.getRow(3);
     heads.forEach((h,i)=>{
       const c=hr.getCell(i+1);
@@ -1520,14 +1543,15 @@ window.exportXLSX = async ()=>{
       const startR=r;
       rows.forEach(a=>{
         const ek=expoOf(a);
-        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.guest||'',a.unit||'',a.contact||''];
+        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.escort||'',a.guest||'',a.unit||'',a.contact||''];
         const row=ws.getRow(r);
         vals.forEach((v,i)=>{
           const c=row.getCell(i+1);
           c.value=v;
           const isExpo=DM&&i===0;
           const isPerson=i>=4+DM&&i<4+DM+nP;
-          const roleStyle=isPerson?xlsRoleStyle(v):(isExpo?(ek==='B'?XB:XA):null);
+        const isEscort=i===4+DM+nP;
+          const roleStyle=isPerson?xlsRoleStyle(v):isEscort?xlsEscortStyle(v):(isExpo?(ek==='B'?XB:XA):null);
           c.font={name:FONT,size:10,bold:isExpo,color:roleStyle?{argb:roleStyle.font}:undefined};
           c.fill={type:'pattern',pattern:'solid',fgColor:{argb:roleStyle?roleStyle.fill:groupFill}};
           const centerCols=(i===0+DM||i===1+DM||isPerson||isExpo);
