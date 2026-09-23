@@ -1435,8 +1435,9 @@ window.exportCSV = ()=>{
   const XPO = DUAL_MODE ? expoFilter : '';
   const SRC = XPO ? ACT.filter(a=>expoOf(a)===XPO) : ACT;
   const DM = (DUAL_MODE && !XPO);
-  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), '陪同','貴賓','主政單位','聯絡人'];
-  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), a.escort,a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const ESC = SRC.some(a=>(a.escort||'').trim()) ? 1 : 0;
+  const h=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點', ...PEOPLE.map(id=>P_LABELS[id]), ...(ESC?['陪同']:[]),'貴賓','主政單位','聯絡人'];
+  const rows=SRC.map(a=>[...(DM?[expoName(expoOf(a))]:[]),a.date,a.time,a.event,a.loc, ...PEOPLE.map(id=>a[id]), ...(ESC?[a.escort]:[]),a.guest,a.unit,a.contact].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a'); a.href=url; a.download=((XPO?expoName(XPO):(EVENT_H1||'出席一覽表'))).replace(/[\\/:*?"<>|]/g,'')+'.csv'; a.click();
@@ -1499,8 +1500,9 @@ window.exportXLSX = async ()=>{
     const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:3}]});
 
     const DM = (DUAL_MODE && !XPO) ? 1 : 0;
-    const nP=PEOPLE.length, totalCols=4+nP+4+DM;
-    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), 16,30,10,22];
+    const ESC = SRC.some(a=>(a.escort||'').trim()) ? 1 : 0;   // 都沒填陪同就不放這一欄
+    const nP=PEOPLE.length, totalCols=4+nP+3+ESC+DM;
+    const widths=[...(DM?[16]:[]),12,12,34,24, ...PEOPLE.map(()=>10), ...(ESC?[16]:[]), 30,10,22];
     const XA={font:'FF1F4E79',fill:'FFDDF0FF'}, XB={font:'FF8A3800',fill:'FFFFE9D6'};
     ws.columns=widths.map(w=>({width:w}));
 
@@ -1521,7 +1523,7 @@ window.exportXLSX = async ()=>{
     [totalCols-1,totalCols].forEach(c=>{ ws.getCell(2,c).font={name:FONT,size:10}; });
 
     // Row 3：表頭（動態長官欄位）
-    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),'陪同','貴賓','主政單位','聯絡人'];
+    const heads=[...(DM?['展別']:[]),'日期','時間','活動名稱','地點',...PEOPLE.map(id=>P_LABELS[id]||id),...(ESC?['陪同']:[]),'貴賓','主政單位','聯絡人'];
     const hr=ws.getRow(3);
     heads.forEach((h,i)=>{
       const c=hr.getCell(i+1);
@@ -1546,14 +1548,14 @@ window.exportXLSX = async ()=>{
       const startR=r;
       rows.forEach(a=>{
         const ek=expoOf(a);
-        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),a.escort||'',a.guest||'',a.unit||'',a.contact||''];
+        const vals=[...(DM?[expoName(ek)]:[]),date,a.time||'',a.event||'',a.loc||'',...PEOPLE.map(id=>a[id]||''),...(ESC?[a.escort||'']:[]),a.guest||'',a.unit||'',a.contact||''];
         const row=ws.getRow(r);
         vals.forEach((v,i)=>{
           const c=row.getCell(i+1);
           c.value=v;
           const isExpo=DM&&i===0;
           const isPerson=i>=4+DM&&i<4+DM+nP;
-        const isEscort=i===4+DM+nP;
+        const isEscort=ESC&&i===4+DM+nP;
           const roleStyle=isPerson?xlsRoleStyle(v):isEscort?xlsEscortStyle(v):(isExpo?(ek==='B'?XB:XA):null);
           c.font={name:FONT,size:10,bold:isExpo,color:roleStyle?{argb:roleStyle.font}:undefined};
           c.fill={type:'pattern',pattern:'solid',fgColor:{argb:roleStyle?roleStyle.fill:groupFill}};
