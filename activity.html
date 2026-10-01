@@ -117,6 +117,13 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .chip.dragging{opacity:.4;}
 .chip-x{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
 .chip-x:hover{background:#EF4444;}
+#m-srch{display:block;box-sizing:border-box;width:100%;font-size:12px;line-height:1.5;padding:7px 9px;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB;color:#374151;resize:vertical;min-height:38px;outline:none;font-family:inherit;margin-bottom:4px;}
+#m-srch:focus{border-color:#93C5FD;background:#fff;box-shadow:0 0 0 2px rgba(37,99,235,.12);}
+.srch-hint{font-size:11px;color:#9CA3AF;margin-bottom:12px;}
+.srch-hint b{color:#16A34A;font-weight:600;}
+.ver-tag{display:inline-block;font-size:11px;font-weight:700;color:#6B7280;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:999px;padding:2px 9px;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;vertical-align:middle;letter-spacing:.3px;}
+.ver-tag:active{background:#E5E7EB;}
+.ver-tag.hit{color:#1B4F8A;border-color:#93C5FD;background:#EBF1F9;}
 select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;margin-bottom:6px;outline:none;}
 
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;display:none;align-items:flex-end;justify-content:center;}
@@ -348,6 +355,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-code" id="m-code"></div>
+    <div class="modal-section" id="m-name-lbl" style="display:none;">顯示名稱（席次圖、Excel、手機查詢結果都顯示這個）</div>
     <div class="modal-name">
       <div class="mn-row" id="m-name-view">
         <span id="m-name"></span>
@@ -360,6 +368,11 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
         <button type="button" class="mn-ok" onclick="saveNameEdit()">儲存</button>
         <button type="button" onclick="cancelNameEdit()">取消</button>
       </div>
+    </div>
+    <div id="m-srch-sec" style="display:none;">
+      <div class="modal-section">搜尋用全名／關鍵字（後台填寫，只給查詢比對用）</div>
+      <textarea id="m-srch" rows="2" placeholder="例：史瓦帝尼王國大使館 庫涅內 大使 H.E. Ambassador Vulindlela Kunene　（可再加：董事長貴賓、外賓…）"></textarea>
+      <div class="srch-hint" id="m-srch-hint">不會出現在席次圖和 Excel，只給搜尋用；用空格分開多個關鍵字</div>
     </div>
     <div id="m-assign-sec">
       <div class="modal-section">指派賓客</div>
@@ -409,7 +422,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code">🔒 管理員登入</div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V1</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -516,7 +529,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;">🎟</div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V1</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -677,6 +690,21 @@ window.handleAuth = function() {
   }
 };
 
+// 版本標籤連點 5 下（2 秒內）直接登入，免輸入密碼
+let _verTaps=0, _verTimer=null;
+window.verTap=function(el){
+  if(isAdmin) return;
+  _verTaps++; el.classList.add('hit');
+  clearTimeout(_verTimer);
+  _verTimer=setTimeout(()=>{ _verTaps=0; document.querySelectorAll('.ver-tag').forEach(t=>t.classList.remove('hit')); },2000);
+  if(_verTaps>=5){
+    _verTaps=0; clearTimeout(_verTimer);
+    document.querySelectorAll('.ver-tag').forEach(t=>t.classList.remove('hit'));
+    document.getElementById('login-pw').value=ADMIN_PWD;
+    doLogin();
+  }
+};
+
 window.doLogin = function() {
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-err');
@@ -725,6 +753,7 @@ function clearLocalData() {
   Object.keys(tags).forEach(k=>delete tags[k]);
   Object.keys(occupied).forEach(k=>delete occupied[k]);
   Object.keys(tableNames).forEach(k=>delete tableNames[k]);
+  Object.keys(srch).forEach(k=>delete srch[k]);
   if (window.checkins) Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
   guests.length = 0;
 }
@@ -882,6 +911,16 @@ window.confirmEventSelect = async function() {
     if(masterLoaded)refreshAll();
   }));
 
+  activeListeners.push(onValue(srchRef, snap=>{
+    const d=snap.val()||{};
+    Object.keys(srch).forEach(k=>delete srch[k]);
+    Object.entries(d).forEach(([c,v])=>{ if(v) srch[c]=v; });
+    if(masterLoaded)refreshAll();
+    // 彈窗開著、但使用者沒在打字時，同步別人改的內容
+    const ta=document.getElementById('m-srch');
+    if(modalCode&&ta&&document.activeElement!==ta) ta.value=srch[modalCode]||'';
+  }));
+
   activeListeners.push(onValue(tagsRef, snap=>{
     const d=snap.val()||{};
     Object.keys(tags).forEach(k=>delete tags[k]);
@@ -941,7 +980,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-let masterRef, assignRef, tagsRef, occRef, tableNamesRef, guestsRef;
+let masterRef, assignRef, tagsRef, occRef, tableNamesRef, guestsRef, srchRef;
 function updateRefs() {
   masterRef    = ref(db, PROJECT_ID + '/seats_master2026');
   assignRef    = ref(db, PROJECT_ID + '/assignments2026');
@@ -949,10 +988,24 @@ function updateRefs() {
   occRef       = ref(db, PROJECT_ID + '/seats2026');
   tableNamesRef = ref(db, PROJECT_ID + '/table_names2026');
   guestsRef    = ref(db, PROJECT_ID + '/guest_list2026');
+  srchRef      = ref(db, PROJECT_ID + '/search2026');
 }
 
 let layoutMode = 'grid'; 
 const seatMap={}, asgn={}, tags={}, occupied={}, tableNames={};
+// 搜尋用全名／關鍵字：以座位碼為 key，存在 search2026；席次圖與 Excel 只用 asgn 的乾淨名稱
+const srch={};
+window.srch=srch;
+// 模糊比對：全形轉半形、不分大小寫、忽略空白與標點；多個關鍵字用空格分開，全部都要命中
+const normQ=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[\s\u3000.,，、。·・()（）\[\]【】「」'"’\-_/:：;；]+/g,'');
+function fuzzyHit(hay, kw){
+  const h=normQ(hay);
+  const toks=String(kw||'').split(/[\s\u3000]+/).map(normQ).filter(Boolean);
+  if(!toks.length) return false;
+  return toks.every(t=>h.includes(t)) || h.includes(normQ(kw));
+}
+window.fuzzyHit=fuzzyHit;
+const seatHay=c=>(asgn[c]||'')+' '+(srch[c]||'');
 // 標記階層：揭幕 ⊃ 合影 ⊃ 唱名（tags2026 仍只存一個值，手機查詢舊版照樣讀得懂）
 const TAG_LV={ceremony:3, photo:2, call:1};
 const TAG_NAME={ceremony:'揭幕', photo:'合影', call:'唱名'};
@@ -1003,6 +1056,8 @@ async function saveAll(){
       const masterDirty = migrateMasterNames();
       await set(assignRef, Object.keys(asgn).length ? asgn : null);
       await set(tagsRef, Object.keys(tags).length ? tags : null);
+      Object.keys(srch).forEach(c=>{ if(!srch[c]||!asgn[c]) delete srch[c]; }); // 空位不留殘影
+      await set(srchRef, Object.keys(srch).length ? { ...srch } : null);
       await set(guestsRef, guests.length ? [...guests] : null);
       if (masterDirty) await set(masterRef, { ...seatMap });
     }
@@ -1248,8 +1303,8 @@ function onDP(e){
   e.preventDefault();const toId=this.dataset.id;if(!dragFrom){clearDO();return;}
   const toG=asgn[toId]||null;
   if(dragGuest){
-    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];toast('↔ 互換完成','tin');}
-    else{const tf=tags[dragFrom];delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;if(tf)tags[toId]=tf;else delete tags[toId];toast('✓ 移動完成','tok');}
+    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;{const sf=srch[dragFrom],st=srch[toId];if(st)srch[dragFrom]=st;else delete srch[dragFrom];if(sf)srch[toId]=sf;else delete srch[toId];}const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];toast('↔ 互換完成','tin');}
+    else{const tf=tags[dragFrom];const sf=srch[dragFrom];delete srch[dragFrom];delete srch[toId];if(sf)srch[toId]=sf;delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;if(tf)tags[toId]=tf;else delete tags[toId];toast('✓ 移動完成','tok');}
   }
   dragGuest=null;dragFrom=null;hideTip();clearDO();refreshAll();scheduleSave();
 }
@@ -1270,6 +1325,10 @@ window.openModal = function(code){
   document.getElementById('m-name-view').style.display='';
   document.getElementById('m-name-editor').style.display='none';
   document.getElementById('m-name-pencil').style.display=(isAdmin&&!occ)?'':'none';
+  document.getElementById('m-srch-sec').style.display=(isAdmin&&!occ&&g)?'':'none';
+  document.getElementById('m-name-lbl').style.display=(isAdmin&&!occ&&g)?'':'none';
+  document.getElementById('m-srch').value=srch[code]||'';
+  paintSrchHint();
   
   if (!isAdmin) {
     document.getElementById('m-assign-sec').style.display='none';
@@ -1346,6 +1405,11 @@ window.saveNameEdit=function(){
 
   // 只改這一格：其他同名座位（如整排「國際媒體」）不受影響
   const dupAt=Object.keys(asgn).find(c=>c!==code&&asgn[c]===newName);
+  // 把「中文＋英文」縮成乾淨名稱時，舊的完整字串自動搬到搜尋欄，不用重打
+  let movedToSrch=false;
+  if(oldName && !srch[code] && oldName.length>newName.length && normQ(oldName).includes(normQ(newName))){
+    srch[code]=oldName; movedToSrch=true;
+  }
   asgn[code]=newName; delete occupied[code];
   if(!guests.includes(newName)) guests.push(newName);
   if(oldName && !Object.values(asgn).includes(oldName)){
@@ -1356,7 +1420,7 @@ window.saveNameEdit=function(){
   guests.sort();
   const ci=window.checkins&&window.checkins[code];
   if(ci){ ci.name=newName; set(ref(db, PROJECT_ID+'/checkins2026/'+code+'/name'), newName).catch(()=>{}); }
-  toast(dupAt?('已更新（座位 '+dupAt+' 也叫這個名字）'):(oldName?'已更名':'已新增並指派'), dupAt?'tin':'tok');
+  toast(dupAt?('已更新（座位 '+dupAt+' 也叫這個名字）'):movedToSrch?'已更名，原本的完整名稱已放進搜尋欄':(oldName?'已更名':'已新增並指派'), dupAt?'tin':'tok');
   refreshAll(); scheduleSave(); openModal(code);
 };
 document.getElementById('m-name-input').addEventListener('keydown',e=>{
@@ -1364,6 +1428,29 @@ document.getElementById('m-name-input').addEventListener('keydown',e=>{
   if(e.key==='Enter'){ e.preventDefault(); saveNameEdit(); }
   else if(e.key==='Escape'){ e.preventDefault(); cancelNameEdit(); }
 });
+
+// ── 🔎 搜尋用全名／關鍵字：離開欄位或按 Enter 就儲存 ──
+function paintSrchHint(saved){
+  const h=document.getElementById('m-srch-hint'); if(!h) return;
+  h.innerHTML=saved?'<b>✓ 已儲存</b>　搜尋時打裡面任何一段都找得到':'不會出現在席次圖和 Excel，只給搜尋用；用空格分開多個關鍵字';
+}
+function saveSrch(){
+  if(!isAdmin||!modalCode||!asgn[modalCode]) return;
+  const v=document.getElementById('m-srch').value.replace(/[\r\n]+/g,' ').replace(/[ \t]+/g,' ').trim();
+  if(v===(srch[modalCode]||'')) return;
+  if(v) srch[modalCode]=v; else delete srch[modalCode];
+  refreshAll(); scheduleSave(); paintSrchHint(true);
+}
+(function(){
+  const ta=document.getElementById('m-srch');
+  ta.addEventListener('change',saveSrch);
+  ta.addEventListener('blur',saveSrch);
+  ta.addEventListener('keydown',e=>{
+    if(e.isComposing||e.keyCode===229) return;
+    if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); saveSrch(); ta.blur(); }
+  });
+  ta.addEventListener('input',()=>paintSrchHint(false));
+})();
 
 // ── 🎬 劇院模式：只留座位格子，視窗可拖曳 ──
 let theaterPos=null; // 視窗位置（本次開啟期間記住）
@@ -1539,7 +1626,8 @@ function applyTheaterSearch(){
   if(!on){ cnt.textContent='輸入關鍵字，符合的座位會亮燈'; return; }
   Object.keys(seatMap).forEach(code=>{
     const name=occupied[code]?'佔用':(asgn[code]||'');
-    if(name.toLowerCase().includes(kw)||code.toLowerCase()===kw||(kw.length>=3&&code.toLowerCase().includes(kw))){
+    const hay=occupied[code]?'佔用':seatHay(code);
+    if(fuzzyHit(hay,kw)||code.toLowerCase()===kw||(kw.length>=3&&code.toLowerCase().includes(kw))){
       const el=document.getElementById('s-'+code);
       if(el){ el.classList.add('th-hit'); thHits.push({code,name}); }
     }
@@ -1601,9 +1689,10 @@ function placeTheaterModal(){
 })();
 
 window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
-window.closeModal=function(){document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
+window.closeModal=function(){try{saveSrch();}catch(e){} /* 打完直接按關閉也會存 */ document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
 window.doAssignModal=function(g){
   if(!modalCode)return;
+  if(g!==(asgn[modalCode]||'')) delete srch[modalCode]; // 換人了，舊的搜尋字不跟著留
   if(g===''){delete asgn[modalCode];delete tags[modalCode];}else{asgn[modalCode]=g;delete occupied[modalCode];}
   refreshAll();scheduleSave();openModal(modalCode);
 };
@@ -1618,7 +1707,7 @@ window.toggleModalCheckin=async function(){
   refreshAll(); openModal(code);
 };
 
-window.clearSeat=function(){ if(!modalCode)return; delete asgn[modalCode]; delete tags[modalCode];  refreshAll();scheduleSave();openModal(modalCode); };
+window.clearSeat=function(){ if(!modalCode)return; delete asgn[modalCode]; delete tags[modalCode]; delete srch[modalCode];  refreshAll();scheduleSave();openModal(modalCode); };
 // 三顆燈依階層亮：揭幕→三顆全亮；合影→合影＋唱名；唱名→只亮唱名
 function paintTagBtns(code){
   const lv=tagLv(code);
@@ -1639,7 +1728,7 @@ window.toggleTag=function(t){
 window.toggleOccupied=function(){
   if(!modalCode)return;
   if(occupied[modalCode]){delete occupied[modalCode];toast('已取消佔用','tin');}
-  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];toast('🪑 已標記佔用','tok');}
+  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];delete srch[modalCode];toast('🪑 已標記佔用','tok');}
   refreshAll();scheduleSave();openModal(modalCode);
 };
 
@@ -1713,6 +1802,7 @@ async function processExcelFile(file) {
     const newAssign = {};
     const newMaster = {};
     const newTags = {};
+    const newSrch = {}; // 直式格式 D 欄＝搜尋用全名／關鍵字（選填）
 
     // 保留儲存格內原本的換行（例如「公司」跟「姓名職稱」分兩行輸入），
     // 只把每一行「內部」多餘的空白/Tab 收成一個空格，換行本身不會被吃掉
@@ -1778,6 +1868,8 @@ async function processExcelFile(file) {
         const tagMap = {'揭幕':'ceremony','合影':'photo','唱名':'call'};
         const tagV = tagMap[tag] || tag;
         if (tagV && tagV !== 'undefined') newTags[code] = tagV;
+        const sv = String(row[3] || '').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        if (name && sv) newSrch[code] = sv;
       });
     }
 
@@ -1845,6 +1937,7 @@ async function processExcelFile(file) {
       seats_master2026: newMaster,
       assignments2026: Object.keys(newAssign).length ? newAssign : null,
       tags2026: totalTags > 0 ? newTags : null,
+      search2026: Object.keys(newSrch).length ? newSrch : null,
       seats2026: null,
       table_names2026: null,
       checkins2026: null
@@ -2016,12 +2109,12 @@ window.renderChips=function renderChips(){
   if(kw){
     let foundSeats=[];
     Object.entries(asgn).forEach(([code,name])=>{
-      if(name&&name.toLowerCase().includes(kw)){
+      if(name&&fuzzyHit(seatHay(code),kw)){
         const el=document.getElementById('s-'+code);
         if(el){el.classList.add('found');foundSeats.push({code,name});}
       }
     });
-    const unassignedMatches=guests.filter(g=>!aset.has(g)&&g.toLowerCase().includes(kw));
+    const unassignedMatches=guests.filter(g=>!aset.has(g)&&fuzzyHit(g,kw));
     document.getElementById('uc-count').textContent=(foundSeats.length+unassignedMatches.length)+' 筆結果';
 
     if(!foundSeats.length&&!unassignedMatches.length){
@@ -2040,7 +2133,7 @@ window.renderChips=function renderChips(){
       const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
       chip.onclick=()=>{
         if(!isAdmin) return toast('請先登入才能指派座位','ter');
-        if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+        if(modalCode&&!occupied[modalCode]){if(asgn[modalCode]!==g)delete srch[modalCode];asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
         else toast('請先點選一個座位','ter');
       };
       const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
@@ -2057,7 +2150,7 @@ window.renderChips=function renderChips(){
     const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
     chip.onclick=()=>{
       if(!isAdmin) return toast('請先登入才能指派座位','ter');
-      if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+      if(modalCode&&!occupied[modalCode]){if(asgn[modalCode]!==g)delete srch[modalCode];asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
       else toast('請先點選一個座位','ter');
     };
     const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
@@ -2069,7 +2162,7 @@ window.renderChips=function renderChips(){
 function removeGuest(g){
   if (!isAdmin) return;
   const idx=guests.indexOf(g);if(idx===-1)return;guests.splice(idx,1);
-  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];}});
+  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];delete srch[c];}});
   Object.entries(seatMap).forEach(([c,n])=>{if(n===g){seatMap[c]='';}});
   refreshAll();scheduleSave();toast('已移除：'+g.substring(0,15)+'...','tin');
 }
