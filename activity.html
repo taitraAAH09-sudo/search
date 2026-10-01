@@ -371,8 +371,8 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
     </div>
     <div id="m-srch-sec" style="display:none;">
       <div class="modal-section">搜尋用全名／關鍵字（後台填寫，只給查詢比對用）</div>
-      <textarea id="m-srch" rows="2" placeholder="例：史瓦帝尼王國大使館 庫涅內 大使 H.E. Ambassador Vulindlela Kunene　（可再加：董事長貴賓、外賓…）"></textarea>
-      <div class="srch-hint" id="m-srch-hint">不會出現在席次圖和 Excel，只給搜尋用；用空格分開多個關鍵字</div>
+      <textarea id="m-srch" rows="3" placeholder="例：史瓦帝尼王國大使館 庫涅內 大使 H.E. Ambassador Vulindlela Kunene　（可再加：董事長貴賓、外賓…）"></textarea>
+      <div class="srch-hint" id="m-srch-hint">一行一組（可按 Enter 換行）；不會出現在席次圖和 Excel，只給搜尋用</div>
     </div>
     <div id="m-assign-sec">
       <div class="modal-section">指派賓客</div>
@@ -422,7 +422,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V1</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V2</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -529,7 +529,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V1</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V2</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -1432,11 +1432,12 @@ document.getElementById('m-name-input').addEventListener('keydown',e=>{
 // ── 🔎 搜尋用全名／關鍵字：離開欄位或按 Enter 就儲存 ──
 function paintSrchHint(saved){
   const h=document.getElementById('m-srch-hint'); if(!h) return;
-  h.innerHTML=saved?'<b>✓ 已儲存</b>　搜尋時打裡面任何一段都找得到':'不會出現在席次圖和 Excel，只給搜尋用；用空格分開多個關鍵字';
+  h.innerHTML=saved?'<b>✓ 已儲存</b>　搜尋時打裡面任何一段都找得到':'一行一組（可按 Enter 換行）；不會出現在席次圖和 Excel，只給搜尋用';
 }
 function saveSrch(){
   if(!isAdmin||!modalCode||!asgn[modalCode]) return;
-  const v=document.getElementById('m-srch').value.replace(/[\r\n]+/g,' ').replace(/[ \t]+/g,' ').trim();
+  // 保留換行（一行一組，好辨識）；每行頭尾空白收掉、空行刪掉
+  const v=document.getElementById('m-srch').value.split(/\r\n|\r|\n/).map(l=>l.replace(/[ \t\u3000]+/g,' ').trim()).filter(Boolean).join('\n');
   if(v===(srch[modalCode]||'')) return;
   if(v) srch[modalCode]=v; else delete srch[modalCode];
   refreshAll(); scheduleSave(); paintSrchHint(true);
@@ -1445,10 +1446,6 @@ function saveSrch(){
   const ta=document.getElementById('m-srch');
   ta.addEventListener('change',saveSrch);
   ta.addEventListener('blur',saveSrch);
-  ta.addEventListener('keydown',e=>{
-    if(e.isComposing||e.keyCode===229) return;
-    if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); saveSrch(); ta.blur(); }
-  });
   ta.addEventListener('input',()=>paintSrchHint(false));
 })();
 
@@ -1688,7 +1685,7 @@ function placeTheaterModal(){
   });
 })();
 
-window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
+window.closeBg=function(e){ /* 點旁邊不關，只能按下方「關閉」，避免誤觸把視窗關掉 */ };
 window.closeModal=function(){try{saveSrch();}catch(e){} /* 打完直接按關閉也會存 */ document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
 window.doAssignModal=function(g){
   if(!modalCode)return;
@@ -1868,7 +1865,7 @@ async function processExcelFile(file) {
         const tagMap = {'揭幕':'ceremony','合影':'photo','唱名':'call'};
         const tagV = tagMap[tag] || tag;
         if (tagV && tagV !== 'undefined') newTags[code] = tagV;
-        const sv = String(row[3] || '').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const sv = cleanMultiline(row[3]);
         if (name && sv) newSrch[code] = sv;
       });
     }
