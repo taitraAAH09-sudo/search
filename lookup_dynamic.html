@@ -783,6 +783,15 @@ function applyEventTitle(){
 applyEventTitle();
 
 let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
+// 搜尋用全名／關鍵字（席次圖系統 search2026，以座位碼為 key）：只拿來比對，畫面照樣只顯示乾淨名稱
+let SRCH={};
+// 模糊比對：全形轉半形、不分大小寫、忽略空白與標點；空格分開的每個關鍵字都要命中
+const normQ=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[\s\u3000.,，、。·・()（）\[\]【】「」'"’\-_/:：;；]+/g,'');
+function seatHit(code,name,terms){
+  const h=normQ(code+' '+(name||'')+' '+(name?(SRCH[code]||''):''));
+  const toks=terms.map(normQ).filter(Boolean);
+  return toks.length>0 && toks.every(t=>h.includes(t));
+}
 // 標記階層：揭幕 ⊃ 合影 ⊃ 唱名（席次圖系統 tags2026 只存最高那一層）
 const TAG_LV={ceremony:3, photo:2, call:1};
 function tagLv(c){ return TAG_LV[TAGS[c]]||0; }
@@ -851,6 +860,11 @@ onValue(ref(db,PROJECT_ID+'/assignments2026'),snap=>{
   ASGN=snap.val()||{};
   rebuildData();
   if(loaded){ updateStats(); refreshMain(); }
+});
+
+onValue(ref(db,PROJECT_ID+'/search2026'),snap=>{
+  SRCH=snap.val()||{};
+  if(loaded) refreshMain();
 });
 
 onValue(ref(db,PROJECT_ID+'/tags2026'),snap=>{
@@ -940,12 +954,8 @@ window.doSearch=function(){
   }
 
   // 支援空格分隔多個關鍵字（例如「台達 王」），每個字詞都要命中才算符合（AND 邏輯）
-  const terms=kw.toLowerCase().split(/\s+/).filter(Boolean);
-  const results=Object.entries(DATA).filter(([code,name])=>{
-    const codeL=code.toLowerCase();
-    const nameL=(name||'').toLowerCase();
-    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
-  });
+  const terms=kw.toLowerCase().split(/[\s\u3000]+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms));
 
   // 證件編號比對：關鍵字含數字時，同時比對編號對照表。
   // 「53」可對到「0053」：去前導零相等、後幾碼相符、或包含在編號數字中都算命中
@@ -1130,11 +1140,8 @@ window.badgeAdminSearch=function(){
   const kw=(document.getElementById('badge-guest-search').value||'').trim().toLowerCase();
   const box=document.getElementById('badge-guest-results');
   if(!kw){ box.innerHTML=''; return; }
-  const terms=kw.split(/\s+/).filter(Boolean);
-  const results=Object.entries(DATA).filter(([code,name])=>{
-    const codeL=code.toLowerCase(), nameL=(name||'').toLowerCase();
-    return terms.every(t=>codeL.includes(t)||nameL.includes(t));
-  }).slice(0,20);
+  const terms=kw.split(/[\s\u3000]+/).filter(Boolean);
+  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms)).slice(0,20);
   if(!results.length){
     box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">${t('ba_no_guest')}</div>`;
     return;
