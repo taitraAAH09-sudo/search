@@ -387,7 +387,7 @@ body.view-only .room-flag{display:inline-block;margin:4px 0 2px;font-size:14px;p
   <div>顯示 <span class="sn" id="st">—</span> 筆</div>
   <div><span class="sn" id="sd">—</span> 天</div>
   <div id="note" style="font-size:15.8px;color:var(--tx3)"></div>
-  <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-msg">連線中…</span><span style="margin-left:8px;opacity:.5;font-size:.85em">V3</span></div>
+  <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-msg">連線中…</span><span style="margin-left:8px;opacity:.5;font-size:.85em">V4</span></div>
 </div>
 
 <div id="main-content">
@@ -673,18 +673,24 @@ function onValue(r, cb, errCb){
 async function fbWrite(kind, r, v){
   if(!REST){
     const op = kind==='set' ? _set(r, v) : kind==='update' ? _update(r, v) : _remove(r);
-    try{ await withTO(op, 8000, '即時連線寫入'); return; }
+    try{ await withTO(op, 5000, '即時連線寫入'); return; }
     catch(e){
       if(/PERMISSION_DENIED/i.test(e.message)) throw e;
+      toast('即時連線沒回應，改用備援方式存檔…', 'ok');
       goRest(e.message);
     }
   }
+  console.log('[Gurus] 備援寫入', kind, r.toString());
   const res = await withTO(fetch(r.toString() + '.json', {
     method: { set: 'PUT', update: 'PATCH', remove: 'DELETE' }[kind],
     headers: { 'Content-Type': 'application/json' },
     body: v === undefined ? undefined : JSON.stringify(v)
-  }), 20000, '備援寫入');
-  if(!res.ok) throw new Error('備援寫入失敗 HTTP ' + res.status);
+  }), 15000, '備援寫入');
+  if(!res.ok){
+    const t = await res.text().catch(()=>'');
+    throw new Error('備援寫入失敗 HTTP ' + res.status + (t ? '：' + t.slice(0, 120) : ''));
+  }
+  console.log('[Gurus] 備援寫入成功');
   pollAll(true);   // 寫完馬上重抓，畫面立刻更新
 }
 const set    = (r, v) => fbWrite('set', r, v);
