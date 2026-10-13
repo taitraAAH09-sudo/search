@@ -387,7 +387,7 @@ body.view-only .room-flag{display:inline-block;margin:4px 0 2px;font-size:14px;p
   <div>顯示 <span class="sn" id="st">—</span> 筆</div>
   <div><span class="sn" id="sd">—</span> 天</div>
   <div id="note" style="font-size:15.8px;color:var(--tx3)"></div>
-  <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-msg">連線中…</span></div>
+  <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-msg">連線中…</span><span style="margin-left:8px;opacity:.5;font-size:.85em">V3</span></div>
 </div>
 
 <div id="main-content">
@@ -588,7 +588,7 @@ window.tagDrop = e=>{
 /* ── END DRAG TAGS ── */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, update, remove, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set as _set, update as _update, remove as _remove, onValue as _onValue, push, goOffline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDM9gqNxouPzNvj1EPtzVL1QMeH2wfEv6s",
@@ -601,6 +601,95 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+/* ── V2：即時連線的備援 ──
+   有些電腦／網路會擋 Firebase 的即時連線（WebSocket），套件不會報錯，只會一直「載入中」。
+   6 秒內沒拿到資料，就改用一般 HTTPS 讀寫。
+   V3：備援模式改用 Firebase 的 HTTPS 推播（EventSource），別人一改馬上更新；
+       推播也被擋時，才退回每 3 秒檢查一次。 */
+let REST = false, _pollT = null;
+const WATCH = new Map();   // 網址 → { cb, sdkUnsub, last, es, lastFetch }
+const withTO = (p, ms, what) => Promise.race([p, new Promise((_, rej) =>
+  setTimeout(() => rej(new Error(what + ' 超過 ' + Math.round(ms/1000) + ' 秒沒有回應')), ms))]);
+const fakeSnap = v => ({ val: () => v, exists: () => v !== null && v !== undefined });
+async function restFetch(url){
+  const w = WATCH.get(url); if(!w) return;
+  try{
+    const r = await withTO(fetch(url + '.json'), 20000, '讀取');
+    if(!r.ok) throw new Error('HTTP ' + r.status + (r.status===401||r.status===403 ? '（資料庫規則擋住）' : ''));
+    const txt = await r.text();
+    if(!WATCH.has(url)) return;
+    w.lastFetch = Date.now();
+    if(txt !== w.last){ w.last = txt; w.cb(fakeSnap(JSON.parse(txt))); }
+    setDot('live', allPush() ? '即時同步（備援連線）' : '已連線（備援模式，每 3 秒更新）');
+  }catch(e){
+    setDot('err', '連線失敗：' + e.message);
+  }
+}
+const allPush = () => [...WATCH.values()].every(w => w.es && w.es.readyState === 1);
+/* 推播：雲端有變動就送一個事件過來，收到就重抓一次（250ms 內合併成一次） */
+function openPush(url){
+  const w = WATCH.get(url); if(!w || w.es || typeof EventSource === 'undefined') return;
+  try{
+    const es = new EventSource(url + '.json');
+    w.es = es;
+    let t = null;
+    const kick = () => { clearTimeout(t); t = setTimeout(() => restFetch(url), 250); };
+    es.addEventListener('put', kick);
+    es.addEventListener('patch', kick);
+    es.addEventListener('open', () => setDot('live', allPush() ? '即時同步（備援連線）' : '已連線（備援模式，每 3 秒更新）'));
+    es.addEventListener('cancel', () => { try{ es.close(); }catch(e){} });
+  }catch(e){ w.es = null; }
+}
+/* 每 3 秒巡一次：推播正常的節點 30 秒才補抓一次保險；推播不通的節點每 3 秒抓 */
+function pollAll(force){
+  if(document.hidden && !force) return;
+  WATCH.forEach((w, url) => {
+    const pushing = w.es && w.es.readyState === 1;
+    if(force || !pushing || Date.now() - (w.lastFetch || 0) > 30000) restFetch(url);
+  });
+}
+function goRest(why){
+  if(REST) return;
+  REST = true;
+  console.warn('[Gurus] ' + why + '，改用 HTTPS 備援');
+  WATCH.forEach(w => { try{ w.sdkUnsub(); }catch(e){} w.sdkUnsub = () => {}; });
+  try{ goOffline(db); }catch(e){}   // 關掉卡住的即時連線，避免排隊中的舊資料之後才送出去
+  setDot('load', '即時連線沒回應，改用備援方式…');
+  WATCH.forEach((_, url) => openPush(url));
+  pollAll(true);
+  _pollT = setInterval(() => pollAll(false), 3000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) pollAll(true); });
+}
+function onValue(r, cb, errCb){
+  const url = r.toString();
+  const w = { cb, sdkUnsub: () => {}, last: null, es: null, lastFetch: 0 };
+  WATCH.set(url, w);
+  if(REST){ openPush(url); restFetch(url); }
+  else w.sdkUnsub = _onValue(r, cb, errCb);
+  return () => { try{ w.sdkUnsub(); }catch(e){} try{ w.es && w.es.close(); }catch(e){}
+                 if(WATCH.get(url) === w) WATCH.delete(url); };
+}
+async function fbWrite(kind, r, v){
+  if(!REST){
+    const op = kind==='set' ? _set(r, v) : kind==='update' ? _update(r, v) : _remove(r);
+    try{ await withTO(op, 8000, '即時連線寫入'); return; }
+    catch(e){
+      if(/PERMISSION_DENIED/i.test(e.message)) throw e;
+      goRest(e.message);
+    }
+  }
+  const res = await withTO(fetch(r.toString() + '.json', {
+    method: { set: 'PUT', update: 'PATCH', remove: 'DELETE' }[kind],
+    headers: { 'Content-Type': 'application/json' },
+    body: v === undefined ? undefined : JSON.stringify(v)
+  }), 20000, '備援寫入');
+  if(!res.ok) throw new Error('備援寫入失敗 HTTP ' + res.status);
+  pollAll(true);   // 寫完馬上重抓，畫面立刻更新
+}
+const set    = (r, v) => fbWrite('set', r, v);
+const update = (r, v) => fbWrite('update', r, v);
+const remove = r      => fbWrite('remove', r);
 /* ── Room 1 / Room 2：兩個獨立房間，資料互不干涉（兩個展同時進行用） ──
    Room1 = 原本的 activities/settings 節點（既有資料不動）；Room2 = room2/ 底下 */
 let ROOM = URL_ROOM || localStorage.getItem('gurusRoom') || '1'; // 網址指定優先，且不寫回 localStorage
@@ -957,6 +1046,10 @@ function bindRoom(){
   setDot('load','Room '+ROOM+' 連線中…');
   attachSettings();
   attachAct();
+  if(!REST){
+    const myRoom = ROOM;
+    setTimeout(() => { if(!REST && ROOM === myRoom && !data_loaded_once) goRest('即時連線 6 秒沒有資料'); }, 6000);
+  }
   updateRoomBtn();
 }
 function updateRoomBtn(){
