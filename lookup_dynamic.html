@@ -79,6 +79,8 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 
 .card-info { flex:1; min-width:0; }
 .card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
+.card-alt { font-size:12px; line-height:1.45; color:#6B7280; margin:-2px 0 4px; white-space:pre-line; }
+.card-alt mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
 .card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
 .card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
 .card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
@@ -270,7 +272,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup</div>
+    <div class="header-tag">TAITRA · Event Lookup · V2</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -396,6 +398,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
       <div data-i18n="wk_autosave_hint" style="color:rgba(255,255,255,0.45);font-size:11.5px;margin:2px 0 8px;line-height:1.6;">打完字會自動儲存，不按下面的按鈕也不會掉；按儲存只是順便回清單。</div>
       <button class="wk-save" data-i18n="wk_save" onclick="wikiSaveRecord()" style="margin-top:6px;">💾 儲存並回清單</button>
       <button class="wk-btn" data-i18n="wk_back" onclick="wikiBackToList()" style="width:100%;margin-top:8px;">← 回清單</button>
+      <button class="wk-del" id="wk-unlink" data-i18n="wk_unlink" onclick="wikiUnlink()" style="display:none;">🚫 照片配錯人：這個座位不要用一覽表照片</button>
       <button class="wk-del" id="wk-del" data-i18n="wk_delete" onclick="wikiDeleteRecord()" style="display:none;">🗑 刪除本系統這筆（一覽表資料不受影響）</button>
       <div id="wk-form-msg" style="color:#4ade80;font-size:12.5px;margin-top:10px;min-height:16px;"></div>
     </div>
@@ -530,6 +533,10 @@ const I18N = {
   wk_src_wiki:"照片來源：長官中英一覽表（已自動備份一份到本系統）",
   wk_src_cache:"照片來源：本系統備份的一覽表照片（一覽表目前查無這個人）",
   wk_delete:"🗑 刪除本系統這筆（一覽表資料不受影響）",
+  wk_unlink:"🚫 照片配錯人：這個座位不要用一覽表照片",
+  wk_unlink_confirm:"這個座位之後不再自動帶一覽表的照片（一覽表本身不受影響）。\n之後想要正確照片，可以在這筆直接上傳；想恢復自動配對，刪除這筆即可。確定？",
+  wk_unlinked:"✅ 已解除照片配對",
+  wk_src_blocked:"已解除一覽表照片配對（可自行上傳正確照片；刪除這筆即恢復自動配對）",
   wk_del_confirm:"確定刪除本系統這筆照片／聯絡資料？（長官中英一覽表的原始資料不會被更動）",
   wk_form_new:"新增聯絡人", wk_form_edit:n=>`編輯：${n}`,
   wk_need_name:"請填寫中文姓名（照片是靠中文姓名對應席次圖的）",
@@ -653,6 +660,10 @@ const I18N = {
   wk_src_wiki:"Photo: from the directory (a copy has been backed up here)",
   wk_src_cache:"Photo: local backup of the directory photo (not found in the directory right now)",
   wk_delete:"🗑 Delete this record here (the directory is untouched)",
+  wk_unlink:"🚫 Wrong person — stop using the directory photo for this seat",
+  wk_unlink_confirm:"This seat will no longer pull a photo from the directory (the directory itself is untouched).\nYou can upload the right photo on this record; delete the record to restore automatic matching. Continue?",
+  wk_unlinked:"✅ Photo match removed",
+  wk_src_blocked:"Directory photo unlinked (upload the right one here; delete this record to restore matching)",
   wk_del_confirm:"Delete this photo / contact record from this system? The Executive Bilingual Directory is not affected.",
   wk_form_new:"New contact", wk_form_edit:n=>`Editing: ${n}`,
   wk_need_name:"A Chinese name is required — it is what links the photo to the seating chart.",
@@ -787,6 +798,16 @@ let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP
 let SRCH={};
 // 模糊比對：全形轉半形、不分大小寫、忽略空白與標點；空格分開的每個關鍵字都要命中
 const normQ=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[\s\u3000.,，、。·・()（）\[\]【】「」'"’\-_/:：;；]+/g,'');
+// 命中搜尋欄的那幾行（例如英文名），顯示在中文名稱下面；名稱本身已命中的字不重複列
+function srchLines(code,name,terms){
+  if(!name||!SRCH[code]) return [];
+  const toks=terms.map(normQ).filter(Boolean);
+  const nn=normQ(name);
+  const extra=toks.filter(t=>!nn.includes(t)&&!normQ(code).includes(t));
+  if(!extra.length) return [];
+  return String(SRCH[code]).split(/\n/).map(l=>l.trim()).filter(l=>l&&extra.some(t=>normQ(l).includes(t)));
+}
+const escH=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function seatHit(code,name,terms){
   const h=normQ(code+' '+(name||'')+' '+(name?(SRCH[code]||''):''));
   const toks=terms.map(normQ).filter(Boolean);
@@ -1002,7 +1023,7 @@ window.doSearch=function(){
         <div class="badge-seat">${p.badgeBot}</div>
       </div>${av}
       <div class="card-info">
-        <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>
+        <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>${(()=>{const al=srchLines(code,name,terms);return al.length?`<div class="card-alt">${al.map(l=>escH(l).replace(re,'<mark>$1</mark>')).join('\n')}</div>`:'';})()}
         <div class="card-seat">${t('lbl_seat_code')}${hc}</div>
         <div class="card-zone">${p.detail}</div>
       </div>
@@ -1715,22 +1736,29 @@ const _wnorm=s=>String(s||'').toLowerCase().replace(/[\s\u3000·,、．.·・_\-
 const _key=s=>_wnorm(s).replace(/[.$#\[\]\/]/g,'');   // Firebase 不吃的字元要拿掉
 let _wikiCache={};
 
+/* ── 異體字：一覽表與座位系統用字不同（台／臺…）時視為同一字 ── */
+const _VAR={'臺':'台','峯':'峰','爲':'為','啓':'啟','衆':'眾','裏':'裡','着':'著','綫':'線','羣':'群','喆':'哲','銹':'鏽','双':'雙','栢':'柏'};
+const _vnorm=s=>[...String(s||'')].map(c=>_VAR[c]||c).join('');
+
 /* ── 模糊比對：完全包含比對不到時才用 ──
-   把姓名逐字在座位文字裡「依序」找，中間可以夾雜其他字（職稱、公司），
-   回傳「姓名裡有幾個字沒依序找到」，數字越小代表越像。 */
-function _fuzzyGap(name,hay){
-  let hi=0, missed=0;
-  for(const ch of name){
-    const idx=hay.indexOf(ch,hi);
-    if(idx===-1) missed++; else hi=idx+1;
+   舊版是「依序找字、中間可夾雜別的字」，座位文字一長（獎項名稱＋單位＋姓名），
+   像「王美花」就會在「…王花蘭…」裡湊到「王、花」而配錯人。
+   新版：在座位文字裡找「跟姓名一樣長」的一段，逐字對位；
+   姓（第一個字）必須相同，其餘最多只能錯 1 個字，而且姓名要 4 個字以上才允許。
+   三個字的姓名只認「完全相同」（含異體字），不再猜。 */
+function _fuzzyDiff(name,hay){
+  const n=[...name], h=[...hay], L=n.length;
+  let best=99;
+  for(let i=0;i+L<=h.length;i++){
+    if(h[i]!==n[0]) continue;
+    let d=0;
+    for(let j=1;j<L&&d<=1;j++){ if(h[i+j]!==n[j]) d++; }
+    if(d<best) best=d;
   }
-  return missed;
+  return best;
 }
-/* 姓名越短，容許的差異要越嚴格，避免菜市場姓名亂配對 */
-function _fuzzyOk(nameLen,gap){
-  if(nameLen<3) return gap===0;   // 兩個字的姓名不冒險模糊比對
-  if(nameLen<=4) return gap<=1;   // 三、四個字，容許差 1 個字
-  return gap<=2;                  // 五個字以上，容許差 2 個字
+function _fuzzyOk(nameLen,diff){
+  return nameLen>=4 && diff<=1;
 }
 
 /* 回傳 {name,photo,phone,note,sameName,src} 或 null */
@@ -1746,28 +1774,31 @@ function findVip(seatName){
   lk.sort((a,b)=>b.length-a.length);
   const loc=lk.length?LOCAL[lk[0]]:null;
 
-  // 2) 再找一覽表（只取照片）— 先試「完全包含」
-  let cands=WIKI.filter(r=>{
-    const n=_wnorm(r.nameZh);
-    return n.length>=2 && /[\u4e00-\u9fff]/.test(n) && hay.includes(n);
+  // 本系統已標記「照片配錯人」→ 這個座位完全不去一覽表找照片
+  const block=!!(loc&&loc.noWiki);
+  const hayV=_vnorm(hay);
+  // 2) 再找一覽表（只取照片）— 先試「完全包含」（異體字視為相同）
+  let cands=block?[]:WIKI.filter(r=>{
+    const n=_vnorm(_wnorm(r.nameZh));
+    return n.length>=2 && /[\u4e00-\u9fff]/.test(n) && hayV.includes(n);
   });
   let key='nameZh', fuzzy=false;
-  if(!cands.length){
+  if(!block&&!cands.length){
     cands=WIKI.filter(r=>{ const n=_wnorm(r.nameEn); return n.length>=4 && hay.includes(n); });
     key='nameEn';
   }
-  // 3) 完全包含比對不到 → 改用模糊比對中文姓名（容許一覽表姓名跟座位文字之間差一兩個字）
-  if(!cands.length){
+  // 3) 完全包含比對不到 → 四字以上姓名才容許錯一個字（姓必須相同）
+  if(!block&&!cands.length){
     const fz=WIKI.map(r=>{
-      const n=_wnorm(r.nameZh);
+      const n=_vnorm(_wnorm(r.nameZh));
       if(!n || !/[\u4e00-\u9fff]/.test(n)) return null;
-      const gap=_fuzzyGap(n,hay);
-      return _fuzzyOk(n.length,gap)?{r,gap,len:n.length}:null;
+      const d=_fuzzyDiff(n,hayV);
+      return _fuzzyOk(n.length,d)?{r,d,len:n.length}:null;
     }).filter(Boolean);
     if(fz.length){
-      fz.sort((a,b)=>a.gap-b.gap||b.len-a.len);            // 差異最小、姓名最長的排最前面
-      const bestGap=fz[0].gap, bestLen=fz[0].len;
-      cands=fz.filter(x=>x.gap===bestGap&&x.len===bestLen).map(x=>x.r);
+      fz.sort((a,b)=>a.d-b.d||b.len-a.len);
+      const bd=fz[0].d, bl=fz[0].len;
+      cands=fz.filter(x=>x.d===bd&&x.len===bl).map(x=>x.r);
       key='nameZh'; fuzzy=true;
     }
   }
@@ -1780,7 +1811,7 @@ function findVip(seatName){
     wikiPhoto=pick.photo||null; sameName=tied.length;
   }
 
-  const cache=(loc&&loc.photoCache)||null;
+  const cache=(!block&&loc&&loc.photoCache)||null;
   if(loc||wikiPhoto){
     const k=lk.length?lk[0]:(cands.length?_key(cands[0][key]):'');
     // 這個人已經有聯絡人資料，就把一覽表當下的照片自動存一份到本系統（備份，不是覆蓋）
@@ -2322,7 +2353,7 @@ function renderVenueView(fresh){
 /* ══════════════════════════════════════════════════════════════════
    👤 照片／聯絡方式管理：只寫本系統，永遠不回寫一覽表
    ══════════════════════════════════════════════════════════════════ */
-let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false, _wkSrc=null, _wkTimer=null;
+let _wkKey=null, _wkPhoto=null, _wkPhotoDirty=false, _wkSrc=null, _wkTimer=null, _wkSeat=null;
 function _wkOpen(){ return document.getElementById('wiki-admin-overlay').style.display==='block'; }
 window.openWikiAdminFor=function(i){
   const c=_CTX[i];
@@ -2331,6 +2362,7 @@ window.openWikiAdminFor=function(i){
 /* 從卡片進來：席次圖那格文字先找得到人就直接編輯，找不到才開新增 */
 window.openWikiAdminForName=function(seatName){
   document.getElementById('wiki-admin-overlay').style.display='block';
+  _wkSeat=seatName||null;
   document.getElementById('wk-search').value=seatName||'';
   const v=seatName?findVip(seatName):null;
   if(v&&v.key){ wikiEditKey(v.key, v); return; }
@@ -2344,6 +2376,7 @@ window.openWikiAdmin=function(){
 window.closeWikiAdmin=function(){ document.getElementById('wiki-admin-overlay').style.display='none'; };
 window.wikiBackToList=function(){
   clearTimeout(_wkTimer);
+  _wkSeat=null;
   _wkKey=null; _wkPhoto=null; _wkPhotoDirty=false; _wkSrc=null;
   document.getElementById('wk-form').style.display='none';
   document.getElementById('wk-browse').style.display='block';
@@ -2420,6 +2453,7 @@ window.wikiNewRecord=function(){
   document.getElementById('wk-phone').value='';
   document.getElementById('wk-note').value='';
   document.getElementById('wk-del').style.display='none';
+  document.getElementById('wk-unlink').style.display='none';
   _wkSetPreview(null);
   _wkShowSrc();
 };
@@ -2438,6 +2472,8 @@ function wikiEditKey(key,rec){
   document.getElementById('wk-phone').value=(loc&&loc.phone)||'';
   document.getElementById('wk-note').value=(loc&&loc.note)||'';
   document.getElementById('wk-del').style.display=loc?'block':'none';
+  if(loc&&loc.noWiki&&!loc.photo){ _wkSrc='blocked'; _wkPhoto=null; }
+  _wkShowUnlink();
   _wkSetPreview(_wkPhoto);
   _wkShowSrc();
 }
@@ -2503,6 +2539,7 @@ async function _wikiPersist(auto){
     photoCacheAt:wp?Date.now():(old.photoCacheAt||null),
     updated:Date.now()
   };
+  if(old.noWiki) rec.noWiki=true;   // 解除配對的標記不要被一般存檔洗掉
   const msg=document.getElementById('wk-form-msg');
   msg.style.color='#4ade80';
   try{
@@ -2532,6 +2569,42 @@ window.wikiSaveRecord=async function(){
   clearTimeout(_wkTimer);
   const ok=await _wikiPersist(false);
   if(ok) setTimeout(()=>{ wikiBackToList(); },600);
+};
+/* 照片是一覽表帶進來的、而且是從座位卡片點進來，才顯示「照片配錯人」按鈕 */
+function _wkShowUnlink(){
+  const b=document.getElementById('wk-unlink'); if(!b) return;
+  let show=false;
+  if(_wkSeat){
+    const v=findVip(_wkSeat);
+    const loc=LOCAL[_key(_wkSeat)];
+    show=!!(v&&v.photo&&(v.src==='wiki'||v.src==='cache')&&!(loc&&loc.noWiki));
+  }
+  b.style.display=show?'block':'none';
+}
+/* 解除配對：以「座位那格完整文字」建一筆本系統紀錄並標記 noWiki，
+   之後這個座位就不會再自動帶一覽表照片；刪除這筆即可恢復 */
+window.wikiUnlink=async function(){
+  if(!_wkSeat) return;
+  if(!confirm(t('wk_unlink_confirm'))) return;
+  const key=_key(_wkSeat);
+  const old=LOCAL[key]||{};
+  const rec={name:old.name||_wkSeat, contact:old.contact||'', phone:old.phone||'', note:old.note||'',
+             photo:old.photo||null, noWiki:true, updated:Date.now()};
+  const msg=document.getElementById('wk-form-msg');
+  try{
+    const r=await fetch(`${DB_URL}/${LOCAL_PATH}/${encodeURIComponent(key)}.json`,
+      {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    LOCAL[key]=rec; _wikiCache={}; _cached.add(key);
+    if(loaded) refreshMain();
+    const seat=_wkSeat;
+    wikiEditKey(key,{name:rec.name});   // 直接切到這個座位自己的那筆，可再上傳正確照片
+    _wkSeat=seat; _wkShowUnlink();
+    msg.style.color='#4ade80'; msg.textContent=t('wk_unlinked');
+  }catch(e){
+    msg.style.color='#f87171';
+    msg.textContent=t('wk_save_fail',e.message||e);
+  }
 };
 window.wikiDeleteRecord=async function(){
   if(!_wkKey||!LOCAL[_wkKey]) return;
