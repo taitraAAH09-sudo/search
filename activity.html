@@ -551,6 +551,27 @@ body.theater #rv-tools{display:none!important;}
   </div>
 </div>
 
+<div class="modal-bg" id="code-modal-bg" style="align-items:center;" onclick="if(event.target===this)closeCodeModal()">
+  <div class="modal" style="border-radius:16px;max-width:620px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-code">🔢 報到號碼</div>
+    <div class="modal-name" style="background:#FFF7E6;color:#92400E;line-height:1.7;">
+      建議<b>席次排到最終版</b>再產生。號碼跟著「人」走：之後有人換座位，號碼不變。<br>
+      這組號碼<b>只在本場活動有效</b>，現場在手機查詢頁輸入號碼，就會找到他目前坐哪、直接報到。
+    </div>
+    <div style="font-size:13.5px;color:#374151;margin:4px 0 10px;" id="cd-stat"></div>
+    <div class="ml-btns" style="margin-top:0;">
+      <button class="main" id="cd-gen" onclick="genCodes()">🔢 席次已定案，產生報到號碼</button>
+    </div>
+    <div class="ml-lbl">號碼卡預覽（寄提醒信時會附上每個人自己的這張圖）</div>
+    <canvas id="cd-canvas" style="width:100%;height:auto;border:1px solid #E5E7EB;border-radius:10px;display:block;"></canvas>
+    <div class="ml-btns">
+      <button onclick="downloadAllCards()">⬇ 下載全部號碼卡</button>
+      <button id="cd-renum" onclick="renumberCodes()" style="border-color:#DC2626;color:#DC2626;">↺ 全部重新編號</button>
+    </div>
+    <button class="modal-close" onclick="closeCodeModal()">關閉</button>
+  </div>
+</div>
+
 <div class="modal-bg" id="mail-modal-bg" style="align-items:center;" onclick="if(event.target===this)closeMailModal()">
   <div class="modal" style="border-radius:16px;max-width:620px;max-height:92vh;overflow-y:auto;">
     <div class="modal-code" id="ml-title">📧 寄信通知</div>
@@ -566,7 +587,8 @@ body.theater #rv-tools{display:none!important;}
     <input class="ml-in" id="ml-subject">
     <div class="ml-lbl" style="display:flex;align-items:center;">內文（中英文；{桌號}、{Table}、{同桌名單} 會自動換成這桌的資料）<a href="javascript:void(0)" onclick="mailResetTpl()" style="margin-left:auto;font-weight:400;color:#2563EB;">改回預設</a></div>
     <textarea class="ml-in" id="ml-body" rows="10"></textarea>
-    <div class="ml-lbl">附件</div>
+    <div class="tk-row" id="ml-cards-row"><label><input type="checkbox" id="ml-cards" checked> 附上每位賓客的報到號碼卡（圖檔，信裡會自動加一句說明）</label></div>
+    <div class="ml-lbl">其他附件</div>
     <div class="tk-row" id="ml-atts"></div>
     <input type="file" id="ml-file" multiple style="display:none" onchange="mailAddFiles(this.files);this.value=''">
     <div class="ml-btns">
@@ -607,7 +629,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V21</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V22</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -721,7 +743,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V21</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V22</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -746,6 +768,7 @@ body.theater #rv-tools{display:none!important;}
     <button class="btn" id="btn-login" onclick="handleAuth()" style="border-color:#FCA5A5;color:#B91C1C;background:#FEF2F2;">🔒 登入</button>
     <button class="btn btn-setting admin-only" id="btn-setting" style="display:none;" onclick="openLayoutModal()">⚙️ 架構設定</button>
     <button class="btn btn-ex" id="exbtn" onclick="doExport()">⬇ 匯出 XLSX</button>
+    <button class="btn admin-only" style="display:none;border-color:#B45309;color:#B45309;background:#FFF7E6;" onclick="openCodeModal()">🔢 報到號碼</button>
     <button class="btn" id="dcbtn" onclick="openDetailChart()" style="border-color:#1D3A6E;color:#1D3A6E;background:#EAF0FA;display:none;">🪑 圓桌細節圖</button>
     <button class="btn" id="btn-lookup" onclick="openLookup()"
       style="border-color:#1A6B4A;color:#1A6B4A;background:#E8F5EE;display:none;">🔍 手機查詢</button>
@@ -1220,6 +1243,7 @@ window.confirmEventSelect = async function() {
   }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/badge_codes2026'), snap => {
     Object.keys(badgeCodes).forEach(k => delete badgeCodes[k]); Object.assign(badgeCodes, snap.val() || {});
+    if (document.getElementById('code-modal-bg').classList.contains('show')) codePaint();
   }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/ticket2026'), snap => { ticketTpl = snap.val() || null; }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/mailtpl2026'), snap => { mailTpl = snap.val() || null; }));
@@ -2199,7 +2223,7 @@ async function exportRoundXlsx(wb, eventName){
 
     if (heads.length) {
         const ws = wb.addWorksheet('主桌');
-        const cols = [['主桌', 12], ['序位', 10], ['賓客', 50], ['座位', 12], ['標記', 10], ['報到', 12], ['Email', 30], ['系統座位碼（上傳用勿改）', 16]];
+        const cols = [['主桌', 12], ['序位', 10], ['賓客', 50], ['座位', 12], ['標記', 10], ['報到', 12], ['Email', 30], ['報到號碼', 10], ['系統座位碼（上傳用勿改）', 16]];
         setup(ws, eventName + '－主桌（依禮賓序位排列）', cols, 'FF7A5320');
         let r = 3, band = false;
         heads.forEach(t => {
@@ -2222,12 +2246,12 @@ async function exportRoundXlsx(wb, eventName){
                 const row = ws.getRow(r++);
                 row.values = [label, k === 0 ? '1 主位' : (k === 1 ? '2 主賓' : String(k + 1)), nameAt(pi),
                     tNoOf(t) + '-' + seatNoOf(code), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '',
-                    emailOf(asgn[code]), code];
-                paintRow(row, fill, 3); grayCode(row, 8);
+                    emailOf(asgn[code]), codeOf(asgn[code]), code];
+                paintRow(row, fill, 3); grayCode(row, 9);
             });
             if (okSt) st.cards.filter(c => c && c.role === 'free' && c.text).forEach(c => {
                 const row = ws.getRow(r++);
-                row.values = [label, '加掛', c.text, '', '', '', '', ''];
+                row.values = [label, '加掛', c.text, '', '', '', '', '', ''];
                 paintRow(row, fill, 3);
             });
             if (r - 1 > startR) ws.mergeCells(startR, 1, r - 1, 1);
@@ -2236,7 +2260,7 @@ async function exportRoundXlsx(wb, eventName){
 
     if (normals.length) {
         const ws = wb.addWorksheet('一般桌次');
-        const cols = [['桌次', 10], ['桌名', 16], ['座位', 10], ['賓客', 50], ['標記', 10], ['報到', 12], ['Email', 30], ['系統座位碼（上傳用勿改）', 16]];
+        const cols = [['桌次', 10], ['桌名', 16], ['座位', 10], ['賓客', 50], ['標記', 10], ['報到', 12], ['Email', 30], ['報到號碼', 10], ['系統座位碼（上傳用勿改）', 16]];
         setup(ws, eventName + '－一般桌次（座位依順時針，12 點鐘方向為 1）', cols, 'FF132742');
         let r = 3, band = false;
         normals.forEach(t => {
@@ -2249,8 +2273,8 @@ async function exportRoundXlsx(wb, eventName){
                 const row = ws.getRow(r++);
                 row.values = ['第 ' + no + ' 桌', tableNames[t] || '', no + '-' + sn,
                     occupied[code] ? '（佔用）' : (asgn[code] || ''), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '',
-                    occupied[code] ? '' : emailOf(asgn[code]), code];
-                paintRow(row, fill, 4); grayCode(row, 8);
+                    occupied[code] ? '' : emailOf(asgn[code]), occupied[code] ? '' : codeOf(asgn[code]), code];
+                paintRow(row, fill, 4); grayCode(row, 9);
             });
             if (r - 1 > startR) { ws.mergeCells(startR, 1, r - 1, 1); ws.mergeCells(startR, 2, r - 1, 2); }
         });
@@ -5497,13 +5521,138 @@ window.tkClearBg = async function () {
     ticketTpl = t; await set(ref(db, PROJECT_ID + '/ticket2026'), t); ticketPreview();
 };
 
+
+// ═══════════════ 🔢 報到號碼（席次定案後再產生；每場活動各自一套）═══════════════
+// 號碼存在本場的 badge_codes2026（號碼 → 賓客名稱），跟著人走：之後換座位號碼不變。
+// 手機查詢頁輸入號碼 → 找到這個人「現在」坐哪 → 直接報到。別場活動查不到這組號碼。
+function seatsInOrder() {
+    const keys = Object.keys(asgn).filter(c => asgn[c] && !occupied[c]);
+    if (layoutMode !== 'round') return keys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return keys.sort((a, b) => {
+        const ta = a.split('-')[0], tb = b.split('-')[0], ha = ta.startsWith('H'), hb = tb.startsWith('H');
+        if (ha !== hb) return ha ? -1 : 1;
+        if (ta !== tb) return rvTableNo(ta) - rvTableNo(tb);
+        return seatNoOf(a) - seatNoOf(b);
+    });
+}
+function codeStats() {
+    const seats = seatsInOrder(), names = [...new Set(seats.map(c => asgn[c]))];
+    return { total: names.length, has: names.filter(n => codeOf(n)).length, names };
+}
+window.openCodeModal = function () {
+    if (!isAdmin) { toast('請先登入', 'ter'); return; }
+    codePaint();
+    document.getElementById('code-modal-bg').classList.add('show');
+};
+window.closeCodeModal = function () { document.getElementById('code-modal-bg').classList.remove('show'); };
+async function codePaint() {
+    const st = codeStats();
+    document.getElementById('cd-stat').innerHTML = '本場已入座 <b>' + st.total + '</b> 位，已有報到號碼 <b>' + st.has + '</b> 位'
+        + (st.total && st.has < st.total ? '　<span style="color:#B45309;">（' + (st.total - st.has) + ' 位還沒有號碼）</span>' : '');
+    document.getElementById('cd-gen').textContent = st.has ? '🔢 只幫還沒有號碼的人補號' : '🔢 席次已定案，產生報到號碼';
+    document.getElementById('cd-renum').style.display = st.has ? '' : 'none';
+    const cv = document.getElementById('cd-canvas');
+    const first = seatsInOrder()[0];
+    const name = first ? asgn[first].replace(/\n/g, ' ') : '王大明 董事長';
+    const c = drawCheckinCard(name, (first && codeOf(asgn[first])) || '001');
+    cv.width = c.width; cv.height = c.height; cv.getContext('2d').drawImage(c, 0, 0);
+}
+async function assignCodes(names, startFrom) {
+    let mx = startFrom;
+    const width = Math.max(3, String(mx + names.length).length);
+    const add = {};
+    names.forEach(n => { mx++; add[String(mx).padStart(width, '0')] = n; });
+    return add;
+}
+window.genCodes = async function () {
+    if (!isAdmin) return;
+    const st = codeStats();
+    if (!st.total) { toast('還沒有任何已入座的賓客', 'ter'); return; }
+    const need = st.names.filter(n => !codeOf(n));
+    if (!need.length) { toast('每位已入座的賓客都已經有號碼了', 'tin'); return; }
+    if (!st.has && !confirm('請先確認席次已經定案。\n\n將依「主桌 → 桌號 1、2、3… → 座位順序」幫 ' + need.length + ' 位賓客編號（001 起）。\n號碼跟著人走，之後換座位號碼也不變；只在本場活動有效。\n\n確定產生嗎？')) return;
+    const mx = Math.max(0, ...Object.keys(badgeCodes).map(c => parseInt(String(c).replace(/\D/g, '')) || 0));
+    const add = await assignCodes(need, mx);
+    try {
+        await set(ref(db, PROJECT_ID + '/badge_codes2026'), Object.assign({}, badgeCodes, add));
+        Object.assign(badgeCodes, add);
+        toast('✅ 已產生 ' + need.length + ' 個報到號碼', 'tok');
+    } catch (e) { toast('儲存失敗', 'ter'); }
+    codePaint();
+};
+window.renumberCodes = async function () {
+    if (!isAdmin) return;
+    if (!confirm('⚠ 全部重新編號：\n\n所有人的號碼都會依目前的席次順序重新編過。\n已經寄出去的信、號碼卡上的號碼都會失效。\n\n確定要重新編號嗎？')) return;
+    const st = codeStats();
+    const add = await assignCodes(st.names, 0);
+    try {
+        await set(ref(db, PROJECT_ID + '/badge_codes2026'), Object.keys(add).length ? add : null);
+        Object.keys(badgeCodes).forEach(k => delete badgeCodes[k]); Object.assign(badgeCodes, add);
+        toast('已全部重新編號', 'tok');
+    } catch (e) { toast('儲存失敗', 'ter'); }
+    codePaint();
+};
+
+// 號碼卡（附在提醒信裡）：活動名稱＋賓客姓名＋大號碼＋中英文說明
+const CARD_W = 1200, CARD_H = 675;
+function drawCheckinCard(name, code) {
+    const c = document.createElement('canvas'); c.width = CARD_W; c.height = CARD_H;
+    const x = c.getContext('2d'), W = CARD_W, H = CARD_H, F = DOC_FONT;
+    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+    // 上方深藍色帶：LOGO＋活動名稱
+    const g = x.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, '#1E3A5F'); g.addColorStop(1, '#132742');
+    x.fillStyle = g; x.fillRect(0, 0, W, 170);
+    x.fillStyle = '#E3AC52'; x.fillRect(0, 170, W, 6);
+    let tx = 60;
+    const L = dcLogo.gold;
+    if (L) { const f = Math.min(96 / L.w, 96 / L.h); x.drawImage(L.img, 56, 85 - L.h * f / 2, L.w * f, L.h * f); tx = 56 + L.w * f + 28; }
+    x.textBaseline = 'middle'; x.textAlign = 'left';
+    let fs = 50; const ev = dcEventName();
+    x.font = 'bold ' + fs + 'px ' + F;
+    while (x.measureText(ev).width > W - tx - 60 && fs > 26) { fs -= 2; x.font = 'bold ' + fs + 'px ' + F; }
+    x.fillStyle = '#FFFFFF'; x.fillText(ev, tx, 72);
+    x.font = '24px ' + F; x.fillStyle = '#C9D4E4'; x.fillText('報到號碼卡　Check-in Card', tx, 128);
+    // 號碼
+    x.textAlign = 'center';
+    x.font = 'bold 26px ' + F; x.fillStyle = '#6B7280'; x.fillText('報到號碼　CHECK-IN NO.', W / 2, 232);
+    let ns = 170; x.font = '800 ' + ns + 'px Arial,' + F;
+    while (x.measureText(code).width > W * 0.7 && ns > 60) { ns -= 6; x.font = '800 ' + ns + 'px Arial,' + F; }
+    const bw = Math.max(420, x.measureText(code).width + 120), bh = ns * 1.25, by = 262;
+    x.fillStyle = '#FFF7E6'; x.strokeStyle = '#E3AC52'; x.lineWidth = 5;
+    x.beginPath(); x.roundRect ? x.roundRect(W / 2 - bw / 2, by, bw, bh, 26) : x.rect(W / 2 - bw / 2, by, bw, bh); x.fill(); x.stroke();
+    x.fillStyle = '#13315C'; x.fillText(code, W / 2, by + bh / 2 + ns * 0.05);
+    // 姓名
+    let ms = 40; x.font = 'bold ' + ms + 'px ' + F;
+    while (x.measureText(name).width > W - 120 && ms > 22) { ms -= 2; x.font = 'bold ' + ms + 'px ' + F; }
+    x.fillStyle = '#111827'; x.fillText(name, W / 2, by + bh + 52);
+    // 說明
+    x.fillStyle = '#F3F4F6'; x.fillRect(0, H - 104, W, 104);
+    x.font = 'bold 25px ' + F; x.fillStyle = '#1F2937';
+    x.fillText('報到時請出示此號碼，工作人員將協助您快速入座。', W / 2, H - 70);
+    x.font = '21px Arial,' + F; x.fillStyle = '#4B5563';
+    x.fillText('Please present this number at check-in. Our staff will guide you to your seat.', W / 2, H - 34);
+    return c;
+}
+function cardFileName(name, code) { return '報到號碼卡_' + code + '_' + String(name).replace(/[\\/:*?"<>|\s]+/g, '').slice(0, 20) + '.png'; }
+window.downloadAllCards = async function () {
+    const seats = seatsInOrder().filter(c => codeOf(asgn[c]));
+    if (!seats.length) { toast('還沒有產生報到號碼', 'ter'); return; }
+    if (seats.length > 20 && !confirm('會連續下載 ' + seats.length + ' 張圖，瀏覽器可能會問「是否允許下載多個檔案」，請按允許。繼續？')) return;
+    const done = new Set();
+    for (const c of seats) {
+        const nm = asgn[c]; if (done.has(nm)) continue; done.add(nm);
+        const cv = drawCheckinCard(nm.replace(/\n/g, ' '), codeOf(nm));
+        await new Promise(res => cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = cardFileName(nm, codeOf(nm)); document.body.appendChild(a); a.click(); a.remove(); setTimeout(res, 300); }, 'image/png'));
+    }
+};
+
 // ── 寄信給這一桌：附件自己上傳 → 一鍵產生 Outlook 新郵件（.eml，收件人／內文／附件都放好）──
 let mailCode = null, mailAtts = [];   // mailAtts：[{ name, type, data(base64) }]，只放在這次畫面，不存資料庫
-const MAIL_V = 2;
+const MAIL_V = 3;
 const MAIL_DEF = {
     subject: '【{活動}】座位通知 Seating Arrangement｜{桌號} {Table}',
-    body: '您好：\n\n感謝您出席「{活動}」。\n您的座位安排在【{桌號}{桌名}】，同桌貴賓如下：\n{同桌名單}\n\n當天請直接前往上述桌次入座，現場工作人員也會協助引導。\n\n敬祝 順心\n\n'
-        + '──────────\n\nDear Guest,\n\nThank you for attending {活動}.\nYou are seated at {Table}{TableName}, together with:\n{同桌名單}\n\nPlease proceed to your table upon arrival. Our staff will be glad to assist you.\n\nBest regards'
+    body: '您好：\n\n感謝您出席「{活動}」。\n您的座位安排在【{桌號}{桌名}】，同桌貴賓如下：\n{同桌名單}\n\n當天請直接前往上述桌次入座，現場工作人員也會協助引導。\n{報到卡說明}\n\n敬祝 順心\n\n'
+        + '──────────\n\nDear Guest,\n\nThank you for attending {活動}.\nYou are seated at {Table}{TableName}, together with:\n{同桌名單}\n\nPlease proceed to your table upon arrival. Our staff will be glad to assist you.\n{CardNote}\n\nBest regards'
 };
 window.openMailModal = function (tCode) {
     if (!isAdmin) { toast('請先登入', 'ter'); return; }
@@ -5514,6 +5663,9 @@ window.openMailModal = function (tCode) {
     document.getElementById('ml-body').value = t.body || MAIL_DEF.body;
     document.querySelectorAll('input[name="ml-mode"]').forEach(r => r.checked = r.value === (t.mode || 'bcc'));
     document.getElementById('ml-done').style.display = 'none';
+    const anyCode = Object.keys(badgeCodes).length > 0;
+    document.getElementById('ml-cards').checked = anyCode;
+    document.getElementById('ml-cards-row').style.display = anyCode ? '' : 'none';
     mailPaintList(); mailPaintAtts();
     document.getElementById('mail-modal-bg').classList.add('show');
 };
@@ -5560,8 +5712,12 @@ function mailFill(s) {
     const en = (head ? 'Head Table ' : 'Table ') + tNoOf(mailCode);
     return String(s).replace(/\{活動\}/g, dcEventName()).replace(/\{桌號\}/g, tLabelOf(mailCode))
         .replace(/\{桌名\}/g, nm ? '（' + nm + '）' : '').replace(/\{同桌名單\}/g, list)
-        .replace(/\{Table\}/g, en).replace(/\{TableName\}/g, nm ? ' (' + nm + ')' : '');
+        .replace(/\{Table\}/g, en).replace(/\{TableName\}/g, nm ? ' (' + nm + ')' : '')
+        .replace(/\{報到卡說明\}/g, mailCardsOn() ? '附件為您的專屬報到號碼卡，報到時出示，工作人員即可為您快速引導入座。' : '')
+        .replace(/\{CardNote\}/g, mailCardsOn() ? 'Attached is your personal check-in card. Simply present it upon arrival and our staff will guide you to your seat.' : '')
+        .replace(/\n{3,}/g, '\n\n');
 }
+function mailCardsOn() { const c = document.getElementById('ml-cards'); return !!(c && c.checked); }
 function mailSaveTpl() {
     mailTpl = {
         v: MAIL_V, subject: document.getElementById('ml-subject').value, body: document.getElementById('ml-body').value,
@@ -5603,6 +5759,24 @@ window.mailMakeEml = async function () {
     if (!seats.length) { toast('這桌還沒有安排賓客', 'ter'); return; }
     const r = mailRecipients();
     if (!r.length && !confirm('這桌還沒有填任何 email。\n仍要開啟信件（之後在 Outlook 再自己填收件人）嗎？')) return;
+    // 每位賓客自己的號碼卡（只有已經產生號碼的場次才會附）
+    const cards = [];
+    if (mailCardsOn()) {
+        const miss = [...new Set(seats.map(c => asgn[c]).filter(n => !codeOf(n)))];
+        if (miss.length) {
+            if (confirm('這桌有 ' + miss.length + ' 位還沒有報到號碼（可能是定案後才加進來的）。\n要現在幫他們補號嗎？\n\n確定＝補號並附上號碼卡；取消＝這幾位不附號碼卡')) {
+                const mx = Math.max(0, ...Object.keys(badgeCodes).map(c => parseInt(String(c).replace(/\D/g, '')) || 0));
+                const add = await assignCodes(miss, mx);
+                await set(ref(db, PROJECT_ID + '/badge_codes2026'), Object.assign({}, badgeCodes, add));
+                Object.assign(badgeCodes, add);
+            }
+        }
+        const done = new Set();
+        seats.forEach(c => {
+            const nm = asgn[c], cd = codeOf(nm); if (!cd || done.has(nm)) return; done.add(nm);
+            cards.push({ name: cardFileName(nm, cd), type: 'image/png', data: drawCheckinCard(nm.replace(/\n/g, ' '), cd).toDataURL('image/png').split(',')[1] });
+        });
+    }
     const subject = mailFill(mailTpl.subject);
     const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
     const html = '<div style="font-family:\'Microsoft JhengHei\',Arial,sans-serif;font-size:15px;line-height:1.7;color:#1F2937;">' + esc(mailFill(mailTpl.body)).replace(/\n/g, '<br>') + '</div>';
@@ -5611,7 +5785,7 @@ window.mailMakeEml = async function () {
     if (mailTpl.mode === 'to') L.push('To: ' + r.join(', ')); else { L.push('To: '); L.push('Bcc: ' + r.join(', ')); }
     L.push('Subject: ' + encW(subject), 'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="' + B + '"', '',
         '--' + B, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64u(html)));
-    mailAtts.forEach(a => L.push('--' + B, 'Content-Type: ' + a.type + '; name="' + encW(a.name) + '"', 'Content-Transfer-Encoding: base64',
+    cards.concat(mailAtts).forEach(a => L.push('--' + B, 'Content-Type: ' + a.type + '; name="' + encW(a.name) + '"', 'Content-Transfer-Encoding: base64',
         'Content-Disposition: attachment; filename="' + encW(a.name) + '"', '', wrap76(a.data)));
     L.push('--' + B + '--', '');
     const blob = new Blob([L.join('\r\n')], { type: 'message/rfc822' });
@@ -5623,7 +5797,7 @@ window.mailMakeEml = async function () {
     // 瀏覽器只能「下載」信件檔，不能直接叫出 Outlook → 在視窗裡講清楚下一步
     const done = document.getElementById('ml-done');
     done.innerHTML = '✅ <b>信件已下載：' + escapeHtml(a.download) + '</b><br>到瀏覽器右上角的「下載」（或電腦的下載資料夾）<b>點兩下這個檔</b>，就會用 Outlook 打開成一封新郵件：'
-        + (mailTpl.mode === 'to' ? '收件人' : '密件副本') + ' ' + r.length + ' 個信箱、中英文內文' + (mailAtts.length ? '、' + mailAtts.length + ' 個附件' : '') + '都放好了，檢查後按「傳送」。';
+        + (mailTpl.mode === 'to' ? '收件人' : '密件副本') + ' ' + r.length + ' 個信箱、中英文內文' + (cards.length ? '、' + cards.length + ' 張號碼卡' : '') + (mailAtts.length ? '、' + mailAtts.length + ' 個附件' : '') + '都放好了，檢查後按「傳送」。';
     done.style.display = '';
 };
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
