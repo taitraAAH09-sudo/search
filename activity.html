@@ -403,6 +403,25 @@ body.theater #rv-tools{display:none!important;}
 .round-table-wrap.head-table .round-table-center .tc-no{font-size:17px;}
 .round-table-center .tc-name{font-size:11px;font-weight:700;line-height:1.2;max-width:84%;text-align:center;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all;}
 .round-table-center .tc-cnt{font-size:9px;font-weight:400;margin-top:2px;opacity:.8;}
+.ml-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #F1F5F9;}
+.ml-no{flex:none;width:24px;height:24px;border-radius:6px;background:#F5A623;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;}
+.ml-nm{flex:1;min-width:0;font-size:13px;font-weight:700;color:#111;line-height:1.35;}
+.ml-nm i{font-style:normal;font-size:11px;font-weight:700;color:#1D4ED8;background:#EBF1F9;border-radius:4px;padding:1px 5px;margin-left:6px;white-space:nowrap;}
+.ml-mail{flex:0 0 46%;font-size:12.5px;padding:7px 8px;border:1px solid #D1D5DB;border-radius:7px;outline:none;min-width:0;}
+.ml-mail:focus{border-color:#3B82F6;}
+.ml-lbl{font-size:12px;font-weight:700;color:#4B5563;margin:10px 0 4px;}
+.ml-in{width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;outline:none;font-family:inherit;}
+.ml-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.ml-btns button{flex:1;min-width:140px;padding:11px;border-radius:10px;border:1.5px solid #1D3A6E;background:#fff;color:#1D3A6E;font-weight:700;font-size:13px;cursor:pointer;}
+.ml-att{display:inline-flex;align-items:center;gap:6px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:8px;padding:5px 8px;font-size:12.5px;}
+.ml-att b{cursor:pointer;color:#9CA3AF;font-size:12px;}
+.ml-att b:hover{color:#DC2626;}
+.ml-btns button.main{background:#0F6CBD;border-color:#0F6CBD;color:#fff;font-size:14px;}
+#tk-pick{display:flex;gap:6px;margin:8px 0;}
+#tk-pick button{flex:1;padding:8px;border-radius:8px;border:1.5px solid #E5E7EB;background:#F9FAFB;font-weight:700;cursor:pointer;font-size:13px;}
+#tk-pick button.on{border-color:#1B4F8A;background:#EBF1F9;color:#1B4F8A;}
+#tk-canvas{width:100%;height:auto;border:1px solid #E5E7EB;border-radius:8px;cursor:crosshair;display:block;}
+.tk-row{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#374151;margin:6px 0;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -470,6 +489,10 @@ body.theater #rv-tools{display:none!important;}
         <button type="button" onclick="cancelNameEdit()">取消</button>
       </div>
     </div>
+    <div id="m-mail-sec" style="display:none;margin-bottom:10px;">
+      <div class="modal-section">Email（跟著人走；多個用 ; 分隔）</div>
+      <input type="text" id="m-mail" class="ml-in" placeholder="例：abc@company.com; secretary@company.com">
+    </div>
     <div id="m-srch-sec" style="display:none;">
       <div class="modal-section">搜尋用全名／關鍵字（後台填寫，只給查詢比對用）</div>
       <textarea id="m-srch" rows="3" placeholder="例：史瓦帝尼王國大使館 庫涅內 大使 H.E. Ambassador Vulindlela Kunene　（可再加：董事長貴賓、外賓…）"></textarea>
@@ -523,14 +546,68 @@ body.theater #rv-tools{display:none!important;}
         <button class="btn-circle" onclick="adjustTableSeat(1)">➕</button>
       </div>
     </div>
+    <button class="btn btn-primary" style="width:100%;padding:11px;font-size:14px;margin-bottom:6px;background:#0F6CBD;border-color:#0F6CBD;" onclick="document.getElementById('table-modal-bg').classList.remove('show');openMailModal(currentTableCodeG())">📧 寄信通知這桌</button>
     <button class="modal-close" onclick="document.getElementById('table-modal-bg').classList.remove('show')">完成並關閉</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="mail-modal-bg" style="align-items:center;" onclick="if(event.target===this)closeMailModal()">
+  <div class="modal" style="border-radius:16px;max-width:620px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-code" id="ml-title">📧 寄信通知</div>
+    <div class="modal-name" style="background:#EBF1F9;color:#1B4F8A;line-height:1.6;">Email 跟著人走（換座位不用重填）；同一個信箱填在好幾個人身上，只會寄一次。</div>
+    <div id="ml-list" style="max-height:240px;overflow-y:auto;border:1px solid #E5E7EB;border-radius:10px;padding:4px 8px;"></div>
+    <div style="font-size:12.5px;color:#374151;margin-top:6px;" id="ml-count"></div>
+    <div class="ml-lbl">收件方式</div>
+    <div class="tk-row">
+      <label><input type="radio" name="ml-mode" value="bcc" checked> 密件副本（大家看不到彼此信箱）</label>
+      <label><input type="radio" name="ml-mode" value="to"> 收件人（大家互相看得到）</label>
+    </div>
+    <div class="ml-lbl">主旨</div>
+    <input class="ml-in" id="ml-subject">
+    <div class="ml-lbl" style="display:flex;align-items:center;">內文（中英文；{桌號}、{Table}、{同桌名單} 會自動換成這桌的資料）<a href="javascript:void(0)" onclick="mailResetTpl()" style="margin-left:auto;font-weight:400;color:#2563EB;">改回預設</a></div>
+    <textarea class="ml-in" id="ml-body" rows="10"></textarea>
+    <div class="ml-lbl">附件</div>
+    <div class="tk-row" id="ml-atts"></div>
+    <input type="file" id="ml-file" multiple style="display:none" onchange="mailAddFiles(this.files);this.value=''">
+    <div class="ml-btns">
+      <button onclick="document.getElementById('ml-file').click()">📎 上傳附件</button>
+      <button class="main" onclick="mailMakeEml()">📨 開啟 Outlook 信件</button>
+    </div>
+    <div id="ml-done" style="display:none;margin-top:12px;background:#ECFDF5;border:1.5px solid #6EE7B7;color:#065F46;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7;"></div>
+    <button class="modal-close" onclick="closeMailModal()">關閉</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="ticket-modal-bg" style="align-items:center;" onclick="if(event.target===this)closeTicketModal()">
+  <div class="modal" style="border-radius:16px;max-width:640px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-code">🎫 電子報到券</div>
+    <div class="modal-name" style="background:#EBF1F9;color:#1B4F8A;line-height:1.6;">報到號碼跟著「人」走：換座位號碼不變。現場請對方出示號碼，在手機查詢頁輸入號碼就會找到他目前坐哪、直接報到。</div>
+    <div class="tk-row">
+      <button class="btn btn-primary" onclick="document.getElementById('tk-file').click()">🖼 上傳自己的底圖</button>
+      <button class="btn" onclick="tkClearBg()">改回預設樣式</button>
+      <input type="file" id="tk-file" accept="image/*" style="display:none" onchange="tkUploadBg(this.files[0]);this.value=''">
+    </div>
+    <div class="ml-lbl">先選要放的東西，再點下面圖上的位置</div>
+    <div id="tk-pick">
+      <button data-k="code" onclick="tkSetPick('code')">報到號碼</button>
+      <button data-k="name" onclick="tkSetPick('name')">姓名</button>
+      <button data-k="seat" onclick="tkSetPick('seat')">桌號・席次</button>
+    </div>
+    <canvas id="tk-canvas" onclick="tkCanvasClick(event)"></canvas>
+    <div class="tk-row">
+      <label>大小 <input type="range" id="tk-size" min="15" max="300" oninput="tkSetSize(this.value)"></label>
+      <label>顏色 <input type="color" id="tk-color" onchange="tkSetColor(this.value)"></label>
+      <label><input type="checkbox" id="tk-show" onchange="tkSetShow(this.checked)"> 顯示</label>
+    </div>
+    <div class="tk-row"><span id="tk-count"></span><button class="btn" onclick="genAllCodes()">🔢 幫全部已入座的人補上報到號碼</button></div>
+    <button class="modal-close" onclick="closeTicketModal()">完成</button>
   </div>
 </div>
 
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V18</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V21</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -644,7 +721,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V18</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V21</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -1039,7 +1116,7 @@ window.confirmEventSelect = async function() {
   updateRefs();
   clearLocalData(); 
   venueShape=''; shapeLoaded=false; tableMoveMode=false; dcSaved={};
-  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null; roomSize=null; Object.keys(tableNos).forEach(k=>delete tableNos[k]);
+  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null; roomSize=null; Object.keys(tableNos).forEach(k=>delete tableNos[k]); Object.keys(emails).forEach(k=>delete emails[k]); Object.keys(badgeCodes).forEach(k=>delete badgeCodes[k]); ticketTpl=null; mailTpl=null;
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -1058,7 +1135,7 @@ window.confirmEventSelect = async function() {
     } else {
       document.getElementById('vr').innerHTML='<div style="text-align:center;padding:40px;color:#9CA3AF;">目前資料庫中沒有座位結構。<br>請點擊右上角「⚙️ 架構設定」建立座位地圖。</div>';
     }
-    masterLoaded=true; setSyncStatus('ok'); refreshAll(); rvPaintTools(); maybeAskShape();
+    masterLoaded=true; rebuildHeadRank(); setSyncStatus('ok'); refreshAll(); rvPaintTools(); maybeAskShape();
   },()=>setSyncStatus('error')));
 
   activeListeners.push(onValue(assignRef, snap=>{
@@ -1137,6 +1214,15 @@ window.confirmEventSelect = async function() {
     Object.assign(tablePos, snap.val() || {});
     rvSync();
   }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/emails2026'), snap => {
+    Object.keys(emails).forEach(k => delete emails[k]); Object.assign(emails, snap.val() || {});
+    if (document.getElementById('mail-modal-bg').classList.contains('show')) mailCountPaint();
+  }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/badge_codes2026'), snap => {
+    Object.keys(badgeCodes).forEach(k => delete badgeCodes[k]); Object.assign(badgeCodes, snap.val() || {});
+  }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/ticket2026'), snap => { ticketTpl = snap.val() || null; }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/mailtpl2026'), snap => { mailTpl = snap.val() || null; }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/table_no2026'), snap => {
     Object.keys(tableNos).forEach(k => delete tableNos[k]);
     Object.assign(tableNos, snap.val() || {});
@@ -1156,7 +1242,8 @@ window.confirmEventSelect = async function() {
     Object.assign(pillars, snap.val() || {});
     rvSync();
   }));
-  activeListeners.push(onValue(ref(db, PROJECT_ID+'/detail_chart2026'), snap => { dcSaved = snap.val() || {}; }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/detail_chart2026'), snap => { dcSaved = snap.val() || {}; rebuildHeadRank(); if (masterLoaded) refreshAll(); }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/head_rank2026'), snap => { headRankSaved = JSON.stringify(snap.val() || {}); }));
 
   toast('✅ 成功進入活動資料庫', 'tok');
 }
@@ -1190,6 +1277,28 @@ function updateRefs() {
 
 let layoutMode = 'grid'; 
 let dcSaved = {}; // 主桌細節圖的存檔（Excel 匯出主桌序位用）
+// 主桌的座位號一律用禮賓序位：主位＝1、主賓＝2、其餘依序；一般桌照順時針。
+// 對照表寫進 head_rank2026，手機查詢頁也讀這份，兩邊看到的號碼一樣。
+let headRank = {}, headRankSaved = '';
+function rebuildHeadRank() {
+    const T = {};
+    Object.keys(seatMap).forEach(k => { const t = k.split('-')[0]; if (t.startsWith('H')) (T[t] = T[t] || []).push(k); });
+    const out = {};
+    Object.entries(T).forEach(([t, seats]) => {
+        seats.sort((a, b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]));
+        const n = seats.length, st = dcSaved && dcSaved[t];
+        const hostPi = st && Number.isInteger(st.hostPi) && st.hostPi < n ? st.hostPi : 0;
+        [hostPi, ...dcOrderFromHost(n, hostPi)].forEach((pi, r) => { if (seats[pi]) out[seats[pi]] = r + 1; });
+    });
+    headRank = out;
+    const js = JSON.stringify(out);
+    if (isAdmin && masterLoaded && js !== headRankSaved) {
+        headRankSaved = js;
+        set(ref(db, PROJECT_ID + '/head_rank2026'), Object.keys(out).length ? out : null).catch(() => {});
+    }
+}
+function seatNoOf(code) { return (code.startsWith('H') && headRank[code]) ? headRank[code] : parseInt(code.split('-')[1]); }
+const bySeatNo = (a, b) => seatNoOf(a) - seatNoOf(b);
 const seatMap={}, asgn={}, tags={}, occupied={}, tableNames={};
 // 搜尋用全名／關鍵字：以座位碼為 key，存在 search2026；席次圖與 Excel 只用 asgn 的乾淨名稱
 const srch={};
@@ -2090,7 +2199,7 @@ async function exportRoundXlsx(wb, eventName){
 
     if (heads.length) {
         const ws = wb.addWorksheet('主桌');
-        const cols = [['主桌', 12], ['序位', 10], ['賓客', 50], ['對應座位', 12], ['標記', 10], ['報到', 12], ['系統座位碼（上傳用勿改）', 16]];
+        const cols = [['主桌', 12], ['序位', 10], ['賓客', 50], ['座位', 12], ['標記', 10], ['報到', 12], ['Email', 30], ['系統座位碼（上傳用勿改）', 16]];
         setup(ws, eventName + '－主桌（依禮賓序位排列）', cols, 'FF7A5320');
         let r = 3, band = false;
         heads.forEach(t => {
@@ -2112,12 +2221,13 @@ async function exportRoundXlsx(wb, eventName){
                 const code = seats[pi];
                 const row = ws.getRow(r++);
                 row.values = [label, k === 0 ? '1 主位' : (k === 1 ? '2 主賓' : String(k + 1)), nameAt(pi),
-                    '主' + t.slice(1) + '-' + (pi + 1), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '', code];
-                paintRow(row, fill, 3); grayCode(row, 7);
+                    tNoOf(t) + '-' + seatNoOf(code), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '',
+                    emailOf(asgn[code]), code];
+                paintRow(row, fill, 3); grayCode(row, 8);
             });
             if (okSt) st.cards.filter(c => c && c.role === 'free' && c.text).forEach(c => {
                 const row = ws.getRow(r++);
-                row.values = [label, '加掛', c.text, '', '', '', ''];
+                row.values = [label, '加掛', c.text, '', '', '', '', ''];
                 paintRow(row, fill, 3);
             });
             if (r - 1 > startR) ws.mergeCells(startR, 1, r - 1, 1);
@@ -2126,7 +2236,7 @@ async function exportRoundXlsx(wb, eventName){
 
     if (normals.length) {
         const ws = wb.addWorksheet('一般桌次');
-        const cols = [['桌次', 10], ['桌名', 16], ['座位', 10], ['賓客', 50], ['標記', 10], ['報到', 12], ['系統座位碼（上傳用勿改）', 16]];
+        const cols = [['桌次', 10], ['桌名', 16], ['座位', 10], ['賓客', 50], ['標記', 10], ['報到', 12], ['Email', 30], ['系統座位碼（上傳用勿改）', 16]];
         setup(ws, eventName + '－一般桌次（座位依順時針，12 點鐘方向為 1）', cols, 'FF132742');
         let r = 3, band = false;
         normals.forEach(t => {
@@ -2138,8 +2248,9 @@ async function exportRoundXlsx(wb, eventName){
                 const sn = code.split('-')[1];
                 const row = ws.getRow(r++);
                 row.values = ['第 ' + no + ' 桌', tableNames[t] || '', no + '-' + sn,
-                    occupied[code] ? '（佔用）' : (asgn[code] || ''), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '', code];
-                paintRow(row, fill, 4); grayCode(row, 7);
+                    occupied[code] ? '（佔用）' : (asgn[code] || ''), TAGN[tags[code]] || '', ci[code] ? ('✓ ' + (ci[code].time || '')) : '',
+                    occupied[code] ? '' : emailOf(asgn[code]), code];
+                paintRow(row, fill, 4); grayCode(row, 8);
             });
             if (r - 1 > startR) { ws.mergeCells(startR, 1, r - 1, 1); ws.mergeCells(startR, 2, r - 1, 2); }
         });
@@ -2521,7 +2632,7 @@ function rvPaintOverview(ctx, pw, ph) {
             ctx.fillStyle = filled ? (head ? '#F59E0B' : '#378ADD') : '#FFFFFF'; ctx.fill();
             ctx.lineWidth = 1.5; ctx.strokeStyle = head ? '#B45309' : '#85B7EB'; ctx.stroke();
             ctx.fillStyle = filled ? '#FFFFFF' : '#185FA5'; ctx.font = 'bold 13px Arial';
-            ctx.fillText(String(i + 1), sx, sy + 1);
+            ctx.fillText(String(seatNoOf(code)), sx, sy + 1);
         });
     });
     ctx.restore();
@@ -2757,6 +2868,10 @@ window.openModal = function(code){
   document.getElementById('m-name-editor').style.display='none';
   document.getElementById('m-name-pencil').style.display=(isAdmin&&!occ)?'':'none';
   document.getElementById('m-srch-sec').style.display=(isAdmin&&!occ&&g)?'':'none';
+  document.getElementById('m-mail-sec').style.display=(isAdmin&&!occ&&g)?'':'none';
+  document.getElementById('m-mail').value=g?emailOf(g):'';
+  document.getElementById('m-mail').dataset.name=g||'';
+
   document.getElementById('m-name-lbl').style.display=(isAdmin&&!occ&&g)?'':'none';
   document.getElementById('m-srch').value=srch[code]||'';
   paintSrchHint();
@@ -2861,6 +2976,7 @@ document.getElementById('m-name-input').addEventListener('keydown',e=>{
 });
 
 // ── 🔎 搜尋用全名／關鍵字：離開欄位或按 Enter 就儲存 ──
+document.getElementById('m-mail').addEventListener('change',e=>{ const n=e.target.dataset.name; if(n) saveEmail(n,e.target.value).then(()=>toast('Email 已儲存','tok')); });
 function paintSrchHint(saved){
   const h=document.getElementById('m-srch-hint'); if(!h) return;
   h.innerHTML=saved?'<b>✓ 已儲存</b>　搜尋時打裡面任何一段都找得到':'一行一組（可按 Enter 換行）；不會出現在席次圖和 Excel，只給搜尋用';
@@ -3267,7 +3383,7 @@ async function processExcelFile(file) {
     // 主桌的主位、加掛名牌、桌名、標記、佔用、未分配賓客都一起還原。
     let roundExtra = null;
     if (wb.Sheets['主桌'] || wb.Sheets['一般桌次']) {
-      roundExtra = { tableNames: {}, tableNos: {}, occ: {}, heads: {}, guests: [], noCode: false };
+      roundExtra = { tableNames: {}, tableNos: {}, occ: {}, heads: {}, guests: [], noCode: false, emails: {}, codes: {} };
       const tagMapD = { '揭幕': 'ceremony', '合影': 'photo', '唱名': 'call' };
       const readSheet = name => {
         const ws2 = wb.Sheets[name]; if (!ws2) return null;
@@ -3281,7 +3397,7 @@ async function processExcelFile(file) {
       const cellStr = (r, c) => c >= 0 ? String(r[c] === undefined || r[c] === null ? '' : r[c]).trim() : '';
       const SH = readSheet('主桌');
       if (SH) {
-        const cT = SH.col('主桌'), cQ = SH.col('序位'), cN = SH.col('賓客'), cS = SH.col('對應座位'), cG = SH.col('標記'), cC = SH.col('系統座位碼');
+        const cT = SH.col('主桌'), cQ = SH.col('序位'), cN = SH.col('賓客'), cS = SH.col('對應座位'), cG = SH.col('標記'), cC = SH.col('系統座位碼'), cE = SH.col('Email'), cB = SH.col('報到號碼');
         let label = '', tCode = '';
         SH.rows.forEach(r => {
           if (cellStr(r, cT)) label = cellStr(r, cT);
@@ -3301,12 +3417,14 @@ async function processExcelFile(file) {
           else if (label) roundExtra.tableNames[tCode] = label;
           newMaster[code] = '';
           if (name) newAssign[code] = name;
+          if (name && cellStr(r, cE)) roundExtra.emails[ekey(name)] = splitMails(cellStr(r, cE)).join('; ');
+          if (name && cellStr(r, cB)) roundExtra.codes[cellStr(r, cB)] = name;
           const tg = tagMapD[cellStr(r, cG)]; if (tg) newTags[code] = tg;
         });
       }
       const SN = readSheet('一般桌次');
       if (SN) {
-        const cT = SN.col('桌次'), cL = SN.col('桌名'), cS = SN.col('座位'), cN = SN.col('賓客'), cG = SN.col('標記'), cC = SN.col('系統座位碼');
+        const cT = SN.col('桌次'), cL = SN.col('桌名'), cS = SN.col('座位'), cN = SN.col('賓客'), cG = SN.col('標記'), cC = SN.col('系統座位碼'), cE = SN.col('Email'), cB = SN.col('報到號碼');
         if (cC < 0) roundExtra.noCode = true;
         let tName = '', tDisp = '';
         SN.rows.forEach(r => {
@@ -3324,6 +3442,8 @@ async function processExcelFile(file) {
           const name = cleanMultiline(r[cN]);
           if (name === '（佔用）') roundExtra.occ[code] = '佔用';
           else if (name) newAssign[code] = name;
+          if (name && name !== '（佔用）' && cellStr(r, cE)) roundExtra.emails[ekey(name)] = splitMails(cellStr(r, cE)).join('; ');
+          if (name && name !== '（佔用）' && cellStr(r, cB)) roundExtra.codes[cellStr(r, cB)] = name;
           const tg = tagMapD[cellStr(r, cG)]; if (tg) newTags[code] = tg;
         });
       }
@@ -3470,6 +3590,10 @@ async function processExcelFile(file) {
       assignments2026: Object.keys(newAssign).length ? newAssign : null,
       tags2026: totalTags > 0 ? newTags : null,
       search2026: Object.keys(newSrch).length ? newSrch : null,
+      // 跟著人走的資料：重新上傳不會不見；Excel 裡有填的蓋過去
+      emails2026: (() => { const m = Object.assign({}, emails, roundExtra ? roundExtra.emails : {}); Object.keys(m).forEach(k => { if (!m[k]) delete m[k]; }); return Object.keys(m).length ? m : null; })(),
+      badge_codes2026: (() => { const m = Object.assign({}, badgeCodes, roundExtra ? roundExtra.codes : {}); return Object.keys(m).length ? m : null; })(),
+      ticket2026: ticketTpl || null, mailtpl2026: mailTpl || null,
       seats2026: roundExtra && Object.keys(roundExtra.occ).length ? roundExtra.occ : null,
       table_names2026: roundExtra && Object.keys(roundExtra.tableNames).length ? roundExtra.tableNames : null,
       table_no2026: roundExtra && Object.keys(roundExtra.tableNos).length ? roundExtra.tableNos : null,
@@ -3547,7 +3671,10 @@ window.applyLayout = async function() {
             venue_shape2026: mode === 'round' ? layoutShapePick : null,
             pillars2026: mode === 'round' && Object.keys(pillars).length ? { ...pillars } : null,
             stage2026: mode === 'round' && stagePos ? stagePos : null,
-            room2026: mode === 'round' && roomSize ? roomSize : null
+            room2026: mode === 'round' && roomSize ? roomSize : null,
+            emails2026: Object.keys(emails).length ? { ...emails } : null,
+            badge_codes2026: Object.keys(badgeCodes).length ? { ...badgeCodes } : null,
+            ticket2026: ticketTpl || null, mailtpl2026: mailTpl || null
         });
         
         toast(mode === 'round' ? '🎉 座位架構已建立（' + (layoutShapePick === 'long' ? '直式' : '橫式') + '場地）' : '🎉 座位架構已成功建立！', 'tok');
@@ -3572,7 +3699,7 @@ function renderRoster(){
   const box = document.getElementById('th-roster'); if (!box) return;
   document.querySelectorAll('.rv-roster-on').forEach(el => el.classList.remove('rv-roster-on'));
   const seats = rosterCode ? Object.keys(seatMap).filter(k => k.split('-')[0] === rosterCode)
-    .sort((a, b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])) : [];
+    .sort(bySeatNo) : [];
   if (!rosterCode || !seats.length || !document.body.classList.contains('theater')) { box.classList.remove('show'); box.innerHTML = ''; return; }
   const tw = document.querySelector('.rv-table[data-tcode="' + rosterCode + '"]'); if (tw) tw.classList.add('rv-roster-on');
   const ci = window.checkins || {};
@@ -3589,6 +3716,9 @@ function renderRoster(){
     const ed = document.createElement('button'); ed.type = 'button'; ed.textContent = '✏️'; ed.title = '改這桌的桌號';
     ed.style.marginLeft = 'auto'; hd.querySelector('button').style.marginLeft = '4px'; ed.onclick = ev => { ev.stopPropagation(); const v = prompt('這桌要顯示的桌號（例如 5、3A；留白＝改回原本）', tNoOf(rosterCode)); if (v !== null) saveTableNo(rosterCode, v); };
     hd.insertBefore(ed, hd.querySelector('button:last-child'));
+    const mb = document.createElement('button'); mb.type = 'button'; mb.textContent = '📧'; mb.title = '寄信通知這桌';
+    mb.style.marginLeft = '4px'; mb.onclick = ev => { ev.stopPropagation(); openMailModal(rosterCode); };
+    hd.insertBefore(mb, hd.querySelector('button:last-child'));
   }
   hd.title = '按住這一條可以拖動視窗';
   hd.addEventListener('pointerdown', rosterDragStart);
@@ -3601,7 +3731,7 @@ function renderRoster(){
     const name = occupied[code] ? '（佔用）' : (asgn[code] || '');
     const row = document.createElement('div');
     row.className = 'th-row' + (!asgn[code] ? ' empty' : '') + (ci[code] ? ' done' : '');
-    const n = document.createElement('div'); n.className = 'no'; n.textContent = code.split('-')[1];
+    const n = document.createElement('div'); n.className = 'no'; n.textContent = seatNoOf(code);
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = name || '（空位）';
     row.appendChild(n); row.appendChild(nm);
     if (asgn[code]) {
@@ -3680,7 +3810,7 @@ function renderSeats(){
     const cjk3 = !!g && /^[\u3400-\u9fff\uf900-\ufaff]/.test(g.replace(/\s+/g,''));
     el.classList.toggle('rs3', layoutMode === 'round' && !occ && !!g && cjk3);      // 中文：直排三個字
     el.classList.toggle('rs3h', layoutMode === 'round' && !occ && !!g && !cjk3);    // 英文：橫排三個字母
-    if(layoutMode === 'round') el.textContent = occ?'占':g?(Array.from(g.replace(/\s+/g,'')).slice(0,3).join('')||'?'): code.split('-')[1];
+    if(layoutMode === 'round') el.textContent = occ?'占':g?(Array.from(g.replace(/\s+/g,'')).slice(0,3).join('')||'?'): seatNoOf(code);
     else el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'):'';
     el.title=code+(occ?' — 佔用':g?' — '+g:'')+(tag&&TAG_NAME[tag]?'【'+TAG_NAME[tag]+'】':'');
   });
@@ -4350,7 +4480,7 @@ function dcSave() {
     clearTimeout(dcSaveTimer);
     dcStatus('儲存中…');
     dcSaveTimer = setTimeout(async () => {
-        try { await set(ref(db, PROJECT_ID + '/detail_chart2026'), detailState); dcStatus('已自動儲存 ✓'); }
+        try { await set(ref(db, PROJECT_ID + '/detail_chart2026'), detailState); dcSaved = detailState; rebuildHeadRank(); dcStatus('已自動儲存 ✓'); }
         catch (e) { dcStatus('儲存失敗，請檢查網路', false); }
     }, 700);
 }
@@ -4712,10 +4842,12 @@ function dcBuildPanel(tCode, seats) {
         toast('♻️ 已依主位方向重排，名牌大小統一跟主位一樣', 'tok');
     });
     mk('📥 從前方帶名字進來', '方向：前方座位 → 這張圖。取前方此桌已分配的賓客，依禮賓序位依序填進名牌（前方是空位的不覆蓋）', () => {
-        const names = seats.map(code => (asgn[code] || '').trim()).filter(s => s !== '');
-        const proto = st.cards.filter(c => c.role !== 'free').slice().sort((a, b) => a.rank - b.rank);
+        // 前方每個座位的人，帶到細節圖上「同一個座位」的名牌（主位就是主位、主賓就是主賓）
         let changed = 0;
-        proto.forEach((c, i) => { if (names[i]) { c.text = names[i]; changed++; } });
+        st.cards.filter(c => c.role !== 'free' && Number.isInteger(c.pi)).forEach(c => {
+            const nm = (asgn[seats[c.pi]] || '').trim();
+            if (nm) { c.text = nm; changed++; }
+        });
         dcRefreshBoard(board, tCode); fillTa(); dcSave();
         toast(changed ? '📥 已依主桌方向匯入 ' + changed + ' 位賓客' : '⚠️ 前方目前沒有可匯入的賓客名單，本桌名字維持原狀', changed ? 'tok' : 'tin');
     });
@@ -5195,6 +5327,306 @@ window.dcExportPPT = async function () {
     await pptx.writeFile({ fileName: dcSafeName() + '_主桌位置圖_' + dcFileStamp() + '.pptx' });
     toast('✅ PPT 匯出完成！每張名牌都能在 PowerPoint 裡拖動、改字', 'tok');
 };
+
+
+// ═══════════════ 📧 同桌通知信＋🎫 電子報到券 ═══════════════
+// Email 跟「人」走：存在 emails2026，用賓客名稱當 key；換座位、拖曳互換都不用重填。
+// 報到號碼也跟「人」走：存在 badge_codes2026（號碼 → 賓客名稱），手機查詢頁打號碼就找得到他目前坐哪。
+const emails = {};       // nameKey → "a@x.com; b@y.com"
+const badgeCodes = {};   // 號碼 → 賓客名稱
+let ticketTpl = null;    // ticket2026：{ img, w, h, items:{ code, name, seat } }
+let mailTpl = null;      // mailtpl2026：{ subject, body, mode }
+const ekey = n => String(n || '').trim().replace(/[.#$\[\]\/]/g, '_').slice(0, 700);
+function emailOf(name) { return name ? (emails[ekey(name)] || '') : ''; }
+function codeOf(name) { if (!name) return ''; const k = Object.keys(badgeCodes).find(c => badgeCodes[c] === name); return k || ''; }
+function splitMails(s) { return String(s || '').split(/[;,，；\s]+/).map(x => x.trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)); }
+window.saveEmail = async function (name, v) {
+    if (!isAdmin || !name) return;
+    const clean = splitMails(v).join('; ');
+    try { await set(ref(db, PROJECT_ID + '/emails2026/' + ekey(name)), clean || null); }
+    catch (e) { toast('Email 儲存失敗', 'ter'); }
+};
+
+// 補齊報到號碼：已入座、還沒有號碼的人，接著最大的號碼往下編（001、002…）
+async function ensureCodes(names) {
+    const have = new Set(Object.values(badgeCodes));
+    const need = [...new Set(names.filter(n => n && !have.has(n)))];
+    if (!need.length) return 0;
+    let mx = Math.max(0, ...Object.keys(badgeCodes).map(c => parseInt(String(c).replace(/\D/g, '')) || 0));
+    const width = Math.max(3, String(mx + need.length).length);
+    const add = {};
+    need.forEach(n => { mx++; add[String(mx).padStart(width, '0')] = n; });
+    await set(ref(db, PROJECT_ID + '/badge_codes2026'), Object.assign({}, badgeCodes, add));
+    Object.assign(badgeCodes, add);
+    return need.length;
+}
+window.genAllCodes = async function () {
+    if (!isAdmin) return;
+    const names = Object.keys(asgn).filter(c => !occupied[c]).map(c => asgn[c]);
+    const n = await ensureCodes(names);
+    toast(n ? '🔢 已補上 ' + n + ' 位的報到號碼（之前有號碼的不變）' : '每位已入座的賓客都已經有報到號碼了', 'tok');
+    ticketPreview();
+};
+
+// ── 電子報到券：底圖可以自己上傳；號碼、姓名、桌號各自點畫面決定位置 ──
+const TK_DEFAULT = {
+    w: 1000, h: 560,
+    items: {
+        code: { x: 0.5, y: 0.56, size: 0.16, color: '#13315C', show: true },
+        name: { x: 0.5, y: 0.82, size: 0.045, color: '#13315C', show: true },
+        seat: { x: 0.5, y: 0.30, size: 0.05, color: '#1D3A6E', show: true }
+    }
+};
+let tkImgCache = { src: '', img: null };
+function tkLoadBg() {
+    const src = ticketTpl && ticketTpl.img;
+    if (!src) return Promise.resolve(null);
+    if (tkImgCache.src === src && tkImgCache.img) return Promise.resolve(tkImgCache.img);
+    return dcLoadImg(src).then(img => { tkImgCache = { src, img }; return img; });
+}
+function tkItems() {
+    const it = (ticketTpl && ticketTpl.items) || {};
+    const o = {};
+    ['code', 'name', 'seat'].forEach(k => o[k] = Object.assign({}, TK_DEFAULT.items[k], it[k] || {}));
+    return o;
+}
+// 畫一張報到券（回傳 canvas）
+async function drawTicket(info) {
+    const bg = await tkLoadBg();
+    const W = bg ? (bg.naturalWidth || bg.width) : TK_DEFAULT.w, H = bg ? (bg.naturalHeight || bg.height) : TK_DEFAULT.h;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    if (bg) x.drawImage(bg, 0, 0, W, H);
+    else {
+        // 沒上傳底圖時的預設樣式
+        x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+        x.fillStyle = '#132742'; x.fillRect(0, 0, W, 110);
+        x.fillStyle = '#F0C474'; x.fillRect(0, 110, W, 6);
+        x.fillStyle = '#FFFFFF'; x.font = 'bold 40px ' + DOC_FONT; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(dcEventName(), W / 2, 50);
+        x.font = '20px ' + DOC_FONT; x.fillStyle = '#C9D4E4'; x.fillText('電子報到券 E-Ticket', W / 2, 88);
+        x.fillStyle = '#6B7280'; x.font = '18px ' + DOC_FONT; x.fillText('現場出示此號碼即可快速報到 / Show this number at check-in', W / 2, H - 28);
+        x.strokeStyle = '#E5E7EB'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
+    }
+    const items = tkItems();
+    const txt = { code: info.code || '—', name: info.name || '', seat: info.seat || '' };
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    ['seat', 'name', 'code'].forEach(k => {
+        const it = items[k]; if (!it.show || !txt[k]) return;
+        let size = Math.max(10, it.size * W);
+        const maxW = W * 0.9;
+        const font = (k === 'code' ? '800 ' : 'bold ') + '%spx ' + (k === 'code' ? 'Arial,' + DOC_FONT : DOC_FONT);
+        x.font = font.replace('%s', size);
+        while (x.measureText(txt[k]).width > maxW && size > 10) { size -= 1; x.font = font.replace('%s', size); }
+        if (k === 'code' && !bg) {
+            const tw = x.measureText(txt[k]).width + size * 0.8;
+            x.fillStyle = '#FFF7E6'; x.strokeStyle = '#E3AC52'; x.lineWidth = 4;
+            x.beginPath(); x.roundRect ? x.roundRect(it.x * W - tw / 2, it.y * H - size * 0.72, tw, size * 1.44, 18) : x.rect(it.x * W - tw / 2, it.y * H - size * 0.72, tw, size * 1.44);
+            x.fill(); x.stroke();
+        }
+        x.fillStyle = it.color; x.fillText(txt[k], it.x * W, it.y * H + (k === 'code' ? size * 0.04 : 0));
+    });
+    return c;
+}
+function tkInfoForSeat(code) {
+    const name = (asgn[code] || '').trim(), t = code.split('-')[0];
+    return { name: name.replace(/\n/g, ' '), code: codeOf(name), seat: tLabelOf(t) + '・第 ' + seatNoOf(code) + ' 席' + (tableNames[t] ? '　' + tableNames[t] : '') };
+}
+
+let tkPick = 'code';
+window.openTicketModal = function () {
+    if (!isAdmin) { toast('請先登入', 'ter'); return; }
+    document.getElementById('ticket-modal-bg').classList.add('show');
+    tkPaintForm(); ticketPreview();
+};
+window.closeTicketModal = function () { document.getElementById('ticket-modal-bg').classList.remove('show'); };
+function tkPaintForm() {
+    const it = tkItems()[tkPick];
+    document.querySelectorAll('#tk-pick button').forEach(b => b.classList.toggle('on', b.dataset.k === tkPick));
+    document.getElementById('tk-size').value = Math.round(it.size * 1000);
+    document.getElementById('tk-color').value = it.color;
+    document.getElementById('tk-show').checked = !!it.show;
+    const total = Object.keys(asgn).filter(c => !occupied[c]).length;
+    const withCode = Object.keys(asgn).filter(c => !occupied[c] && codeOf(asgn[c])).length;
+    document.getElementById('tk-count').textContent = '已入座 ' + total + ' 位，其中 ' + withCode + ' 位已有報到號碼';
+}
+window.tkSetPick = function (k) { tkPick = k; tkPaintForm(); };
+async function tkSave(patch) {
+    const items = tkItems();
+    items[tkPick] = Object.assign(items[tkPick], patch);
+    ticketTpl = Object.assign({}, ticketTpl || {}, { items });
+    try { await set(ref(db, PROJECT_ID + '/ticket2026'), ticketTpl); } catch (e) { toast('儲存失敗', 'ter'); }
+    ticketPreview();
+}
+window.tkSetSize = v => tkSave({ size: (+v || 50) / 1000 });
+window.tkSetColor = v => tkSave({ color: v });
+window.tkSetShow = v => tkSave({ show: !!v });
+async function ticketPreview() {
+    const cv = document.getElementById('tk-canvas'); if (!cv || !document.getElementById('ticket-modal-bg').classList.contains('show')) return;
+    const sample = Object.keys(asgn).filter(c => !occupied[c]).sort()[0];
+    const info = sample ? tkInfoForSeat(sample) : { name: '王大明 董事長', code: '001', seat: '桌號 1・第 1 席' };
+    if (!info.code) info.code = '001';
+    const c = await drawTicket(info);
+    cv.width = c.width; cv.height = c.height;
+    cv.getContext('2d').drawImage(c, 0, 0);
+}
+window.tkCanvasClick = function (e) {
+    const cv = e.currentTarget, r = cv.getBoundingClientRect();
+    tkSave({ x: Math.round((e.clientX - r.left) / r.width * 1000) / 1000, y: Math.round((e.clientY - r.top) / r.height * 1000) / 1000 });
+};
+window.tkUploadBg = async function (f) {
+    if (!f) return;
+    try {
+        const src = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
+        const img = await dcLoadImg(src);
+        // 縮到最長邊 1600、存 JPEG，避免資料庫太大
+        let w = img.naturalWidth, h = img.naturalHeight; const k = Math.min(1, 1600 / Math.max(w, h));
+        w = Math.round(w * k); h = Math.round(h * k);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+        ticketTpl = Object.assign({}, ticketTpl || {}, { img: c.toDataURL('image/jpeg', 0.88), w, h });
+        await set(ref(db, PROJECT_ID + '/ticket2026'), ticketTpl);
+        toast('✅ 底圖已上傳；點選上方「號碼／姓名／桌號」，再點圖上要放的位置', 'tok');
+        ticketPreview();
+    } catch (e) { toast('圖片讀取失敗', 'ter'); }
+};
+window.tkClearBg = async function () {
+    if (!ticketTpl || !ticketTpl.img) return;
+    if (!confirm('移除自訂底圖，改回預設樣式？')) return;
+    const t = Object.assign({}, ticketTpl); delete t.img; delete t.w; delete t.h;
+    ticketTpl = t; await set(ref(db, PROJECT_ID + '/ticket2026'), t); ticketPreview();
+};
+
+// ── 寄信給這一桌：附件自己上傳 → 一鍵產生 Outlook 新郵件（.eml，收件人／內文／附件都放好）──
+let mailCode = null, mailAtts = [];   // mailAtts：[{ name, type, data(base64) }]，只放在這次畫面，不存資料庫
+const MAIL_V = 2;
+const MAIL_DEF = {
+    subject: '【{活動}】座位通知 Seating Arrangement｜{桌號} {Table}',
+    body: '您好：\n\n感謝您出席「{活動}」。\n您的座位安排在【{桌號}{桌名}】，同桌貴賓如下：\n{同桌名單}\n\n當天請直接前往上述桌次入座，現場工作人員也會協助引導。\n\n敬祝 順心\n\n'
+        + '──────────\n\nDear Guest,\n\nThank you for attending {活動}.\nYou are seated at {Table}{TableName}, together with:\n{同桌名單}\n\nPlease proceed to your table upon arrival. Our staff will be glad to assist you.\n\nBest regards'
+};
+window.openMailModal = function (tCode) {
+    if (!isAdmin) { toast('請先登入', 'ter'); return; }
+    if (mailCode !== tCode) mailAtts = [];
+    mailCode = tCode;
+    const t = (mailTpl && mailTpl.v === MAIL_V) ? mailTpl : {};
+    document.getElementById('ml-subject').value = t.subject || MAIL_DEF.subject;
+    document.getElementById('ml-body').value = t.body || MAIL_DEF.body;
+    document.querySelectorAll('input[name="ml-mode"]').forEach(r => r.checked = r.value === (t.mode || 'bcc'));
+    document.getElementById('ml-done').style.display = 'none';
+    mailPaintList(); mailPaintAtts();
+    document.getElementById('mail-modal-bg').classList.add('show');
+};
+window.closeMailModal = function () { document.getElementById('mail-modal-bg').classList.remove('show'); };
+window.mailResetTpl = function () {
+    if (!confirm('主旨和內文改回預設的中英文版本？')) return;
+    document.getElementById('ml-subject').value = MAIL_DEF.subject;
+    document.getElementById('ml-body').value = MAIL_DEF.body;
+};
+function mailSeats() {
+    return Object.keys(seatMap).filter(k => k.split('-')[0] === mailCode && asgn[k] && !occupied[k]).sort(bySeatNo);
+}
+function mailPaintList() {
+    if (!mailCode) return;
+    document.getElementById('ml-title').textContent = '📧 寄信通知：' + tLabelOf(mailCode) + (tableNames[mailCode] ? '　' + tableNames[mailCode] : '');
+    const box = document.getElementById('ml-list'); box.innerHTML = '';
+    const seats = mailSeats();
+    if (!seats.length) { box.innerHTML = '<div style="color:#9CA3AF;font-size:13px;padding:8px;">這桌還沒有安排賓客</div>'; return; }
+    seats.forEach(code => {
+        const name = asgn[code];
+        const row = document.createElement('div'); row.className = 'ml-row';
+        const no = document.createElement('span'); no.className = 'ml-no'; no.textContent = seatNoOf(code);
+        const nm = document.createElement('div'); nm.className = 'ml-nm'; nm.textContent = name.replace(/\n/g, ' ');
+        const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'ml-mail'; inp.placeholder = 'email（多個用 ; 分隔）';
+        inp.value = emailOf(name);
+        inp.onchange = () => saveEmail(name, inp.value).then(mailCountPaint);
+        row.appendChild(no); row.appendChild(nm); row.appendChild(inp); box.appendChild(row);
+    });
+    mailCountPaint();
+}
+function mailRecipients() {
+    const all = [];
+    mailSeats().forEach(c => splitMails(emailOf(asgn[c])).forEach(m => { if (!all.some(x => x.toLowerCase() === m.toLowerCase())) all.push(m); }));
+    return all;   // 大家共用同一個信箱時只會出現一次
+}
+function mailCountPaint() {
+    const seats = mailSeats(), miss = seats.filter(c => !splitMails(emailOf(asgn[c])).length).length;
+    const n = mailRecipients().length;
+    document.getElementById('ml-count').innerHTML = '收件人 <b>' + n + '</b> 個信箱' + (miss ? '　<span style="color:#B91C1C;">⚠ ' + miss + ' 位還沒填 email</span>' : '');
+}
+function mailFill(s) {
+    const seats = mailSeats(), nm = tableNames[mailCode], head = mailCode.startsWith('H');
+    const list = seats.map(c => seatNoOf(c) + '. ' + asgn[c].replace(/\n/g, ' ')).join('\n');
+    const en = (head ? 'Head Table ' : 'Table ') + tNoOf(mailCode);
+    return String(s).replace(/\{活動\}/g, dcEventName()).replace(/\{桌號\}/g, tLabelOf(mailCode))
+        .replace(/\{桌名\}/g, nm ? '（' + nm + '）' : '').replace(/\{同桌名單\}/g, list)
+        .replace(/\{Table\}/g, en).replace(/\{TableName\}/g, nm ? ' (' + nm + ')' : '');
+}
+function mailSaveTpl() {
+    mailTpl = {
+        v: MAIL_V, subject: document.getElementById('ml-subject').value, body: document.getElementById('ml-body').value,
+        mode: (document.querySelector('input[name="ml-mode"]:checked') || {}).value || 'bcc'
+    };
+    set(ref(db, PROJECT_ID + '/mailtpl2026'), mailTpl).catch(() => {});
+}
+// ── 附件：自己挑檔（圖檔、PDF、Word… 都可以），可一次選多個 ──
+function mailPaintAtts() {
+    const box = document.getElementById('ml-atts'); box.innerHTML = '';
+    if (!mailAtts.length) { box.innerHTML = '<span style="color:#9CA3AF;">（沒有附件）</span>'; return; }
+    mailAtts.forEach((a, i) => {
+        const chip = document.createElement('span'); chip.className = 'ml-att';
+        chip.textContent = '📄 ' + a.name + '（' + Math.max(1, Math.round(a.size / 1024)) + ' KB）';
+        const x = document.createElement('b'); x.textContent = '✕'; x.title = '移除';
+        x.onclick = () => { mailAtts.splice(i, 1); mailPaintAtts(); };
+        chip.appendChild(x); box.appendChild(chip);
+    });
+    const total = mailAtts.reduce((s, a) => s + a.size, 0);
+    if (total > 15 * 1024 * 1024) {
+        const w = document.createElement('div'); w.style.cssText = 'color:#B91C1C;font-size:12px;margin-top:4px;width:100%;';
+        w.textContent = '⚠ 附件合計超過 15 MB，很多信箱會擋信，建議改放雲端連結';
+        box.appendChild(w);
+    }
+}
+window.mailAddFiles = async function (files) {
+    for (const f of Array.from(files || [])) {
+        const data = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(f); });
+        mailAtts.push({ name: f.name, type: f.type || 'application/octet-stream', size: f.size, data });
+    }
+    mailPaintAtts();
+};
+const b64u = s => btoa(unescape(encodeURIComponent(s)));
+const wrap76 = s => s.replace(/.{76}/g, '$&\r\n');
+const encW = s => '=?UTF-8?B?' + b64u(s) + '?=';
+window.mailMakeEml = async function () {
+    mailSaveTpl();
+    const seats = mailSeats();
+    if (!seats.length) { toast('這桌還沒有安排賓客', 'ter'); return; }
+    const r = mailRecipients();
+    if (!r.length && !confirm('這桌還沒有填任何 email。\n仍要開啟信件（之後在 Outlook 再自己填收件人）嗎？')) return;
+    const subject = mailFill(mailTpl.subject);
+    const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+    const html = '<div style="font-family:\'Microsoft JhengHei\',Arial,sans-serif;font-size:15px;line-height:1.7;color:#1F2937;">' + esc(mailFill(mailTpl.body)).replace(/\n/g, '<br>') + '</div>';
+    const B = '----=_TAITRA_' + Date.now();
+    const L = ['X-Unsent: 1'];
+    if (mailTpl.mode === 'to') L.push('To: ' + r.join(', ')); else { L.push('To: '); L.push('Bcc: ' + r.join(', ')); }
+    L.push('Subject: ' + encW(subject), 'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="' + B + '"', '',
+        '--' + B, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64u(html)));
+    mailAtts.forEach(a => L.push('--' + B, 'Content-Type: ' + a.type + '; name="' + encW(a.name) + '"', 'Content-Transfer-Encoding: base64',
+        'Content-Disposition: attachment; filename="' + encW(a.name) + '"', '', wrap76(a.data)));
+    L.push('--' + B + '--', '');
+    const blob = new Blob([L.join('\r\n')], { type: 'message/rfc822' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (dcSafeName() + '_' + tLabelOf(mailCode) + '_座位通知').replace(/\s+/g, '') + '.eml';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    // 瀏覽器只能「下載」信件檔，不能直接叫出 Outlook → 在視窗裡講清楚下一步
+    const done = document.getElementById('ml-done');
+    done.innerHTML = '✅ <b>信件已下載：' + escapeHtml(a.download) + '</b><br>到瀏覽器右上角的「下載」（或電腦的下載資料夾）<b>點兩下這個檔</b>，就會用 Outlook 打開成一封新郵件：'
+        + (mailTpl.mode === 'to' ? '收件人' : '密件副本') + ' ' + r.length + ' 個信箱、中英文內文' + (mailAtts.length ? '、' + mailAtts.length + ' 個附件' : '') + '都放好了，檢查後按「傳送」。';
+    done.style.display = '';
+};
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 </script>
 </div><!-- /main-content -->
