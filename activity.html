@@ -564,8 +564,11 @@ body.theater #rv-tools{display:none!important;}
     </div>
     <div class="ml-lbl">號碼卡預覽（寄提醒信時會附上每個人自己的這張圖）</div>
     <canvas id="cd-canvas" style="width:100%;height:auto;border:1px solid #E5E7EB;border-radius:10px;display:block;"></canvas>
+    <div class="ml-lbl">要下載哪些號碼（選填，留白＝全部）</div>
+    <input class="ml-in" id="cd-pick" placeholder="例：1-10, 15, 23　或打名字關鍵字：陳明芳" oninput="cdPickPaint()">
+    <div style="font-size:12px;color:#6B7280;margin-top:4px;" id="cd-pick-info"></div>
     <div class="ml-btns">
-      <button onclick="downloadAllCards()">⬇ 下載全部號碼卡</button>
+      <button class="main" onclick="downloadCardsPPT()" style="background:#C0392B;border-color:#C0392B;">⬇ 下載號碼卡 PPT（可編輯）</button>
       <button id="cd-renum" onclick="renumberCodes()" style="border-color:#DC2626;color:#DC2626;">↺ 全部重新編號</button>
     </div>
     <button class="modal-close" onclick="closeCodeModal()">關閉</button>
@@ -629,7 +632,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V22</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V23</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -743,7 +746,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V22</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V23</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -5551,6 +5554,7 @@ async function codePaint() {
         + (st.total && st.has < st.total ? '　<span style="color:#B45309;">（' + (st.total - st.has) + ' 位還沒有號碼）</span>' : '');
     document.getElementById('cd-gen').textContent = st.has ? '🔢 只幫還沒有號碼的人補號' : '🔢 席次已定案，產生報到號碼';
     document.getElementById('cd-renum').style.display = st.has ? '' : 'none';
+    cdPickPaint();
     const cv = document.getElementById('cd-canvas');
     const first = seatsInOrder()[0];
     const name = first ? asgn[first].replace(/\n/g, ' ') : '王大明 董事長';
@@ -5634,16 +5638,62 @@ function drawCheckinCard(name, code) {
     return c;
 }
 function cardFileName(name, code) { return '報到號碼卡_' + code + '_' + String(name).replace(/[\\/:*?"<>|\s]+/g, '').slice(0, 20) + '.png'; }
-window.downloadAllCards = async function () {
-    const seats = seatsInOrder().filter(c => codeOf(asgn[c]));
-    if (!seats.length) { toast('還沒有產生報到號碼', 'ter'); return; }
-    if (seats.length > 20 && !confirm('會連續下載 ' + seats.length + ' 張圖，瀏覽器可能會問「是否允許下載多個檔案」，請按允許。繼續？')) return;
-    const done = new Set();
-    for (const c of seats) {
-        const nm = asgn[c]; if (done.has(nm)) continue; done.add(nm);
-        const cv = drawCheckinCard(nm.replace(/\n/g, ' '), codeOf(nm));
-        await new Promise(res => cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = cardFileName(nm, codeOf(nm)); document.body.appendChild(a); a.click(); a.remove(); setTimeout(res, 300); }, 'image/png'));
-    }
+// 選要下載的號碼：「1-10, 15, 023」或名字關鍵字；留白＝全部
+function cdPicked() {
+    const all = [];
+    const seen = new Set();
+    seatsInOrder().forEach(c => { const nm = asgn[c], cd = codeOf(nm); if (cd && !seen.has(nm)) { seen.add(nm); all.push({ name: nm, code: cd }); } });
+    const q = (document.getElementById('cd-pick') || {}).value || '';
+    if (!q.trim()) return all;
+    const nums = new Set(), words = [];
+    q.split(/[,，、;；\s]+/).filter(Boolean).forEach(tok => {
+        const m = tok.match(/^(\d+)\s*[-~～－]\s*(\d+)$/);
+        if (m) { let a = +m[1], b = +m[2]; if (a > b) [a, b] = [b, a]; for (let n = a; n <= b && n - a < 5000; n++) nums.add(n); }
+        else if (/^\d+$/.test(tok)) nums.add(+tok);
+        else words.push(tok.toLowerCase());
+    });
+    return all.filter(x => nums.has(parseInt(x.code, 10)) || words.some(w => x.name.toLowerCase().includes(w)));
+}
+window.cdPickPaint = function () {
+    const p = cdPicked(), el = document.getElementById('cd-pick-info');
+    if (!el) return;
+    el.textContent = p.length ? '會下載 ' + p.length + ' 張：' + p.slice(0, 8).map(x => x.code).join('、') + (p.length > 8 ? '…' : '') : '找不到符合的號碼';
+};
+// 號碼卡 PPT：一人一張投影片，所有文字都是文字框，可以直接在 PowerPoint 裡改字、加字
+window.downloadCardsPPT = async function () {
+    const list = cdPicked();
+    if (!list.length) { toast(Object.keys(badgeCodes).length ? '找不到符合的號碼' : '還沒有產生報到號碼', 'ter'); return; }
+    try { await dcLoadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js', () => window.PptxGenJS); }
+    catch (e) { toast(e.message, 'ter'); return; }
+    toast('正在產生 PPT（' + list.length + ' 張）…', 'tin');
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'W16x9', width: 13.333, height: 7.5 });
+    pptx.layout = 'W16x9';
+    const k = 13.333 / CARD_W, PT = k * 72, F = 'Microsoft JhengHei', ev = dcEventName(), L = dcLogo.gold;
+    list.forEach(it => {
+        const s = pptx.addSlide();
+        s.background = { color: 'FFFFFF' };
+        s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 170 * k, fill: { color: '1A3352' }, line: { color: '1A3352', width: 0 } });
+        s.addShape(pptx.ShapeType.rect, { x: 0, y: 170 * k, w: 13.333, h: 6 * k, fill: { color: 'E3AC52' }, line: { color: 'E3AC52', width: 0 } });
+        let tx = 60;
+        if (L) { const f = Math.min(96 / L.w, 96 / L.h); s.addImage({ data: L.url, x: 56 * k, y: (85 - L.h * f / 2) * k, w: L.w * f * k, h: L.h * f * k }); tx = 56 + L.w * f + 28; }
+        s.addText(ev, { x: tx * k, y: 38 * k, w: (CARD_W - tx - 50) * k, h: 70 * k, fontFace: F, fontSize: Math.round(48 * PT), bold: true, color: 'FFFFFF', margin: 0, valign: 'middle', fit: 'shrink' });
+        s.addText('報到號碼卡　Check-in Card', { x: tx * k, y: 108 * k, w: 700 * k, h: 40 * k, fontFace: F, fontSize: Math.round(23 * PT), color: 'C9D4E4', margin: 0, valign: 'middle' });
+        s.addText('報到號碼　CHECK-IN NO.', { x: 0, y: 212 * k, w: 13.333, h: 40 * k, fontFace: F, fontSize: Math.round(25 * PT), bold: true, color: '6B7280', align: 'center', margin: 0, valign: 'middle' });
+        s.addText(it.code, {
+            shape: pptx.ShapeType.roundRect, rectRadius: 0.2, x: (CARD_W / 2 - 230) * k, y: 262 * k, w: 460 * k, h: 210 * k,
+            fill: { color: 'FFF7E6' }, line: { color: 'E3AC52', width: 3.5 },
+            fontFace: 'Arial', fontSize: Math.round(150 * PT), bold: true, color: '13315C', align: 'center', valign: 'middle', margin: 0
+        });
+        s.addText(it.name.replace(/\n/g, ' '), { x: 50 * k, y: 490 * k, w: (CARD_W - 100) * k, h: 70 * k, fontFace: F, fontSize: Math.round(38 * PT), bold: true, color: '111827', align: 'center', valign: 'middle', margin: 0, fit: 'shrink' });
+        s.addShape(pptx.ShapeType.rect, { x: 0, y: (CARD_H - 104) * k, w: 13.333, h: 104 * k, fill: { color: 'F3F4F6' }, line: { color: 'F3F4F6', width: 0 } });
+        s.addText([
+            { text: '報到時請出示此號碼，工作人員將協助您快速入座。', options: { fontSize: Math.round(24 * PT), bold: true, color: '1F2937', breakLine: true } },
+            { text: 'Please present this number at check-in. Our staff will guide you to your seat.', options: { fontSize: Math.round(20 * PT), color: '4B5563', fontFace: 'Arial' } }
+        ], { x: 40 * k, y: (CARD_H - 100) * k, w: (CARD_W - 80) * k, h: 96 * k, fontFace: F, align: 'center', valign: 'middle', margin: 0 });
+    });
+    await pptx.writeFile({ fileName: dcSafeName() + '_報到號碼卡_' + list.length + '張.pptx' });
+    toast('✅ 已下載號碼卡 PPT（' + list.length + ' 張，每張的文字都可以直接改）', 'tok');
 };
 
 // ── 寄信給這一桌：附件自己上傳 → 一鍵產生 Outlook 新郵件（.eml，收件人／內文／附件都放好）──
