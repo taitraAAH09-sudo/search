@@ -136,9 +136,12 @@ select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5
 .mn-row #m-name{flex:1;word-break:break-all;}
 .mn-pencil{flex:none;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#9CA3AF;border-radius:6px;cursor:pointer;transition:all .15s;}
 .mn-pencil:hover{background:#E5E7EB;color:#1D4ED8;}
-.mn-edit{display:flex;align-items:center;gap:6px;}
-.mn-edit input{flex:1;min-width:0;font-size:13px;padding:6px 8px;border-radius:6px;border:1px solid #93C5FD;outline:none;background:#fff;color:#111;}
-.mn-edit input:focus{border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15);}
+.mn-edit{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;}
+.mn-hint{flex-basis:100%;font-size:11px;color:#9CA3AF;}
+.mn-edit textarea{resize:vertical;line-height:1.45;font-family:inherit;}
+#m-name{white-space:pre-line;}
+.mn-edit input,.mn-edit textarea{flex:1;min-width:0;font-size:13px;padding:6px 8px;border-radius:6px;border:1px solid #93C5FD;outline:none;background:#fff;color:#111;}
+.mn-edit input:focus,.mn-edit textarea:focus{border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15);}
 .mn-edit button{flex:none;padding:6px 10px;border-radius:6px;border:1px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;}
 .mn-edit .mn-ok{background:#2563EB;border-color:#2563EB;color:#fff;}
 .mn-edit .mn-ok:hover{background:#1D4ED8;}
@@ -484,9 +487,10 @@ body.theater #rv-tools{display:none!important;}
         </button>
       </div>
       <div class="mn-edit" id="m-name-editor" style="display:none;">
-        <input type="text" id="m-name-input" placeholder="輸入賓客名稱" />
+        <textarea id="m-name-input" rows="2" placeholder="輸入賓客名稱"></textarea>
         <button type="button" class="mn-ok" onclick="saveNameEdit()">儲存</button>
         <button type="button" onclick="cancelNameEdit()">取消</button>
+        <div class="mn-hint">Enter＝儲存；<b>Alt＋Enter</b>（或 Shift＋Enter）＝換行，例如中文一行、英文一行</div>
       </div>
     </div>
     <div id="m-mail-sec" style="display:none;margin-bottom:10px;">
@@ -632,7 +636,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V24</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V25</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -746,7 +750,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V24</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V25</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -2963,6 +2967,7 @@ window.startNameEdit=function(){
   inp.placeholder=asgn[modalCode]?'修改賓客名稱':'輸入新賓客名稱，直接指派到此座位';
   document.getElementById('m-name-view').style.display='none';
   document.getElementById('m-name-editor').style.display='';
+  inp.rows=Math.min(5,Math.max(2,inp.value.split('\n').length));
   inp.focus(); inp.select();
 };
 window.cancelNameEdit=function(){
@@ -2973,7 +2978,7 @@ window.saveNameEdit=function(){
   if(!isAdmin||!modalCode) return;
   const code=modalCode;
   const oldName=asgn[code]||'';
-  const newName=document.getElementById('m-name-input').value.trim();
+  const newName=document.getElementById('m-name-input').value.split(/\r\n|\r|\n/).map(l=>l.replace(/[ \t\u3000]+/g,' ').trim()).filter(Boolean).join('\n');
   if(!newName) return toast('名稱不能空白','ter');
   if(newName===oldName) return cancelNameEdit();
 
@@ -2999,7 +3004,15 @@ window.saveNameEdit=function(){
 };
 document.getElementById('m-name-input').addEventListener('keydown',e=>{
   if(e.isComposing||e.keyCode===229) return; // 中文輸入法選字中的 Enter 不送出
-  if(e.key==='Enter'){ e.preventDefault(); saveNameEdit(); }
+  if(e.key==='Enter'&&(e.altKey||e.shiftKey)){
+    // Alt+Enter／Shift+Enter：在游標位置換行（跟 Excel 一樣）
+    e.preventDefault();
+    const t=e.target, a=t.selectionStart, b=t.selectionEnd;
+    t.value=t.value.slice(0,a)+'\n'+t.value.slice(b);
+    t.selectionStart=t.selectionEnd=a+1;
+    t.rows=Math.min(5,Math.max(2,t.value.split('\n').length));
+  }
+  else if(e.key==='Enter'){ e.preventDefault(); saveNameEdit(); }
   else if(e.key==='Escape'){ e.preventDefault(); cancelNameEdit(); }
 });
 
@@ -5572,7 +5585,7 @@ async function codePaint() {
     cdPickPaint();
     const cv = document.getElementById('cd-canvas');
     const first = seatsInOrder()[0];
-    const name = first ? asgn[first].replace(/\n/g, ' ') : '王大明 董事長';
+    const name = first ? asgn[first] : '王大明 董事長';
     const c = drawCheckinCard(name, (first && codeOf(asgn[first])) || '001');
     cv.width = c.width; cv.height = c.height; cv.getContext('2d').drawImage(c, 0, 0);
 }
@@ -5641,9 +5654,19 @@ function drawCheckinCard(name, code) {
     x.beginPath(); x.roundRect ? x.roundRect(W / 2 - bw / 2, by, bw, bh, 26) : x.rect(W / 2 - bw / 2, by, bw, bh); x.fill(); x.stroke();
     x.fillStyle = '#13315C'; x.fillText(code, W / 2, by + bh / 2 + ns * 0.05);
     // 姓名
-    let ms = 40; x.font = 'bold ' + ms + 'px ' + F;
-    while (x.measureText(name).width > W - 120 && ms > 22) { ms -= 2; x.font = 'bold ' + ms + 'px ' + F; }
-    x.fillStyle = '#111827'; x.fillText(name, W / 2, by + bh + 52);
+    // 有換行就照換行分行；沒有就自動把「中文 英文」拆兩行，再太長才自動折行
+    const nmTxt = dcSplitBilingual(String(name || ''));
+    const top = by + bh + 8, room = (H - 104 - 8) - top;
+    let ms = 40, nl;
+    for (;;) {
+        x.font = 'bold ' + ms + 'px ' + F;
+        nl = dcWrap(x, nmTxt, W - 120);
+        if (nl.length * ms * 1.2 <= room || ms <= 15) break;
+        ms -= 1;
+    }
+    x.fillStyle = '#111827';
+    const nlh = ms * 1.2, ny = top + room / 2 - (nl.length - 1) * nlh / 2;
+    nl.forEach((ln, i) => x.fillText(ln, W / 2, ny + i * nlh));
     // 說明
     x.fillStyle = '#F3F4F6'; x.fillRect(0, H - 104, W, 104);
     x.font = 'bold 25px ' + F; x.fillStyle = '#1F2937';
@@ -5700,7 +5723,7 @@ window.downloadCardsPPT = async function () {
             fill: { color: 'FFF7E6' }, line: { color: 'E3AC52', width: 3.5 },
             fontFace: 'Arial', fontSize: Math.round(150 * PT), bold: true, color: '13315C', align: 'center', valign: 'middle', margin: 0
         });
-        s.addText(it.name.replace(/\n/g, ' '), { x: 50 * k, y: 490 * k, w: (CARD_W - 100) * k, h: 70 * k, fontFace: F, fontSize: Math.round(38 * PT), bold: true, color: '111827', align: 'center', valign: 'middle', margin: 0, fit: 'shrink' });
+        s.addText(dcSplitBilingual(it.name), { x: 50 * k, y: 482 * k, w: (CARD_W - 100) * k, h: 82 * k, fontFace: F, fontSize: Math.round(38 * PT), bold: true, color: '111827', align: 'center', valign: 'middle', margin: 0, fit: 'shrink' });
         s.addShape(pptx.ShapeType.rect, { x: 0, y: (CARD_H - 104) * k, w: 13.333, h: 104 * k, fill: { color: 'F3F4F6' }, line: { color: 'F3F4F6', width: 0 } });
         s.addText([
             { text: '報到時請出示此號碼，工作人員將協助您快速入座。', options: { fontSize: Math.round(24 * PT), bold: true, color: '1F2937', breakLine: true } },
@@ -5839,7 +5862,7 @@ window.mailMakeEml = async function () {
         const done = new Set();
         seats.forEach(c => {
             const nm = asgn[c], cd = codeOf(nm); if (!cd || done.has(nm)) return; done.add(nm);
-            cards.push({ name: cardFileName(nm, cd), type: 'image/png', data: drawCheckinCard(nm.replace(/\n/g, ' '), cd).toDataURL('image/png').split(',')[1] });
+            cards.push({ name: cardFileName(nm, cd), type: 'image/png', data: drawCheckinCard(nm, cd).toDataURL('image/png').split(',')[1] });
         });
     }
     const subject = mailFill(mailTpl.subject);
