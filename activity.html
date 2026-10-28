@@ -502,6 +502,13 @@ body.theater #rv-tools{display:none!important;}
     <div class="modal-handle"></div>
     <div class="modal-code" id="tm-title" style="margin-bottom:12px;">桌次設定</div>
     <div style="margin-bottom:16px;">
+      <div class="modal-section">顯示桌號（不想要 4 可改成 5、3A…；留白＝原本號碼）</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="tm-no" placeholder="例如：5" style="flex:1;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid #D1D5DB;outline:none;" />
+        <button class="btn btn-primary" onclick="saveTableNo(currentTableCodeG(), document.getElementById('tm-no').value)">儲存桌號</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
       <div class="modal-section">自訂桌名</div>
       <div style="display:flex;gap:8px;">
         <input type="text" id="tm-name" placeholder="例如：貴賓 A 桌 (留白顯示預設)" style="flex:1;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid #D1D5DB;outline:none;" />
@@ -523,7 +530,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V17</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V18</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -637,7 +644,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V17</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V18</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -700,6 +707,7 @@ body.theater #rv-tools{display:none!important;}
   <button class="btn rv-admin" onclick="addAisle('v')">＋ 中間走道</button>
   <button class="btn rv-admin" onclick="addAisle('h')">＋ 橫向走道</button>
   <button class="btn rv-admin" onclick="resetTablePos()">🔄 依舞台自動排桌</button>
+  <button class="btn rv-admin" onclick="toggleSkip4()" title="一般桌重新編號、跳過 4、14、24…；再按一次改回原本">🔢 桌號跳過 4</button>
   <button class="btn" onclick="rvExportOverviewJPG()">⬇ 全場配置 JPG</button>
   <button class="btn" onclick="rvExportDocPDF()" style="border-color:#1D3A6E;color:#1D3A6E;">⬇ 全場＋各桌 PDF</button>
   <button class="btn" onclick="rvExportDocPPT()" style="border-color:#C0392B;color:#C0392B;">⬇ 全場＋各桌 PPT</button>
@@ -1031,7 +1039,7 @@ window.confirmEventSelect = async function() {
   updateRefs();
   clearLocalData(); 
   venueShape=''; shapeLoaded=false; tableMoveMode=false; dcSaved={};
-  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null; roomSize=null;
+  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null; roomSize=null; Object.keys(tableNos).forEach(k=>delete tableNos[k]);
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -1128,6 +1136,12 @@ window.confirmEventSelect = async function() {
     Object.keys(tablePos).forEach(k => delete tablePos[k]);
     Object.assign(tablePos, snap.val() || {});
     rvSync();
+  }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/table_no2026'), snap => {
+    Object.keys(tableNos).forEach(k => delete tableNos[k]);
+    Object.assign(tableNos, snap.val() || {});
+    rvSync();
+    if (rosterCode) renderRoster();
   }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/room2026'), snap => {
     roomSize = snap.val() || null;
@@ -1265,8 +1279,9 @@ function buildVenue(keys){
 
 window.openTableModal = function(tCode) {
     currentTableCode = tCode;
-    document.getElementById('tm-title').textContent = `桌次設定：${tCode}`;
+    document.getElementById('tm-title').textContent = `桌次設定：${tLabelOf(tCode)}`;
     document.getElementById('tm-name').value = tableNames[tCode] || '';
+    document.getElementById('tm-no').value = tNoOf(tCode);
     updateTableModalSeatCount();
     document.getElementById('table-modal-bg').classList.add('show');
 }
@@ -1277,6 +1292,7 @@ function updateTableModalSeatCount() {
     document.getElementById('tm-seat-count').textContent = `共 ${tableSeats.length} 席`;
 }
 
+window.currentTableCodeG = () => currentTableCode;
 window.saveTableName = async function() {
     if(!currentTableCode || !isAdmin) return;
     const newName = document.getElementById('tm-name').value.trim();
@@ -1325,6 +1341,43 @@ const tablePos = {}, pillars = {};
 let roomSize = null;   // room2026：{w,h} 場地最小尺寸（拉外框右下角設定）
 let stagePos = null;   // stage2026：{x,y,w,h} 舞台中心點與大小；沒設定＝上方置中
 let tableMoveMode = false, rvDragging = false, rvPendingRebuild = false;
+
+// 顯示用桌號：有手動改過（例如不要 4）就用改過的，沒有就用原本的號碼；全系統顯示都走這裡
+const tableNos = {};
+function tNoOf(tCode){
+    const v = tableNos[tCode];
+    if (v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+    return tCode.startsWith('H') ? tCode.replace(/\D/g, '') : String(rvTableNo(tCode));
+}
+function tLabelOf(tCode){ return (tCode.startsWith('H') ? '主桌 ' : '桌號 ') + tNoOf(tCode); }
+window.saveTableNo = async function(tCode, v){
+    if (!isAdmin || !tCode) return;
+    v = String(v || '').trim().replace(/^第\s*|\s*桌$/g, '');
+    const dup = v && Object.keys(seatMap).map(k => k.split('-')[0]).filter((x, i, a) => a.indexOf(x) === i)
+        .find(t => t !== tCode && t.startsWith('H') === tCode.startsWith('H') && tNoOf(t) === v);
+    if (dup && !confirm('「' + tLabelOf(dup) + '」已經是這個號碼了，確定兩桌要用同一個號碼嗎？')) return;
+    const def = tCode.startsWith('H') ? tCode.replace(/\D/g, '') : String(rvTableNo(tCode));
+    try {
+        await set(ref(db, PROJECT_ID + '/table_no2026/' + tCode), (v && v !== def) ? v : null);
+        toast(v ? '桌號已改成 ' + v + '（席次圖、手機查詢、Excel、PDF／PPT 都會跟著變）' : '已改回原本桌號', 'tok');
+    } catch (e) { toast('儲存失敗', 'ter'); }
+};
+// 一鍵跳過 4：一般桌照順序重新編號 1、2、3、5、6…（尾數 4 的 4、14、24 都跳過）；再按一次可改回原本號碼
+window.toggleSkip4 = async function(){
+    if (!isAdmin) return;
+    const normals = [...new Set(Object.keys(seatMap).map(k => k.split('-')[0]))].filter(t => !t.startsWith('H')).sort((a, b) => rvTableNo(a) - rvTableNo(b));
+    if (!normals.length) return;
+    if (Object.keys(tableNos).length) {
+        if (!confirm('目前有自訂過的桌號。\n要全部清掉、改回原本的 1、2、3、4…嗎？')) return;
+        try { await set(ref(db, PROJECT_ID + '/table_no2026'), null); toast('已改回原本桌號', 'tok'); } catch (e) { toast('儲存失敗', 'ter'); }
+        return;
+    }
+    const map = {}; let n = 0;
+    normals.forEach(t => { do { n++; } while (String(n).endsWith('4')); if (String(n) !== String(rvTableNo(t))) map[t] = String(n); });
+    if (!confirm('一般桌重新編號，跳過尾數是 4 的號碼（4、14、24…）：\n' + normals.map(t => rvTableNo(t) + '→' + (map[t] || rvTableNo(t))).join('、') + '\n\n席次圖、手機查詢、Excel、PDF／PPT 都會跟著改。確定嗎？')) return;
+    try { await set(ref(db, PROJECT_ID + '/table_no2026'), Object.keys(map).length ? map : null); toast('🔢 已跳過 4 重新編號', 'tok'); }
+    catch (e) { toast('儲存失敗', 'ter'); }
+};
 
 function rvTableNo(tCode){
     const m = tCode.match(/T(\d+)/);
@@ -1688,7 +1741,7 @@ function buildRoundVenue(keys, wrap) {
         const center = document.createElement('div');
         center.className = 'round-table-center' + (isAdmin ? ' table-center-hover' : '');
         // 桌子中間三行：桌號（大）／自訂桌名／席數
-        const tNo = isHead ? '主桌 ' + tCode.replace(/\D/g, '') : '桌號 ' + rvTableNo(tCode);
+        const tNo = tLabelOf(tCode);
         const l1 = document.createElement('span'); l1.className = 'tc-no'; l1.textContent = tNo; center.appendChild(l1);
         if (tableNames[tCode]) { const l2 = document.createElement('span'); l2.className = 'tc-name'; l2.textContent = tableNames[tCode]; l2.title = tableNames[tCode]; center.appendChild(l2); }
         const l3 = document.createElement('span'); l3.className = 'tc-cnt'; l3.textContent = seatCodes.length + ' 席'; center.appendChild(l3);
@@ -2051,7 +2104,7 @@ async function exportRoundXlsx(wb, eventName){
                 return dcSplitBilingual(((card && card.text) || asgn[seats[pi]] || '').trim());
             };
             const order = [hostPi, ...dcOrderFromHost(n, hostPi)];
-            const label = tableNames[t] || ('主桌 ' + t.slice(1));
+            const label = tableNames[t] || tLabelOf(t);
             band = !band;
             const fill = band ? 'FFFFF6E3' : 'FFFFFFFF';
             const startR = r;
@@ -2077,7 +2130,7 @@ async function exportRoundXlsx(wb, eventName){
         setup(ws, eventName + '－一般桌次（座位依順時針，12 點鐘方向為 1）', cols, 'FF132742');
         let r = 3, band = false;
         normals.forEach(t => {
-            const no = rvTableNo(t);
+            const no = tNoOf(t);
             band = !band;
             const fill = band ? 'FFE8F1FB' : 'FFFFFFFF';
             const startR = r;
@@ -2103,8 +2156,7 @@ const DOC_W = 1600, DOC_H = 900, DOC_NAVY = '#1D3A6E', DOC_INK = '#13315C';
 const DOC_FONT = '"Microsoft JhengHei","PingFang TC","Noto Sans TC",Arial,sans-serif';
 
 function rvTableTitle(code) {
-    const no = code.startsWith('H') ? code.replace(/\D/g, '') : rvTableNo(code);
-    return { main: (code.startsWith('H') ? '主桌 ' : '桌號 ') + no, sub: tableNames[code] || '' };
+    return { main: tLabelOf(code), sub: tableNames[code] || '' };
 }
 function rvSeatName(code) { return occupied[code] ? '（佔用）' : (asgn[code] || '').trim(); }
 function rvDocTables() {
@@ -3215,7 +3267,7 @@ async function processExcelFile(file) {
     // 主桌的主位、加掛名牌、桌名、標記、佔用、未分配賓客都一起還原。
     let roundExtra = null;
     if (wb.Sheets['主桌'] || wb.Sheets['一般桌次']) {
-      roundExtra = { tableNames: {}, occ: {}, heads: {}, guests: [], noCode: false };
+      roundExtra = { tableNames: {}, tableNos: {}, occ: {}, heads: {}, guests: [], noCode: false };
       const tagMapD = { '揭幕': 'ceremony', '合影': 'photo', '唱名': 'call' };
       const readSheet = name => {
         const ws2 = wb.Sheets[name]; if (!ws2) return null;
@@ -3244,7 +3296,9 @@ async function processExcelFile(file) {
           tCode = code.split('-')[0];
           const hd = roundExtra.heads[tCode] || (roundExtra.heads[tCode] = { hostPi: 0, free: [] });
           if (seq.includes('主位')) hd.hostPi = parseInt(code.split('-')[1]) - 1;
-          if (label && label !== '主桌 ' + tCode.slice(1)) roundExtra.tableNames[tCode] = label;
+          const hm = label.match(/^主桌\s*(\S+)$/);
+          if (hm) { if (hm[1] !== tCode.slice(1)) roundExtra.tableNos[tCode] = hm[1]; }
+          else if (label) roundExtra.tableNames[tCode] = label;
           newMaster[code] = '';
           if (name) newAssign[code] = name;
           const tg = tagMapD[cellStr(r, cG)]; if (tg) newTags[code] = tg;
@@ -3254,9 +3308,9 @@ async function processExcelFile(file) {
       if (SN) {
         const cT = SN.col('桌次'), cL = SN.col('桌名'), cS = SN.col('座位'), cN = SN.col('賓客'), cG = SN.col('標記'), cC = SN.col('系統座位碼');
         if (cC < 0) roundExtra.noCode = true;
-        let tName = '';
+        let tName = '', tDisp = '';
         SN.rows.forEach(r => {
-          if (cellStr(r, cT)) tName = cellStr(r, cL);
+          if (cellStr(r, cT)) { tName = cellStr(r, cL); const dm = cellStr(r, cT).match(/^第\s*(.+?)\s*桌$/); tDisp = dm ? dm[1] : ''; }
           let code = cellStr(r, cC);
           if (!seatPat.test(code)) {
             const m = cellStr(r, cS).match(/^(\d+)\s*-\s*(\d+)$/);
@@ -3265,6 +3319,7 @@ async function processExcelFile(file) {
           if (!seatPat.test(code)) return;
           const t = code.split('-')[0];
           if (tName) roundExtra.tableNames[t] = tName;
+          if (tDisp && tDisp !== String(rvTableNo(t))) roundExtra.tableNos[t] = tDisp;
           newMaster[code] = '';
           const name = cleanMultiline(r[cN]);
           if (name === '（佔用）') roundExtra.occ[code] = '佔用';
@@ -3417,6 +3472,7 @@ async function processExcelFile(file) {
       search2026: Object.keys(newSrch).length ? newSrch : null,
       seats2026: roundExtra && Object.keys(roundExtra.occ).length ? roundExtra.occ : null,
       table_names2026: roundExtra && Object.keys(roundExtra.tableNames).length ? roundExtra.tableNames : null,
+      table_no2026: roundExtra && Object.keys(roundExtra.tableNos).length ? roundExtra.tableNos : null,
       guest_list2026: roundExtra && roundExtra.guests.length ? roundExtra.guests : null,
       detail_chart2026: detailNew,
       venue_shape2026: isRound && venueShape ? venueShape : null,
@@ -3520,8 +3576,7 @@ function renderRoster(){
   if (!rosterCode || !seats.length || !document.body.classList.contains('theater')) { box.classList.remove('show'); box.innerHTML = ''; return; }
   const tw = document.querySelector('.rv-table[data-tcode="' + rosterCode + '"]'); if (tw) tw.classList.add('rv-roster-on');
   const ci = window.checkins || {};
-  const isH = rosterCode.startsWith('H'), no = rvTableNo(rosterCode);
-  const main = (isH ? '主桌 ' + rosterCode.replace(/\D/g, '') : '桌號 ' + no), sub = tableNames[rosterCode] || '';
+  const main = tLabelOf(rosterCode), sub = tableNames[rosterCode] || '';
   const assigned = seats.filter(c => asgn[c]), done = assigned.filter(c => ci[c]);
   const keepScroll = box.querySelector('.th-rl') ? box.querySelector('.th-rl').scrollTop : 0;
   box.innerHTML = '';
@@ -3529,6 +3584,12 @@ function renderRoster(){
   hd.innerHTML = '<b></b><span></span><button type="button" title="關閉">✕</button>';
   hd.querySelector('b').textContent = main; hd.querySelector('span').textContent = sub ? sub + '・' + seats.length + ' 席' : seats.length + ' 席';
   hd.querySelector('button').onclick = closeRoster;
+  if (isAdmin) {
+    // ✏️ 現場直接改這桌的桌號（例如 4 改成 5 或 3A）
+    const ed = document.createElement('button'); ed.type = 'button'; ed.textContent = '✏️'; ed.title = '改這桌的桌號';
+    ed.style.marginLeft = 'auto'; hd.querySelector('button').style.marginLeft = '4px'; ed.onclick = ev => { ev.stopPropagation(); const v = prompt('這桌要顯示的桌號（例如 5、3A；留白＝改回原本）', tNoOf(rosterCode)); if (v !== null) saveTableNo(rosterCode, v); };
+    hd.insertBefore(ed, hd.querySelector('button:last-child'));
+  }
   hd.title = '按住這一條可以拖動視窗';
   hd.addEventListener('pointerdown', rosterDragStart);
   box.appendChild(hd);
@@ -4382,9 +4443,7 @@ function dcSplitBilingual(t) {
     return t;
 }
 function dcTableLabel(tCode) {
-    if (tableNames[tCode]) return tableNames[tCode];
-    if (tCode.startsWith('H')) return '主桌 ' + tCode.replace('H', '');
-    const tm = tCode.match(/T(\d+)/); return tm ? '桌號 ' + tm[1] : tCode;
+    return tLabelOf(tCode) + (tableNames[tCode] ? '　' + tableNames[tCode] : '');
 }
 function dcGroupTables() {
     const tables = {};
