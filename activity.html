@@ -249,6 +249,8 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .tag-btn.occ-btn{border-color:#6366F1;background:#EEF2FF;color:#4338CA;}
 .tag-btn.occ-btn.active{background:#6366F1;color:#fff;}
 .modal-close{width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;cursor:pointer;margin-top:4px;}
+.round-seat.rs3h{font-size:9.5px;letter-spacing:-.3px;padding:0;white-space:nowrap;overflow:hidden;}
+.round-seat.rs3{writing-mode:vertical-rl;text-orientation:upright;font-size:10.5px;line-height:1;letter-spacing:-.5px;padding:0;white-space:nowrap;overflow:hidden;}
 .seat.checked-in{background:#D1D5DB!important;border-color:#9CA3AF!important;color:#6B7280!important;cursor:default!important;position:relative;}
 .seat.checked-in::after{content:"✓";position:absolute;top:1px;right:2px;font-size:8px;color:#6B7280;}
 .round-seat.checked-in{background:#D1D5DB!important;border-color:#9CA3AF!important;color:#6B7280!important;position:absolute!important;}
@@ -281,6 +283,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .rv-table.rv-dragging{cursor:grabbing;z-index:20;opacity:.85;}
 .rv-pillar{position:absolute;z-index:8;background:repeating-linear-gradient(45deg,#9CA3AF,#9CA3AF 6px,#6B7280 6px,#6B7280 12px);border:2px solid #4B5563;border-radius:4px;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 2px rgba(0,0,0,.6);user-select:none;}
 .rv-move .rv-pillar{cursor:grab;touch-action:none;}
+.rv-room-rs{position:absolute;right:-14px;bottom:-14px;width:28px;height:28px;border-radius:8px;background:#1D3A6E;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:nwse-resize;z-index:9;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.3);}
 .rv-stage.vert span{writing-mode:vertical-rl;letter-spacing:8px;}
 .rv-move .rv-stage{cursor:move;touch-action:none;outline:2px dashed rgba(245,158,11,.8);outline-offset:4px;}
 .rv-srot{display:none;position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#F59E0B;color:#fff;font-size:14px;font-weight:800;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);letter-spacing:0;writing-mode:horizontal-tb;}
@@ -485,7 +488,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V10</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V13</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -599,7 +602,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V10</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V13</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -665,7 +668,7 @@ body.theater #rv-tools{display:none!important;}
   <button class="btn" onclick="rvExportOverviewJPG()">⬇ 全場配置 JPG</button>
   <button class="btn" onclick="rvExportDocPDF()" style="border-color:#1D3A6E;color:#1D3A6E;">⬇ 全場＋各桌 PDF</button>
   <button class="btn" onclick="rvExportDocPPT()" style="border-color:#C0392B;color:#C0392B;">⬇ 全場＋各桌 PPT</button>
-  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、舞台、柱子、門、走道到實際位置（自動儲存）；移動主桌後，其他桌會依舞台方向自動讓位重排；舞台左上角 ⟲ 可轉成直的（放左邊或右邊牆），雙擊舞台回到上方預設；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
+  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、舞台、柱子、門、走道到實際位置（自動儲存）；移動主桌後，其他桌會自動讓位（排一律由上往下、每排桌數不變，整排往旁邊挪）；東西拖到右邊或下面邊緣外，場地會自動長大，也可以拉外框右下角 ⤡ 自己放大；舞台左上角 ⟲ 可轉成直的（放左邊或右邊牆），雙擊舞台回到上方預設；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
 </div>
 
 <div class="legend">
@@ -992,7 +995,7 @@ window.confirmEventSelect = async function() {
   updateRefs();
   clearLocalData(); 
   venueShape=''; shapeLoaded=false; tableMoveMode=false; dcSaved={};
-  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null;
+  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null; roomSize=null;
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -1088,6 +1091,10 @@ window.confirmEventSelect = async function() {
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/table_pos2026'), snap => {
     Object.keys(tablePos).forEach(k => delete tablePos[k]);
     Object.assign(tablePos, snap.val() || {});
+    rvSync();
+  }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/room2026'), snap => {
+    roomSize = snap.val() || null;
     rvSync();
   }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/stage2026'), snap => {
@@ -1279,6 +1286,7 @@ window.adjustTableSeat = async function(delta) {
 let venueShape = '', shapeLoaded = false;
 const shapeAsked = {};
 const tablePos = {}, pillars = {};
+let roomSize = null;   // room2026：{w,h} 場地最小尺寸（拉外框右下角設定）
 let stagePos = null;   // stage2026：{x,y,w,h} 舞台中心點與大小；沒設定＝上方置中
 let tableMoveMode = false, rvDragging = false, rvPendingRebuild = false;
 
@@ -1391,7 +1399,7 @@ window.addAisle = async function(dir){
 // 舞台在上／下／左／右都可以：一般桌照設定的排數，一排一排往舞台的反方向延伸；
 // 主桌、柱子、門、走道都當成障礙物，擋到的桌子自動往旁邊讓，空間不夠就往外延展。
 let rvArranging = false;
-async function rvAutoArrange(silent) {
+async function rvAutoArrange(silent, keepRows) {
     const g = rvLastGeo;
     if (!g || rvArranging) return;
     rvArranging = true;
@@ -1412,61 +1420,95 @@ async function rvAutoArrange(silent) {
             (rowsMap[r] = rowsMap[r] || []).push(t.code);
         });
         const rows = Object.keys(rowsMap).sort((a, b) => a - b).map(r => rowsMap[r].sort((a, b) => rvTableNo(a) - rvTableNo(b)));
-        // 障礙物
-        const INF = 1e9, rects = [];
+        // 障礙物：柱子、門、舞台（走道另外處理：橫跨各排的那條走道會把一排分成左右兩組）
+        const INF = 1e9, rects = [], obst = [];
+        const across = 'v';   // 每排都是橫的一列，所以會穿過各排的是直的中間走道
+        let cut = null;                                                     // { ua, aw } 第一條穿過各排的走道
+        const has = v => v !== undefined && v !== null && isFinite(+v);
         Object.values(pillars).forEach(p => {
             if (!p) return;
             if (p.kind === 'aisle') {
-                const has = v => v !== undefined && v !== null && isFinite(+v);
+                let r;
                 if (p.dir === 'v') {
                     const aw = Math.max(40, +p.w || 90), ax = has(p.x) ? +p.x : (+p.fx || 0.5) * W;
-                    rects.push({ x1: ax - aw / 2, x2: ax + aw / 2, y1: has(p.y1) ? +p.y1 : -INF, y2: has(p.y2) ? +p.y2 : INF });
+                    r = { x1: ax - aw / 2, x2: ax + aw / 2, y1: has(p.y1) ? +p.y1 : -INF, y2: has(p.y2) ? +p.y2 : INF };
+                    if (across === 'v' && !cut) cut = { ua: ax, aw };
                 } else {
                     const ah = Math.max(30, +p.h || 70), ay = +p.y || H / 2;
-                    rects.push({ x1: has(p.x1) ? +p.x1 : -INF, x2: has(p.x2) ? +p.x2 : INF, y1: ay - ah / 2, y2: ay + ah / 2 });
+                    r = { x1: has(p.x1) ? +p.x1 : -INF, x2: has(p.x2) ? +p.x2 : INF, y1: ay - ah / 2, y2: ay + ah / 2 };
+                    if (across === 'h' && !cut) cut = { ua: ay, aw: ah };
                 }
+                rects.push(r);
             } else {
                 const w = +p.w || 60, h = +p.h || 60;
-                rects.push({ x1: +p.x - w / 2, x2: +p.x + w / 2, y1: +p.y - h / 2, y2: +p.y + h / 2 });
+                const r = { x1: +p.x - w / 2, x2: +p.x + w / 2, y1: +p.y - h / 2, y2: +p.y + h / 2 };
+                rects.push(r); obst.push(r);
             }
         });
-        rects.push({ x1: st.x - st.w / 2 - 10, x2: st.x + st.w / 2 + 10, y1: st.y - st.h / 2 - 10, y2: st.y + st.h / 2 + 10 });
-        const placed = [];
+        obst.push({ x1: st.x - st.w / 2 - 10, x2: st.x + st.w / 2 + 10, y1: st.y - st.h / 2 - 10, y2: st.y + st.h / 2 + 10 });
         const hits = (x, y, r) => {
             for (const h of heads) if (Math.hypot(x - h.x, y - h.y) < r + h.r + 24) return true;
-            for (const q of placed) if (Math.hypot(x - q.x, y - q.y) < r + q.r + 10) return true;
-            for (const b of rects) {
+            for (const b of obst) {
                 const dx = Math.max(b.x1 - x, 0, x - b.x2), dy = Math.max(b.y1 - y, 0, y - b.y2);
                 if (Math.hypot(dx, dy) < r + 8) return true;
             }
             return false;
         };
-        // u＝沿著舞台的方向、v＝離舞台的距離
-        const uc = (side === 'top' || side === 'bottom') ? st.x : st.y;
-        const toXY = (u, v) => side === 'top' ? { x: u, y: st.y + st.h / 2 + v }
-            : side === 'bottom' ? { x: u, y: st.y - st.h / 2 - v }
-            : side === 'left' ? { x: st.x + st.w / 2 + v, y: u }
-            : { x: st.x - st.w / 2 - v, y: u };
+        // 排一律由上往下（第 1 排在最上面），每排一橫列；舞台在左／右時，各排置中在舞台旁的空間裡
+        const toXY = (u, v) => ({ x: u, y: v });
+        const toUV = (x, y) => ({ u: x, v: y });
+        const uc = side === 'right' ? (24 + (st.x - st.w / 2 - 20)) / 2
+                 : side === 'left'  ? ((st.x + st.w / 2 + 20) + (W - 24)) / 2
+                 : st.x;
+        const maxN = Math.max(1, ...rows.map(r => r.length));
+        const spanL = uc - maxN * CELL / 2 - R, spanR = uc + maxN * CELL / 2 + R;
+        // 第 1 排的高度：舞台在上方就從舞台下面開始，否則從最上面開始；
+        // 主桌如果擺在第 1 排前面、又在各排的左右範圍內，各排整體往下退
+        let v0 = (side === 'top' ? st.y + st.h / 2 + 40 : 30) + R;
+        heads.forEach(h => {
+            if (h.x < spanL - h.r || h.x > spanR + h.r) return;
+            if (h.y < v0 + CELL / 2) v0 = Math.max(v0, h.y + h.r + 30 + R);
+        });
+        // 移動主桌時：各排留在原本的深度（不前後移），只做左右讓位
+        let depth = null;
+        if (keepRows) {
+            depth = rows.map(codes => {
+                const vs = codes.map(c => { const t = g.tables.find(x => x.code === c); return toUV(t.x, t.y).v; });
+                return (Math.max(...vs) - Math.min(...vs) < 40) ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+            });
+            if (depth.some(d => d === null || d < 0)) depth = null;   // 排已經被拖亂或換了舞台方向 → 整個重算
+        }
         const out = {};
         rows.forEach((codes, ri) => {
-            const n = codes.length, v = 40 + R + ri * CELL, half = n % 2 === 0 ? CELL / 2 : 0;
-            const cands = [];
-            for (let k = 0; k < n + 40; k++) {
-                const o = half + k * CELL;
-                cands.push(o); if (o !== 0) cands.push(-o);
+            const n = codes.length, v = depth ? depth[ri] : v0 + ri * CELL;
+            // 這一排分成幾組：有走道穿過就左右兩組（各自貼著走道往外），沒有就一整組置中
+            const groups = [];
+            if (cut) {
+                const L = Math.ceil(n / 2);
+                groups.push({ codes: codes.slice(0, L), us: codes.slice(0, L).map((c, i) => cut.ua - cut.aw / 2 - 30 - CELL / 2 - (L - 1 - i) * CELL), dir: -1 });
+                if (n > L) groups.push({ codes: codes.slice(L), us: codes.slice(L).map((c, i) => cut.ua + cut.aw / 2 + 30 + CELL / 2 + i * CELL), dir: 1 });
+            } else {
+                groups.push({ codes, us: codes.map((c, i) => uc + (i - (n - 1) / 2) * CELL), dir: 0 });
             }
-            const chosen = [];
-            for (const o of cands) {
-                if (chosen.length >= n) break;
-                const u = uc + o;
-                if (u < R + 20) continue;   // 不要撞到上／左邊的牆
-                const p = toXY(u, v);
-                if (hits(p.x, p.y, R)) continue;
-                chosen.push({ u, p });
-                placed.push({ x: p.x, y: p.y, r: R });
-            }
-            chosen.sort((a, b) => a.u - b.u);
-            codes.forEach((c, i) => { if (chosen[i]) out[c] = { x: Math.round(chosen[i].p.x), y: Math.round(chosen[i].p.y) }; });
+            groups.forEach(gp => {
+                // 整組一起平移，找最小的位移讓它不撞到主桌／柱子／牆；分邊的組只往外移
+                const ok = sft => gp.us.every(u => {
+                    const uu = u + sft;
+                    if (uu < R + 20) return false;
+                    const p = toXY(uu, v);
+                    return !hits(p.x, p.y, R);
+                });
+                let best = 0;
+                if (!ok(0)) {
+                    best = null;
+                    for (let k = 1; k <= 400 && best === null; k++) {
+                        const tries = gp.dir === 0 ? [k * 10, -k * 10] : [gp.dir * k * 10];
+                        for (const t of tries) if (ok(t)) { best = t; break; }
+                    }
+                    if (best === null) best = 0;
+                }
+                gp.codes.forEach((c, i) => { const p = toXY(gp.us[i] + best, v); out[c] = { x: Math.round(p.x), y: Math.round(p.y) }; });
+            });
         });
         // 往左／往上超出邊界（舞台在右或在下、排數很多時）→ 整個場地一起往右／往下挪
         // 收齊：所有東西的最左／最上邊貼齊外框（多的空白收掉、不夠的往外推）
@@ -1556,7 +1598,7 @@ function rvDrag(e, el, sc, start, half, W, H, onEnd){
     const sx = e.clientX, sy = e.clientY, cur = { x: start.x, y: start.y };
     const z = parseFloat(document.getElementById('vr').style.zoom) || 1;
     const mv = ev => {
-        cur.x = Math.round(Math.min(W - half.w, Math.max(half.w, start.x + (ev.clientX - sx) / (sc * z))) / 5) * 5;
+        cur.x = Math.round(Math.min(W + 300, Math.max(half.w, start.x + (ev.clientX - sx) / (sc * z))) / 5) * 5;
         cur.y = Math.round(Math.min(H + 300, Math.max(half.h, start.y + (ev.clientY - sy) / (sc * z))) / 5) * 5;
         el.style.left = (cur.x - half.w) + 'px';
         el.style.top = (cur.y - half.h) + 'px';
@@ -1569,7 +1611,7 @@ function rvDrag(e, el, sc, start, half, W, H, onEnd){
         rvDragging = false;
         const moved = cur.x !== start.x || cur.y !== start.y;
         if (moved) onEnd(cur);
-        if (rvPendingRebuild || (moved && cur.y + half.h > H - 40)) {
+        if (rvPendingRebuild || (moved && (cur.y + half.h > H - 40 || cur.x + half.w > W - 40))) {
             rvPendingRebuild = false;
             buildVenue(Object.keys(seatMap)); refreshAll();
         }
@@ -1660,6 +1702,7 @@ function buildRoundVenue(keys, wrap) {
         if (p.kind === 'aisle' && p.dir === 'v' && p.y2 !== undefined && isFinite(+p.y2)) H = Math.max(H, +p.y2 + 20);
     });
 
+    if (roomSize && isFinite(+roomSize.w) && isFinite(+roomSize.h)) { W = Math.max(W, +roomSize.w); H = Math.max(H, +roomSize.h); }
     const vw = document.getElementById('venue-wrap');
     const avail = Math.max(300, vw.clientWidth - 32);
     const th = document.body.classList.contains('theater');
@@ -1677,6 +1720,28 @@ function buildRoundVenue(keys, wrap) {
     inner.style.width = W + 'px'; inner.style.height = H + 'px';
     inner.style.transform = `scale(${sc})`;
     outer.appendChild(inner);
+    if (moving) {
+        // 外框右下角：拉大／縮小場地（縮小最多縮到剛好包住桌子、舞台）
+        const rr = document.createElement('div');
+        rr.className = 'rv-room-rs'; rr.title = '拉這裡放大／縮小整個場地'; rr.textContent = '⤡';
+        rr.addEventListener('pointerdown', e => {
+            e.preventDefault(); e.stopPropagation();
+            rr.setPointerCapture(e.pointerId); rvDragging = true;
+            const sx = e.clientX, sy = e.clientY; let nw = W, nh = H;
+            const mv = ev => {
+                nw = Math.max(400, Math.round(W + (ev.clientX - sx) / sc)); nh = Math.max(300, Math.round(H + (ev.clientY - sy) / sc));
+                inner.style.width = nw + 'px'; inner.style.height = nh + 'px';
+                outer.style.width = Math.round(nw * sc) + 'px'; outer.style.height = Math.round(nh * sc) + 'px';
+            };
+            const up = () => {
+                rr.removeEventListener('pointermove', mv); rr.removeEventListener('pointerup', up);
+                rvDragging = false; rvPendingRebuild = false;
+                set(ref(db, PROJECT_ID + '/room2026'), { w: nw, h: nh }).catch(() => toast('儲存失敗', 'ter'));
+            };
+            rr.addEventListener('pointermove', mv); rr.addEventListener('pointerup', up);
+        });
+        inner.appendChild(rr);
+    }
 
     const sw = Math.round(W * (shape === 'long' ? 0.7 : 0.45));
     const sp = stagePos && ['x', 'y', 'w', 'h'].every(k => isFinite(+stagePos[k])) ? stagePos : null;
@@ -1868,7 +1933,7 @@ function buildRoundVenue(keys, wrap) {
                 e.preventDefault();
                 rvDrag(e, el, sc, P[c], { w: size / 2, h: size / 2 }, W, H, cur => {
                     tablePos[c] = cur;
-                    if (c.startsWith('H')) { rvAutoArrange(); return; }   // 主桌移動：其他桌依舞台方向自動讓位重排
+                    if (c.startsWith('H')) { rvAutoArrange(false, true); return; }   // 主桌移動：其他桌依舞台方向自動讓位重排
                     set(ref(db, PROJECT_ID + '/table_pos2026/' + c), cur).catch(() => toast('儲存失敗', 'ter'));
                 });
             });
@@ -3318,6 +3383,7 @@ async function processExcelFile(file) {
       table_pos2026: Object.keys(posKeep).length ? posKeep : null,
       pillars2026: isRound && Object.keys(pillars).length ? { ...pillars } : null,
       stage2026: isRound && stagePos ? stagePos : null,
+      room2026: isRound && roomSize ? roomSize : null,
       checkins2026: null
     });
 
@@ -3384,7 +3450,8 @@ window.applyLayout = async function() {
             checkins2026: null,
             venue_shape2026: mode === 'round' ? layoutShapePick : null,
             pillars2026: mode === 'round' && Object.keys(pillars).length ? { ...pillars } : null,
-            stage2026: mode === 'round' && stagePos ? stagePos : null
+            stage2026: mode === 'round' && stagePos ? stagePos : null,
+            room2026: mode === 'round' && roomSize ? roomSize : null
         });
         
         toast(mode === 'round' ? '🎉 座位架構已建立（' + (layoutShapePick === 'long' ? '直式' : '橫式') + '場地）' : '🎉 座位架構已成功建立！', 'tok');
@@ -3414,7 +3481,11 @@ function renderSeats(){
     else if(g) el.classList.add('filled');
     el.draggable=!!(g||occ);
     
-    if(layoutMode === 'round') el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'): code.split('-')[1];
+    // 圓桌：座位小格只顯示前 3 個字，直排、字自動縮小（格子大小不變）
+    const cjk3 = !!g && /^[\u3400-\u9fff\uf900-\ufaff]/.test(g.replace(/\s+/g,''));
+    el.classList.toggle('rs3', layoutMode === 'round' && !occ && !!g && cjk3);      // 中文：直排三個字
+    el.classList.toggle('rs3h', layoutMode === 'round' && !occ && !!g && !cjk3);    // 英文：橫排三個字母
+    if(layoutMode === 'round') el.textContent = occ?'占':g?(Array.from(g.replace(/\s+/g,'')).slice(0,3).join('')||'?'): code.split('-')[1];
     else el.textContent = occ?'占':g?(g.trim().slice(0,4)||'?'):'';
     el.title=code+(occ?' — 佔用':g?' — '+g:'')+(tag&&TAG_NAME[tag]?'【'+TAG_NAME[tag]+'】':'');
   });
