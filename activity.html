@@ -273,7 +273,7 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .rv-hint{font-size:11.5px;color:#B45309;}
 .rv-board{position:relative;margin:0 auto;}
 .rv-inner{position:absolute;left:0;top:0;transform-origin:0 0;background:#FBFCFE;border:1.5px solid #DCE3EE;border-radius:14px;background-image:radial-gradient(#E3E8F0 1px,transparent 1px);background-size:24px 24px;}
-.rv-stage{position:absolute;top:18px;height:46px;border-radius:8px;background:linear-gradient(180deg,#1E3A5F,#132742);color:#fff;font-size:14px;font-weight:800;letter-spacing:6px;display:flex;align-items:center;justify-content:center;}
+.rv-stage{position:absolute;z-index:3;border-radius:8px;user-select:none;background:linear-gradient(180deg,#1E3A5F,#132742);color:#fff;font-size:14px;font-weight:800;letter-spacing:6px;display:flex;align-items:center;justify-content:center;}
 .round-table-wrap.rv-table{position:absolute;}
 .rv-move .rv-table{cursor:grab;touch-action:none;}
 .rv-move .rv-table *{pointer-events:none;}
@@ -281,6 +281,11 @@ body.theater #modal-bg #m-code{cursor:move;user-select:none;touch-action:none;}
 .rv-table.rv-dragging{cursor:grabbing;z-index:20;opacity:.85;}
 .rv-pillar{position:absolute;z-index:8;background:repeating-linear-gradient(45deg,#9CA3AF,#9CA3AF 6px,#6B7280 6px,#6B7280 12px);border:2px solid #4B5563;border-radius:4px;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 2px rgba(0,0,0,.6);user-select:none;}
 .rv-move .rv-pillar{cursor:grab;touch-action:none;}
+.rv-stage.vert span{writing-mode:vertical-rl;letter-spacing:8px;}
+.rv-move .rv-stage{cursor:move;touch-action:none;outline:2px dashed rgba(245,158,11,.8);outline-offset:4px;}
+.rv-srot{display:none;position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#F59E0B;color:#fff;font-size:14px;font-weight:800;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);letter-spacing:0;writing-mode:horizontal-tb;}
+.rv-move .rv-srot{display:flex;}
+.rv-pillar.rv-door{background:linear-gradient(90deg,#B45309,#92400E);border:2px solid #78350F;border-radius:3px;font-size:12px;}
 .rv-aisle{position:absolute;z-index:0;pointer-events:none;display:flex;align-items:center;justify-content:center;color:#B45309;font-size:15px;font-weight:800;letter-spacing:4px;border:2px dashed rgba(245,158,11,.7);border-radius:6px;background:repeating-linear-gradient(45deg,rgba(245,158,11,.08) 0 12px,rgba(245,158,11,.16) 12px 24px);user-select:none;}
 .rv-aisle.v{border-top:none;border-bottom:none;border-radius:0;}
 .rv-aisle.v span{writing-mode:vertical-rl;letter-spacing:10px;}
@@ -480,7 +485,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V8</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V9</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -594,7 +599,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V8</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V9</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -653,13 +658,14 @@ body.theater #rv-tools{display:none!important;}
   <button class="btn" id="rv-shape-btn" onclick="showShapeModal()">🏛 場地</button>
   <button class="btn rv-admin" id="rv-move-btn" onclick="toggleTableMove()">✋ 移動桌子：關</button>
   <button class="btn rv-admin" onclick="addPillar()">＋ 柱子</button>
+  <button class="btn rv-admin" onclick="addPillar('door')">＋ 門</button>
   <button class="btn rv-admin" onclick="addAisle('v')">＋ 中間走道</button>
   <button class="btn rv-admin" onclick="addAisle('h')">＋ 橫向走道</button>
   <button class="btn rv-admin" onclick="resetTablePos()">↺ 桌位恢復預設</button>
   <button class="btn" onclick="rvExportOverviewJPG()">⬇ 全場配置 JPG</button>
   <button class="btn" onclick="rvExportDocPDF()" style="border-color:#1D3A6E;color:#1D3A6E;">⬇ 全場＋各桌 PDF</button>
   <button class="btn" onclick="rvExportDocPPT()" style="border-color:#C0392B;color:#C0392B;">⬇ 全場＋各桌 PPT</button>
-  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、柱子、走道到實際位置（自動儲存）；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
+  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、舞台、柱子、門、走道到實際位置（自動儲存）；舞台左上角 ⟲ 可轉成直的（放左邊或右邊牆），雙擊舞台回到上方預設；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
 </div>
 
 <div class="legend">
@@ -986,7 +992,7 @@ window.confirmEventSelect = async function() {
   updateRefs();
   clearLocalData(); 
   venueShape=''; shapeLoaded=false; tableMoveMode=false; dcSaved={};
-  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]);
+  Object.keys(tablePos).forEach(k=>delete tablePos[k]); Object.keys(pillars).forEach(k=>delete pillars[k]); stagePos=null;
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -1082,6 +1088,10 @@ window.confirmEventSelect = async function() {
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/table_pos2026'), snap => {
     Object.keys(tablePos).forEach(k => delete tablePos[k]);
     Object.assign(tablePos, snap.val() || {});
+    rvSync();
+  }));
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/stage2026'), snap => {
+    stagePos = snap.val() || null;
     rvSync();
   }));
   activeListeners.push(onValue(ref(db, PROJECT_ID+'/pillars2026'), snap => {
@@ -1269,6 +1279,7 @@ window.adjustTableSeat = async function(delta) {
 let venueShape = '', shapeLoaded = false;
 const shapeAsked = {};
 const tablePos = {}, pillars = {};
+let stagePos = null;   // stage2026：{x,y,w,h} 舞台中心點與大小；沒設定＝上方置中
 let tableMoveMode = false, rvDragging = false, rvPendingRebuild = false;
 
 function rvTableNo(tCode){
@@ -1347,15 +1358,14 @@ window.toggleTableMove = function(){
     buildVenue(Object.keys(seatMap)); refreshAll();
     toast(tableMoveMode ? '✋ 已開啟移動：直接拖曳桌子或柱子' : '已關閉移動，座位恢復可點選', 'tin');
 };
-window.addPillar = async function(){
+window.addPillar = async function(kind){
     if (!isAdmin) return;
-    const board = document.querySelector('.rv-inner');
-    const W = board ? parseFloat(board.style.width) : 1300;
-    const id = 'p' + Date.now();
+    const door = kind === 'door';
+    const id = (door ? 'd' : 'p') + Date.now();
     try {
-        await set(ref(db, PROJECT_ID + '/pillars2026/' + id), { x: 70, y: 130, w: 60, h: 60 });
+        await set(ref(db, PROJECT_ID + '/pillars2026/' + id), door ? { kind: 'door', x: 170, y: 130, w: 90, h: 26 } : { x: 70, y: 130, w: 60, h: 60 });
         if (!tableMoveMode) { tableMoveMode = true; buildVenue(Object.keys(seatMap)); refreshAll(); }
-        toast('已新增柱子（在左上角），請拖到實際位置', 'tok');
+        toast(door ? '已新增門（在左上角），請拖到實際位置；右下角可拉成直的放在側牆' : '已新增柱子（在左上角），請拖到實際位置', 'tok');
     } catch (e) { toast('新增失敗', 'ter'); }
 };
 window.addAisle = async function(dir){
@@ -1518,6 +1528,7 @@ function buildRoundVenue(keys, wrap) {
         P[c] = (p && isFinite(p.x) && isFinite(p.y)) ? { x: +p.x, y: +p.y } : def.pos[c];
         H = Math.max(H, P[c].y + 120);
     });
+    if (stagePos && isFinite(+stagePos.y) && isFinite(+stagePos.h)) H = Math.max(H, +stagePos.y + +stagePos.h / 2 + 30);
     Object.values(pillars).forEach(p => {
         if (!p) return;
         if (p.kind !== 'aisle' || p.dir === 'h') H = Math.max(H, (+p.y || 0) + (+p.h || 60) / 2 + 40);
@@ -1542,11 +1553,62 @@ function buildRoundVenue(keys, wrap) {
     inner.style.transform = `scale(${sc})`;
     outer.appendChild(inner);
 
-    const stage = document.createElement('div');
-    stage.className = 'rv-stage';
     const sw = Math.round(W * (shape === 'long' ? 0.7 : 0.45));
-    stage.style.width = sw + 'px'; stage.style.left = Math.round((W - sw) / 2) + 'px';
-    stage.textContent = 'STAGE / 舞台';
+    const sp = stagePos && ['x', 'y', 'w', 'h'].every(k => isFinite(+stagePos[k])) ? stagePos : null;
+    const sg = sp ? { x: +sp.x, y: +sp.y, w: Math.max(40, +sp.w), h: Math.max(30, +sp.h) } : { x: W / 2, y: 41, w: sw, h: 46 };
+    const stage = document.createElement('div');
+    stage.className = 'rv-stage' + (sg.h > sg.w ? ' vert' : '');
+    stage.style.width = sg.w + 'px'; stage.style.height = sg.h + 'px';
+    stage.style.left = (sg.x - sg.w / 2) + 'px'; stage.style.top = (sg.y - sg.h / 2) + 'px';
+    const stLab = document.createElement('span'); stLab.textContent = 'STAGE / 舞台'; stage.appendChild(stLab);
+    if (moving) {
+        const saveStage = g => set(ref(db, PROJECT_ID + '/stage2026'), { x: Math.round(g.x), y: Math.round(g.y), w: Math.round(g.w), h: Math.round(g.h) }).catch(() => toast('儲存失敗', 'ter'));
+        stage.title = '拖曳移動舞台；左上角 ⟲ 轉向；右下角調大小；雙擊回到上方預設';
+        stage.addEventListener('pointerdown', e => {
+            if (e.target.classList.contains('rv-prs') || e.target.classList.contains('rv-srot')) return;
+            e.preventDefault();
+            rvDrag(e, stage, sc, { x: sg.x, y: sg.y }, { w: sg.w / 2, h: sg.h / 2 }, W, H, cur => saveStage({ x: cur.x, y: cur.y, w: sg.w, h: sg.h }));
+        });
+        stage.addEventListener('dblclick', () => {
+            if (confirm('舞台回到上方置中的預設位置？')) set(ref(db, PROJECT_ID + '/stage2026'), null);
+        });
+        const rot = document.createElement('div');
+        rot.className = 'rv-srot'; rot.textContent = '⟲'; rot.title = '轉向：橫的舞台↔直的舞台（放左右牆用）';
+        rot.addEventListener('pointerdown', e => e.stopPropagation());
+        rot.addEventListener('click', e => {
+            e.stopPropagation();
+            // 轉成直的時預設靠到最近的左／右牆；轉回橫的時回到上方
+            let g;
+            if (sg.w >= sg.h) {
+                const nh = Math.min(Math.max(sg.w * 0.8, 300), H - 40), nw = Math.max(46, Math.min(sg.h, 80));
+                g = { x: sg.x > W / 2 ? W - nw / 2 - 18 : nw / 2 + 18, y: Math.max(nh / 2 + 18, H / 2), w: nw, h: nh };
+            } else {
+                g = { x: W / 2, y: 41, w: Math.round(W * (shape === 'long' ? 0.7 : 0.45)), h: 46 };
+            }
+            saveStage(g);
+        });
+        stage.appendChild(rot);
+        const rs = document.createElement('div');
+        rs.className = 'rv-prs';
+        rs.addEventListener('pointerdown', e => {
+            e.preventDefault(); e.stopPropagation();
+            rs.setPointerCapture(e.pointerId); rvDragging = true;
+            const sx = e.clientX, sy = e.clientY, left = sg.x - sg.w / 2, top = sg.y - sg.h / 2;
+            let nw = sg.w, nh = sg.h;
+            const mv = ev => {
+                nw = Math.max(40, sg.w + (ev.clientX - sx) / sc); nh = Math.max(30, sg.h + (ev.clientY - sy) / sc);
+                stage.style.width = nw + 'px'; stage.style.height = nh + 'px';
+                stage.classList.toggle('vert', nh > nw);
+            };
+            const up = () => {
+                rs.removeEventListener('pointermove', mv); rs.removeEventListener('pointerup', up);
+                rvDragging = false; rvPendingRebuild = false;
+                saveStage({ x: left + nw / 2, y: top + nh / 2, w: nw, h: nh });
+            };
+            rs.addEventListener('pointermove', mv); rs.addEventListener('pointerup', up);
+        });
+        stage.appendChild(rs);
+    }
     inner.appendChild(stage);
 
     // 走道（放在最底層，桌子蓋在上面）：可整條拖移、右下角拉寬度／長度
@@ -1626,23 +1688,24 @@ function buildRoundVenue(keys, wrap) {
     const pillarGeos = [];
     Object.entries(pillars).filter(([, p]) => p && p.kind !== 'aisle').forEach(([id, p]) => {
         const pw = +p.w || 60, ph = +p.h || 60;
-        pillarGeos.push({ x: +p.x, y: +p.y, w: pw, h: ph });
+        const isDoor = p.kind === 'door';
+        pillarGeos.push({ x: +p.x, y: +p.y, w: pw, h: ph, door: isDoor });
         const el = document.createElement('div');
-        el.className = 'rv-pillar';
+        el.className = 'rv-pillar' + (isDoor ? ' rv-door' : '');
         el.style.width = pw + 'px'; el.style.height = ph + 'px';
         el.style.left = (+p.x - pw / 2) + 'px'; el.style.top = (+p.y - ph / 2) + 'px';
-        el.textContent = '柱';
-        el.title = moving ? '拖曳移動；右下角調整大小；雙擊刪除' : '柱子';
+        el.textContent = isDoor ? '門' : '柱';
+        el.title = moving ? '拖曳移動；右下角調整大小；雙擊刪除' : (isDoor ? '門' : '柱子');
         if (moving) {
             el.addEventListener('pointerdown', e => {
                 if (e.target.classList.contains('rv-prs')) return;
                 e.preventDefault();
                 rvDrag(e, el, sc, { x: +p.x, y: +p.y }, { w: pw / 2, h: ph / 2 }, W, H, cur => {
-                    set(ref(db, PROJECT_ID + '/pillars2026/' + id), { x: cur.x, y: cur.y, w: pw, h: ph }).catch(() => toast('儲存失敗', 'ter'));
+                    set(ref(db, PROJECT_ID + '/pillars2026/' + id), Object.assign({}, p, { x: cur.x, y: cur.y, w: pw, h: ph })).catch(() => toast('儲存失敗', 'ter'));
                 });
             });
             el.addEventListener('dblclick', () => {
-                if (confirm('刪除這根柱子？')) set(ref(db, PROJECT_ID + '/pillars2026/' + id), null);
+                if (confirm(isDoor ? '刪除這扇門？' : '刪除這根柱子？')) set(ref(db, PROJECT_ID + '/pillars2026/' + id), null);
             });
             const rs = document.createElement('div');
             rs.className = 'rv-prs';
@@ -1660,7 +1723,7 @@ function buildRoundVenue(keys, wrap) {
                 const up = () => {
                     rs.removeEventListener('pointermove', mv); rs.removeEventListener('pointerup', up);
                     rvDragging = false;
-                    set(ref(db, PROJECT_ID + '/pillars2026/' + id), { x: Math.round(left + nw / 2), y: Math.round(top + nh / 2), w: nw, h: nh });
+                    set(ref(db, PROJECT_ID + '/pillars2026/' + id), Object.assign({}, p, { x: Math.round(left + nw / 2), y: Math.round(top + nh / 2), w: nw, h: nh }));
                 };
                 rs.addEventListener('pointermove', mv); rs.addEventListener('pointerup', up);
             });
@@ -1689,12 +1752,12 @@ function buildRoundVenue(keys, wrap) {
 
     wrap.appendChild(outer);
     // 內容實際範圍（下載全場圖時裁掉多餘留白）
-    const bx = [(W - sw) / 2, (W + sw) / 2], by = [64];
+    const bx = [sg.x - sg.w / 2, sg.x + sg.w / 2], by = [sg.y + sg.h / 2];
     allCodes.forEach(c => { const r = rvTableSize(c, tableSeats[c].length) / 2 + 16; bx.push(P[c].x - r, P[c].x + r); by.push(P[c].y + r); });
     aisleGeos.concat(pillarGeos).forEach(g => { bx.push(g.x - g.w / 2, g.x + g.w / 2); by.push(g.y + g.h / 2); });
     const bounds = { x1: Math.max(0, Math.min(...bx) - 30), x2: Math.min(W, Math.max(...bx) + 30), y2: Math.min(H, Math.max(...by) + 30) };
     rvLastGeo = {
-        W, H, bounds, stageW: sw, aisles: aisleGeos, pillars: pillarGeos,
+        W, H, bounds, stage: sg, aisles: aisleGeos, pillars: pillarGeos,
         tables: allCodes.map(c => ({ code: c, x: P[c].x, y: P[c].y, size: rvTableSize(c, tableSeats[c].length), seats: tableSeats[c].slice() }))
     };
 }
@@ -2136,9 +2199,11 @@ function rvPaintOverview(ctx, pw, ph) {
     ctx.fillStyle = '#FBFCFE'; ctx.fillRect(b.x1, 0, cw, ch);
     ctx.strokeStyle = '#DCE3EE'; ctx.lineWidth = 2; ctx.strokeRect(b.x1 + 1, 1, cw - 2, ch - 2);
     // 舞台
-    ctx.fillStyle = '#132742'; ctx.fillRect((g.W - g.stageW) / 2, 18, g.stageW, 46);
+    const sg = g.stage;
+    ctx.fillStyle = '#132742'; ctx.fillRect(sg.x - sg.w / 2, sg.y - sg.h / 2, sg.w, sg.h);
     ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 20px ' + DOC_FONT; ctx.textAlign = 'center';
-    ctx.fillText('STAGE / 舞台', g.W / 2, 41);
+    if (sg.h > sg.w) { ctx.save(); ctx.translate(sg.x, sg.y); ctx.rotate(Math.PI / 2); ctx.fillText('STAGE / 舞台', 0, 0); ctx.restore(); }
+    else ctx.fillText('STAGE / 舞台', sg.x, sg.y);
     // 走道
     g.aisles.forEach(a => {
         const x = a.x - a.w / 2, y = a.y - a.h / 2;
@@ -2152,9 +2217,9 @@ function rvPaintOverview(ctx, pw, ph) {
     });
     // 柱子
     g.pillars.forEach(p => {
-        ctx.fillStyle = '#9CA3AF'; ctx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-        ctx.strokeStyle = '#4B5563'; ctx.lineWidth = 2; ctx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 18px ' + DOC_FONT; ctx.fillText('柱', p.x, p.y);
+        ctx.fillStyle = p.door ? '#B45309' : '#9CA3AF'; ctx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+        ctx.strokeStyle = p.door ? '#78350F' : '#4B5563'; ctx.lineWidth = 2; ctx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold ' + (p.door ? 15 : 18) + 'px ' + DOC_FONT; ctx.fillText(p.door ? '門' : '柱', p.x, p.y);
     });
     // 桌子
     g.tables.forEach(t => {
@@ -3126,6 +3191,7 @@ async function processExcelFile(file) {
       venue_shape2026: isRound && venueShape ? venueShape : null,
       table_pos2026: Object.keys(posKeep).length ? posKeep : null,
       pillars2026: isRound && Object.keys(pillars).length ? { ...pillars } : null,
+      stage2026: isRound && stagePos ? stagePos : null,
       checkins2026: null
     });
 
@@ -3191,7 +3257,8 @@ window.applyLayout = async function() {
             table_names2026: null, // 同步清除舊桌名，避免跟新格局殘留並存
             checkins2026: null,
             venue_shape2026: mode === 'round' ? layoutShapePick : null,
-            pillars2026: mode === 'round' && Object.keys(pillars).length ? { ...pillars } : null
+            pillars2026: mode === 'round' && Object.keys(pillars).length ? { ...pillars } : null,
+            stage2026: mode === 'round' && stagePos ? stagePos : null
         });
         
         toast(mode === 'round' ? '🎉 座位架構已建立（' + (layoutShapePick === 'long' ? '直式' : '橫式') + '場地）' : '🎉 座位架構已成功建立！', 'tok');
