@@ -275,7 +275,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup · V3</div>
+    <div class="header-tag">TAITRA · Event Lookup · V4</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -796,7 +796,9 @@ function applyEventTitle(){
 }
 applyEventTitle();
 
-let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, TABLE_NOS={}, BADGE_MAP={};
+let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, TABLE_NOS={}, HEAD_RANK={}, BADGE_MAP={};
+// 主桌座位號＝禮賓序位（主位 1、主賓 2…），跟後台一致；一般桌照原本號碼
+function seatNo(code){ const m=code.match(/-(\d+)$/); return (/^H/.test(code)&&HEAD_RANK[code])?HEAD_RANK[code]:(m?m[1]:''); }
 // 桌號：席次圖系統改過（例如跳過 4）就用改過的號碼，否則用原本號碼；桌名另外顯示
 function tblNo(tc){ const v=TABLE_NOS[tc]; if(v!==undefined&&v!==null&&String(v).trim()) return String(v).trim(); const m=tc.match(/T(\d+)/); return m?m[1]:tc.replace(/\D/g,''); }
 function tblName(tc){ return TABLE_NAMES[tc]?String(TABLE_NAMES[tc]).replace(/\.+$/,'').trim():''; }
@@ -909,6 +911,11 @@ onValue(ref(db,PROJECT_ID+'/table_names2026'),snap=>{
   if(loaded) refreshMain();
 });
 
+onValue(ref(db,PROJECT_ID+'/head_rank2026'),snap=>{
+  HEAD_RANK=snap.val()||{};
+  if(loaded){ refreshMain(); }
+});
+
 onValue(ref(db,PROJECT_ID+'/table_no2026'),snap=>{
   TABLE_NOS={};
   const d=snap.val()||{};
@@ -940,7 +947,7 @@ function parseSeatCode(code){
   // 圓桌 R1_T2-5／主桌 H1-3：左邊徽章＝桌號（大字），右邊＝桌號・第幾席（粗體）＋桌名
   const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
   if(mr){
-    const tc=mr[1], seat=mr[2], head=/^H/.test(tc), no=tblNo(tc), nm=tblName(tc);
+    const tc=mr[1], seat=seatNo(code), head=/^H/.test(tc), no=tblNo(tc), nm=tblName(tc);
     const en=window.LANG==='en';
     const cap=en?(head?'HEAD':'TABLE'):(head?'主桌':'桌號');
     const seatLine=en?`${tblLabel(tc)} · Seat ${seat}`:`${tblLabel(tc)}・第 ${seat} 席`;
@@ -1219,7 +1226,7 @@ function renderBadgeAdminList(){
 
 function parseSeatLabel(code){
   const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
-  if(mr) return window.LANG==='en'?`${tblLabel(mr[1])} Seat ${mr[2]}`:`${tblLabel(mr[1])} 第${mr[2]}席`;
+  if(mr) return window.LANG==='en'?`${tblLabel(mr[1])} Seat ${seatNo(code)}`:`${tblLabel(mr[1])} 第${seatNo(code)}席`;
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m2) return window.LANG==='en'?`Zone ${m2[1]} Row ${m2[2]} Seat ${m2[3]}`:`${m2[1]}區 第${m2[2]}排 第${m2[3]}席`;
   return code;
