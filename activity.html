@@ -165,7 +165,32 @@ body.theater .seat.sc:not(.filled){border-color:rgba(252,211,77,.45);} body.thea
 body.theater .seat.se:not(.filled){border-color:rgba(249,168,212,.45);}
 body.theater .seat.checked-in{background:#334155!important;border-color:#475569!important;color:#94A3B8!important;text-shadow:none;}
 body.theater .seat.checked-in::after{content:"✓";font-size:13px;font-weight:900;color:#4ADE80;top:2px;right:4px;}
-body.theater .round-table-center{background:#1E293B;border-color:#334155;color:#CBD5E1;}
+body.theater .round-table-center{background:#1E293B;border-color:#334155;color:#CBD5E1;cursor:pointer;pointer-events:auto;}
+body.theater .round-table-center:hover{border-color:#FDE047;box-shadow:0 0 0 3px rgba(253,224,71,.25);}
+body.theater .round-table-wrap.rv-roster-on .round-table-center{border-color:#FDE047;box-shadow:0 0 0 4px rgba(253,224,71,.45);}
+/* 劇院模式：點桌子 → 右側名單，可直接點名字報到 */
+.th-roster{display:none;position:fixed;right:18px;top:64px;width:340px;max-width:calc(100vw - 36px);max-height:calc(100vh - 90px);z-index:95;background:rgba(15,23,42,.96);border:1px solid rgba(253,224,71,.35);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.5);color:#E2E8F0;flex-direction:column;backdrop-filter:blur(6px);}
+body.theater .th-roster.show{display:flex;}
+.th-rh{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08);cursor:move;touch-action:none;user-select:none;}
+.th-rh::before{content:"⠿";color:#64748B;font-size:15px;margin-right:2px;}
+.th-roster.dragging{opacity:.92;box-shadow:0 20px 50px rgba(0,0,0,.6);}
+.th-rh b{font-size:17px;color:#FDE047;}
+.th-rh span{font-size:12px;color:#94A3B8;}
+.th-rh button{margin-left:auto;border:none;background:rgba(255,255,255,.1);color:#E2E8F0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;}
+.th-rh button:hover{background:rgba(255,255,255,.22);}
+.th-rp{padding:6px 14px 4px;font-size:12px;color:#94A3B8;}
+.th-rp b{color:#4ADE80;font-size:14px;}
+.th-rl{overflow-y:auto;padding:4px 8px 10px;}
+.th-row{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;cursor:pointer;border:1px solid transparent;}
+.th-row:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);}
+.th-row .no{flex:none;width:28px;height:28px;border-radius:7px;background:#F5A623;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;}
+.th-row .nm{flex:1;min-width:0;font-size:14px;font-weight:700;line-height:1.3;white-space:pre-line;word-break:break-word;}
+.th-row .st{flex:none;font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;border:1px solid rgba(74,222,128,.5);color:#4ADE80;}
+.th-row.done{opacity:.6;}
+.th-row.done .no{background:#334155;}
+.th-row.done .st{background:#166534;border-color:#166534;color:#DCFCE7;}
+.th-row.empty{cursor:default;opacity:.45;}
+.th-row.empty:hover{background:none;border-color:transparent;}
 body.theater{overflow-x:hidden;}
 body.theater #vr{width:max-content;min-width:0;margin:0 auto;}
 body.theater .vrow,body.theater .zone-header-row{min-width:0!important;}
@@ -368,6 +393,12 @@ body.theater #rv-tools{display:none!important;}
 .dc-board.picking{box-shadow:inset 0 0 0 3px #F5A623;}
 .dc-board.picking .dc-card{cursor:pointer;}
 .dc-board.picking .dc-card .dc-hex::before{background:#F5A623;}
+/* 圓桌座位一律固定在圓周上：亮燈搜尋、定位、滑過、報到時都不會跳位；而且永遠蓋在桌子圓心上面 */
+.round-seat,.round-seat:hover,.round-seat.th-hit,.round-seat.seat-target,.round-seat.checked-in,.round-seat.found{position:absolute!important;}
+.round-seat{z-index:11;}
+.round-seat:hover{z-index:12;}
+.round-seat.th-hit,.round-seat.seat-target{z-index:13;}
+.round-table-wrap.head-table .round-table-center{inset:34px;}
 </style>
 </head>
 <body>
@@ -488,7 +519,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V13</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V16</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -602,7 +633,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V13</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V16</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -692,6 +723,7 @@ body.theater #rv-tools{display:none!important;}
   <button type="button" class="th-zv" id="th-zv" onclick="setTheaterZoom(1)" title="回到符合螢幕（快捷鍵 0）">100%</button>
   <button type="button" id="th-zplus" onclick="stepTheaterZoom(1)" title="放大 10%（快捷鍵 +）">+10%</button>
 </div>
+<div class="th-roster" id="th-roster"></div>
 <div class="th-dock" id="th-dock">
   <div class="th-search">
     <div class="th-sbox">
@@ -1656,7 +1688,10 @@ function buildRoundVenue(keys, wrap) {
         else if (isHead) label = tCode.replace('H', '主桌 ');
         else { const tMatch = tCode.match(/T(\d+)/); label = tMatch ? '桌號 ' + tMatch[1] : tCode; }
         center.innerHTML = `<span>${label}</span><span style="font-size:9px;font-weight:normal;margin-top:2px;">${seatCodes.length} 席</span>`;
-        center.onclick = () => { if (isAdmin && !tableMoveMode) openTableModal(tCode); };
+        center.onclick = () => {
+            if (document.body.classList.contains('theater')) { openRoster(tCode); return; }   // 劇院模式：右側列出這桌名單
+            if (isAdmin && !tableMoveMode) openTableModal(tCode);
+        };
         tWrap.appendChild(center);
 
         seatCodes.sort((a, b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]));
@@ -2896,6 +2931,7 @@ window.enterTheater=function(){
   rebuildForTheater();
 };
 window.exitTheater=function(force){
+  if(document.body.classList.contains('th-lock')&&force!==true){ /* 鎖定中，交給下面處理 */ } else { rosterCode=null; }
   if(!document.body.classList.contains('theater')) return;
   if(document.body.classList.contains('th-lock')&&force!==true){
     thHint('畫面已鎖定，請先點左上角「解鎖」'); return;
@@ -3466,7 +3502,101 @@ window.applyLayout = async function() {
     }
 };
 
-function refreshAll(){renderSeats();updateStats();renderChips();applyTheaterSearch();}
+function refreshAll(){renderSeats();updateStats();renderChips();applyTheaterSearch();renderRoster();}
+
+// ── 🎬 劇院模式：點桌子 → 右側依座位 1、2、3… 列出是誰，點名字就報到 ──
+let rosterCode = null;
+window.openRoster = function(tCode){ rosterCode = tCode; renderRoster(); };
+window.closeRoster = function(){ rosterCode = null; renderRoster(); };
+function renderRoster(){
+  const box = document.getElementById('th-roster'); if (!box) return;
+  document.querySelectorAll('.rv-roster-on').forEach(el => el.classList.remove('rv-roster-on'));
+  const seats = rosterCode ? Object.keys(seatMap).filter(k => k.split('-')[0] === rosterCode)
+    .sort((a, b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])) : [];
+  if (!rosterCode || !seats.length || !document.body.classList.contains('theater')) { box.classList.remove('show'); box.innerHTML = ''; return; }
+  const tw = document.querySelector('.rv-table[data-tcode="' + rosterCode + '"]'); if (tw) tw.classList.add('rv-roster-on');
+  const ci = window.checkins || {};
+  const isH = rosterCode.startsWith('H'), no = rvTableNo(rosterCode);
+  const main = (isH ? '主桌 ' + rosterCode.replace(/\D/g, '') : '桌號 ' + no), sub = tableNames[rosterCode] || '';
+  const assigned = seats.filter(c => asgn[c]), done = assigned.filter(c => ci[c]);
+  const keepScroll = box.querySelector('.th-rl') ? box.querySelector('.th-rl').scrollTop : 0;
+  box.innerHTML = '';
+  const hd = document.createElement('div'); hd.className = 'th-rh';
+  hd.innerHTML = '<b></b><span></span><button type="button" title="關閉">✕</button>';
+  hd.querySelector('b').textContent = main; hd.querySelector('span').textContent = sub ? sub + '・' + seats.length + ' 席' : seats.length + ' 席';
+  hd.querySelector('button').onclick = closeRoster;
+  hd.title = '按住這一條可以拖動視窗';
+  hd.addEventListener('pointerdown', rosterDragStart);
+  box.appendChild(hd);
+  const pr = document.createElement('div'); pr.className = 'th-rp';
+  pr.innerHTML = '已報到 <b>' + done.length + '</b> / ' + assigned.length + '　點名字即可報到，再點一次取消';
+  box.appendChild(pr);
+  const list = document.createElement('div'); list.className = 'th-rl';
+  seats.forEach(code => {
+    const name = occupied[code] ? '（佔用）' : (asgn[code] || '');
+    const row = document.createElement('div');
+    row.className = 'th-row' + (!asgn[code] ? ' empty' : '') + (ci[code] ? ' done' : '');
+    const n = document.createElement('div'); n.className = 'no'; n.textContent = code.split('-')[1];
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = name || '（空位）';
+    row.appendChild(n); row.appendChild(nm);
+    if (asgn[code]) {
+      const st = document.createElement('div'); st.className = 'st';
+      st.textContent = ci[code] ? '✓ ' + (ci[code].time || '已報到') : '報到';
+      row.appendChild(st);
+      row.onclick = () => rosterCheckin(code);
+    }
+    list.appendChild(row);
+  });
+  box.appendChild(list);
+  box.classList.add('show');
+  list.scrollTop = keepScroll;
+  placeRoster();
+}
+// 名單視窗可拖動：按住標題列拖，位置記在這台裝置上
+let rosterPos = null;
+try { rosterPos = JSON.parse(localStorage.getItem('thRosterPos') || 'null'); } catch (e) {}
+function placeRoster(){
+  const box = document.getElementById('th-roster');
+  if (!box || !rosterPos) return;
+  const w = box.offsetWidth || 340, h = box.offsetHeight || 200;
+  const x = Math.min(Math.max(8, rosterPos.x), window.innerWidth - Math.min(w, 120));
+  const y = Math.min(Math.max(8, rosterPos.y), window.innerHeight - 220);
+  box.style.left = x + 'px'; box.style.top = y + 'px'; box.style.right = 'auto';
+  box.style.maxHeight = (window.innerHeight - y - 12) + 'px';   // 拖到下面時視窗變矮、名單自己捲動，不會跑出畫面
+}
+function rosterDragStart(e){
+  if (e.target.closest('button')) return;
+  if (e.button !== undefined && e.button !== 0) return;
+  const box = document.getElementById('th-roster'), r = box.getBoundingClientRect();
+  const dx = e.clientX - r.left, dy = e.clientY - r.top, hd = e.currentTarget;
+  hd.setPointerCapture(e.pointerId); box.classList.add('dragging'); e.preventDefault();
+  const mv = ev => { rosterPos = { x: ev.clientX - dx, y: ev.clientY - dy }; placeRoster(); };
+  const up = () => {
+    hd.removeEventListener('pointermove', mv); hd.removeEventListener('pointerup', up); hd.removeEventListener('pointercancel', up);
+    box.classList.remove('dragging');
+    try { localStorage.setItem('thRosterPos', JSON.stringify(rosterPos)); } catch (err) {}
+  };
+  hd.addEventListener('pointermove', mv); hd.addEventListener('pointerup', up); hd.addEventListener('pointercancel', up);
+}
+window.addEventListener('resize', placeRoster);
+async function rosterCheckin(code){
+  if (!asgn[code]) return;
+  const r = ref(db, PROJECT_ID + '/checkins2026/' + code);
+  if (!window.checkins) window.checkins = {};
+  try {
+    if (window.checkins[code]) {
+      if (!confirm('取消「' + asgn[code].replace(/\n/g, ' ') + '」的報到？')) return;
+      await set(r, null); delete window.checkins[code];
+      toast('已取消報到', 'tin');
+    } else {
+      const now = new Date();
+      const data = { time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'), name: asgn[code] || '' };
+      await set(r, data); window.checkins[code] = data;
+      toast('✅ ' + asgn[code].replace(/\n/g, ' ').slice(0, 20) + ' 已報到', 'tok');
+    }
+  } catch (e) { toast('報到失敗，請檢查網路', 'ter'); }
+  refreshAll();
+}
 function renderSeats(){
   Object.keys(seatMap).forEach(code => {
     const el = document.getElementById('s-'+code);
