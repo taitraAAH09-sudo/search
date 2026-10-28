@@ -275,7 +275,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup · V4</div>
+    <div class="header-tag">TAITRA · Event Lookup · V5</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -990,7 +990,10 @@ window.doSearch=function(){
   // 證件編號比對：關鍵字含數字時，同時比對編號對照表。
   // 「53」可對到「0053」：去前導零相等、後幾碼相符、或包含在編號數字中都算命中
   const strip0=s=>s.replace(/^0+/,'')||'0';
-  const badgeSeatHits={}; // seatCode -> 命中的證件編號
+  const badgeSeatHits={};
+  // 只打數字、而且剛好等於某個報到號碼（例：001 或 1）→ 只列那個人，不再列出 010、021… 一堆
+  const _qn=kw.replace(/^[#＃]/,'').trim();
+  const exactOnly=/^\d+$/.test(_qn)&&Object.keys(BADGE_MAP).some(bc=>{ const bd=bc.replace(/\D/g,''); return bd&&strip0(bd)===strip0(_qn); }); // seatCode -> 命中的證件編號
   terms.forEach(t=>{
     const qd=t.replace(/\D/g,'');
     if(!qd) return;
@@ -999,13 +1002,14 @@ window.doSearch=function(){
       const bd=bc.replace(/\D/g,'');
       if(!bd) return;
       const bs=strip0(bd);
-      if(bd.includes(qd)||bs===qs||bs.endsWith(qs)){
+      if(exactOnly?bs===qs:(bd.includes(qd)||bs===qs||bs.endsWith(qs))){
         const r=resolveBadge(bc);            // 編號→人→目前座位；人未到就略過
         if(r&&r.seat) badgeSeatHits[r.seat]=bc;
       }
     });
   });
   // 把編號命中、但姓名/座位沒搜到的座位補進結果（排最前面）
+  if(exactOnly){ results.length=0; }
   const already=new Set(results.map(([c])=>c));
   Object.keys(badgeSeatHits).forEach(seat=>{
     if(!already.has(seat)&&DATA.hasOwnProperty(seat)) results.unshift([seat,DATA[seat]]);
