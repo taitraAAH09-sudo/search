@@ -490,7 +490,7 @@ body.theater #rv-tools{display:none!important;}
       </div>
     </div>
     <div id="m-mail-sec" style="display:none;margin-bottom:10px;">
-      <div class="modal-section">Email（跟著人走；多個用 ; 分隔）</div>
+      <div class="modal-section">Email（跟著人走；多個用 ; 分隔）<span id="m-code-tag" style="margin-left:8px;color:#1D4ED8;font-weight:800;"></span></div>
       <input type="text" id="m-mail" class="ml-in" placeholder="例：abc@company.com; secretary@company.com">
     </div>
     <div id="m-srch-sec" style="display:none;">
@@ -632,7 +632,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V23</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V24</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -746,7 +746,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V23</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V24</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -2898,6 +2898,7 @@ window.openModal = function(code){
   document.getElementById('m-mail-sec').style.display=(isAdmin&&!occ&&g)?'':'none';
   document.getElementById('m-mail').value=g?emailOf(g):'';
   document.getElementById('m-mail').dataset.name=g||'';
+  document.getElementById('m-code-tag').textContent=(g&&!occ&&codeOf(g))?'🎫 報到號碼 '+codeOf(g):'';
 
   document.getElementById('m-name-lbl').style.display=(isAdmin&&!occ&&g)?'':'none';
   document.getElementById('m-srch').value=srch[code]||'';
@@ -3196,10 +3197,11 @@ function applyTheaterSearch(){
   const box=document.getElementById('th-results'), cnt=document.getElementById('th-count');
   box.innerHTML=''; thHits=[];
   if(!on){ cnt.textContent='輸入關鍵字，符合的座位會亮燈'; return; }
+  const byCode=kwCodeSeats(kw);
   Object.keys(seatMap).forEach(code=>{
     const name=occupied[code]?'佔用':(asgn[code]||'');
     const hay=occupied[code]?'佔用':seatHay(code);
-    if(fuzzyHit(hay,kw)||code.toLowerCase()===kw||(kw.length>=3&&code.toLowerCase().includes(kw))){
+    if(byCode?byCode.includes(code):(fuzzyHit(hay,kw)||code.toLowerCase()===kw||(kw.length>=3&&code.toLowerCase().includes(kw)))){
       const el=document.getElementById('s-'+code);
       if(el){ el.classList.add('th-hit'); thHits.push({code,name}); }
     }
@@ -3213,7 +3215,8 @@ function applyTheaterSearch(){
     const c=document.createElement('span');
     const done=window.checkins&&window.checkins[code];
     c.className='th-chip'+(done?' done':'');
-    c.innerHTML=`<i>${code}</i>`;
+    const bc=name&&!occupied[code]&&codeOf(asgn[code]||'');
+    c.innerHTML=`<i>${(layoutMode==='round'&&code.includes('-'))?tLabelOf(code.split('-')[0])+'・'+seatNoOf(code):code}${bc?'　🎫'+bc:''}</i>`;
     c.appendChild(document.createTextNode((done?'✓ ':'')+(name||'（空位）')));
     c.onclick=()=>{ openModal(code); locateSeat(code); };
     box.appendChild(c);
@@ -3905,6 +3908,14 @@ function clearLocator(){
   document.querySelectorAll('.seat-target').forEach(x=>x.classList.remove('seat-target'));
 }
 
+// 報到號碼搜尋：打「001」或「1」都找得到那個人（號碼跟人走，人在哪就亮哪）
+function kwCodeSeats(kw){
+  const d=String(kw||'').trim().replace(/^[#＃]/,'');
+  if(!/^\d+$/.test(d)) return null;
+  const n=parseInt(d,10), hit=[];
+  Object.entries(asgn).forEach(([code,name])=>{ const c=name&&!occupied[code]&&codeOf(name); if(c&&parseInt(c,10)===n) hit.push(code); });
+  return hit.length?hit:null;
+}
 window.renderChips=function renderChips(){
   const aset=new Set(Object.values(asgn));
   const kw=(document.getElementById('gs')||{value:''}).value.trim().toLowerCase();
@@ -3913,25 +3924,29 @@ window.renderChips=function renderChips(){
 
   if(kw){
     let foundSeats=[];
+    const byCode=kwCodeSeats(kw);   // 打的是報到號碼 → 只列那個人
     Object.entries(asgn).forEach(([code,name])=>{
-      if(name&&fuzzyHit(seatHay(code),kw)){
+      if(name&&(byCode?byCode.includes(code):fuzzyHit(seatHay(code),kw))){
         const el=document.getElementById('s-'+code);
         if(el){el.classList.add('found');foundSeats.push({code,name});}
       }
     });
-    const unassignedMatches=guests.filter(g=>!aset.has(g)&&fuzzyHit(g,kw));
+    const unassignedMatches=byCode?[]:guests.filter(g=>!aset.has(g)&&fuzzyHit(g,kw));
     document.getElementById('uc-count').textContent=(foundSeats.length+unassignedMatches.length)+' 筆結果';
 
     if(!foundSeats.length&&!unassignedMatches.length){
       box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">找不到符合的賓客</div>';
       return;
     }
+    if(byCode&&foundSeats.length===1&&renderChips._last!==kw){ renderChips._last=kw; setTimeout(()=>locateSeat(foundSeats[0].code),50); }
     foundSeats.forEach(({code,name})=>{
       const chip=document.createElement('span'); chip.className='chip'; chip.style.cssText='background:#FEFCE8;border-color:#CA8A04;color:#713F12;';
       chip.textContent=name;
       const badge=document.createElement('span'); badge.style.cssText='font-size:9px;background:#FDE047;color:#713F12;padding:1px 5px;border-radius:4px;margin-left:5px;font-weight:700;';
-      badge.textContent=code; chip.appendChild(badge);
-      chip.onclick=()=>locateSeat(code);
+      badge.textContent=(layoutMode==='round'&&code.includes('-'))?(tLabelOf(code.split('-')[0])+'・'+seatNoOf(code)):code; chip.appendChild(badge);
+      const bc=codeOf(name);
+      if(bc){ const b2=document.createElement('span'); b2.style.cssText='font-size:9px;background:#DBEAFE;color:#1E3A8A;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700;'; b2.textContent='🎫 '+bc; chip.appendChild(b2); }
+      chip.onclick=()=>{ locateSeat(code); if(byCode) openModal(code); };
       box.appendChild(chip);
     });
     unassignedMatches.forEach(g=>{
