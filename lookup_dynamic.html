@@ -70,20 +70,23 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .result-card.is-checked { opacity:0.55; }
 @keyframes slideIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;} }
 
-.seat-badge { flex-shrink:0; width:56px; height:56px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.seat-badge { flex-shrink:0; width:64px; min-height:64px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:4px 2px; }
+.bz-cap { display:block; font-family:"Noto Serif TC",serif; font-size:11px; font-weight:700; opacity:.85; line-height:1.2; }
+.bz-big { display:block; font-family:"DM Mono",monospace; font-size:24px; font-weight:800; line-height:1.05; letter-spacing:-.02em; }
 .badge-blue { background:var(--accent-light); } .badge-blue .badge-zone { color:var(--accent); }
 .badge-green { background:var(--green-light); } .badge-green .badge-zone { color:var(--green); }
 .badge-gold { background:var(--gold-light); } .badge-gold .badge-zone { color:var(--gold); }
 .badge-zone { font-family:"DM Mono",monospace; font-size:13px; font-weight:700; line-height:1.2; text-align:center; }
-.badge-seat { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+.badge-seat { font-family:"Noto Serif TC",serif; font-size:12px; font-weight:700; color:var(--ink-2,#374151); margin-top:1px; }
 
 .card-info { flex:1; min-width:0; }
 .card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
 .card-alt { font-size:12px; line-height:1.45; color:#6B7280; margin:-2px 0 4px; white-space:pre-line; }
 .card-alt mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
 .card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
-.card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
-.card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+.card-seat { font-size:16px; font-weight:800; color:var(--accent); line-height:1.35; letter-spacing:.02em; }
+.card-zone { font-size:13px; font-weight:700; color:var(--ink-2,#374151); margin-top:2px; line-height:1.4; }
+@media (max-width:480px){ .card-seat{font-size:17px;} .card-zone{font-size:14px;} .bz-big{font-size:26px;} }
 .match-tag{display:inline-block;font-family:"DM Mono",monospace;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:6px;vertical-align:middle;white-space:nowrap;}
 .match-tag.high{background:var(--green-light);color:var(--green);}
 .match-tag.mid{background:var(--accent-light);color:var(--accent);}
@@ -272,7 +275,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup · V2</div>
+    <div class="header-tag">TAITRA · Event Lookup · V3</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -793,7 +796,11 @@ function applyEventTitle(){
 }
 applyEventTitle();
 
-let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, BADGE_MAP={};
+let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, TABLE_NOS={}, BADGE_MAP={};
+// 桌號：席次圖系統改過（例如跳過 4）就用改過的號碼，否則用原本號碼；桌名另外顯示
+function tblNo(tc){ const v=TABLE_NOS[tc]; if(v!==undefined&&v!==null&&String(v).trim()) return String(v).trim(); const m=tc.match(/T(\d+)/); return m?m[1]:tc.replace(/\D/g,''); }
+function tblName(tc){ return TABLE_NAMES[tc]?String(TABLE_NAMES[tc]).replace(/\.+$/,'').trim():''; }
+function tblLabel(tc){ const h=/^H/.test(tc), n=tblNo(tc); return window.LANG==='en'?(h?'Head Table '+n:'Table '+n):(h?'主桌 '+n:'桌號 '+n); }
 // 搜尋用全名／關鍵字（席次圖系統 search2026，以座位碼為 key）：只拿來比對，畫面照樣只顯示乾淨名稱
 let SRCH={};
 // 模糊比對：全形轉半形、不分大小寫、忽略空白與標點；空格分開的每個關鍵字都要命中
@@ -902,6 +909,13 @@ onValue(ref(db,PROJECT_ID+'/table_names2026'),snap=>{
   if(loaded) refreshMain();
 });
 
+onValue(ref(db,PROJECT_ID+'/table_no2026'),snap=>{
+  TABLE_NOS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ TABLE_NOS[c]=v; });
+  if(loaded){ updateStats(); refreshMain(); }
+});
+
 onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
   CHECKINS={};
   const d=snap.val()||{};
@@ -923,42 +937,30 @@ onValue(ref(db,PROJECT_ID+'/badge_codes2026'),snap=>{
 });
 
 function parseSeatCode(code){
-  // 主桌：H1-3（自訂名稱優先）
-  const mh=code.match(/^(H\d+)-(\d+)$/);
-  if(mh){
-    const [,tCode,seat]=mh;
-    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
-    if(window.LANG==='en'){
-      const tl=customName?`Table ${customName}`:'Head Table';
-      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):'HEAD', badgeBot:`S${seat}`, color:'gold' };
-    }
-    const tableLabel=customName?`第 ${customName} 桌`:'主桌';
-    const badgeLabel=customName?`第${customName}桌`:'主桌';
-    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
-  }
-  // 圓桌：R1_T2-5（用自訂桌名顯示）
-  const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
-  if(m){
-    const [,row,table,seat]=m;
-    const tCode=code.split('-')[0];
-    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
-    if(window.LANG==='en'){
-      const tl=customName?`Table ${customName}`:`Table ${table}`;
-      return { detail:`${tl} · Seat ${seat}`, badgeTop:customName?String(customName):`T${table}`, badgeBot:`S${seat}`, color:'blue' };
-    }
-    const tableLabel=customName?`第 ${customName} 桌`:`第 ${table} 桌`;
-    const badgeLabel=customName?`第${customName}桌`:`第${table}桌`;
-    return { detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
+  // 圓桌 R1_T2-5／主桌 H1-3：左邊徽章＝桌號（大字），右邊＝桌號・第幾席（粗體）＋桌名
+  const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
+  if(mr){
+    const tc=mr[1], seat=mr[2], head=/^H/.test(tc), no=tblNo(tc), nm=tblName(tc);
+    const en=window.LANG==='en';
+    const cap=en?(head?'HEAD':'TABLE'):(head?'主桌':'桌號');
+    const seatLine=en?`${tblLabel(tc)} · Seat ${seat}`:`${tblLabel(tc)}・第 ${seat} 席`;
+    return { detail:seatLine+(nm?(en?' · ':'・')+nm:''), seatLine, sub:nm,
+      badgeTop:`<span class="bz-cap">${cap}</span><span class="bz-big">${no}</span>`,
+      badgeBot:en?`Seat ${seat}`:`第${seat}席`, color:head?'gold':'blue' };
   }
   // 方陣：A1-3
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m2){
     const [,zone,row,seat]=m2;
-    if(window.LANG==='en')
-      return { detail:`Zone ${zone} · Row ${row} · Seat ${seat}`, badgeTop:zone, badgeBot:`R${row}-S${seat}`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
-    return { detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:zone, badgeBot:`${row}排${seat}席`, color: zone==='A'?'blue':zone==='B'?'green':'gold' };
+    const col=zone==='A'?'blue':zone==='B'?'green':'gold';
+    if(window.LANG==='en'){
+      const l=`Zone ${zone} · Row ${row} · Seat ${seat}`;
+      return { detail:l, seatLine:l, sub:'', badgeTop:`<span class="bz-cap">ZONE</span><span class="bz-big">${zone}</span>`, badgeBot:`R${row}-S${seat}`, color:col };
+    }
+    const l=`${zone} 區・第 ${row} 排・第 ${seat} 席`;
+    return { detail:l, seatLine:l, sub:'', badgeTop:`<span class="bz-cap">區</span><span class="bz-big">${zone}</span>`, badgeBot:`${row}排${seat}席`, color:col };
   }
-  return { detail:code, badgeTop:code, badgeBot:'', color:'blue' };
+  return { detail:code, seatLine:code, sub:'', badgeTop:code, badgeBot:'', color:'blue' };
 }
 
 window.doSearch=function(){
@@ -1024,8 +1026,8 @@ window.doSearch=function(){
       </div>${av}
       <div class="card-info">
         <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>${(()=>{const al=srchLines(code,name,terms);return al.length?`<div class="card-alt">${al.map(l=>escH(l).replace(re,'<mark>$1</mark>')).join('\n')}</div>`:'';})()}
-        <div class="card-seat">${t('lbl_seat_code')}${hc}</div>
-        <div class="card-zone">${p.detail}</div>
+        <div class="card-seat">${p.seatLine}</div>
+        ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
         onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
@@ -1216,19 +1218,8 @@ function renderBadgeAdminList(){
 }
 
 function parseSeatLabel(code){
-  const mh=code.match(/^(H\d+)-(\d+)$/);
-  if(mh){
-    const customName=TABLE_NAMES[mh[1]]?TABLE_NAMES[mh[1]].replace(/\.+$/,'').trim():null;
-    if(window.LANG==='en') return customName?`Table ${customName} Seat ${mh[2]}`:`Head Table Seat ${mh[2]}`;
-    return customName?`第${customName}桌 第${mh[2]}席`:`主桌 第${mh[2]}席`;
-  }
-  const m=code.match(/^R(\d+)_T(\d+)-(\d+)$/);
-  if(m){
-    const tCode=code.split('-')[0];
-    const customName=TABLE_NAMES[tCode]?TABLE_NAMES[tCode].replace(/\.+$/,'').trim():null;
-    if(window.LANG==='en') return customName?`Table ${customName} Seat ${m[3]}`:`Table ${m[2]} Seat ${m[3]}`;
-    return customName?`第${customName}桌 第${m[3]}席`:`第${m[2]}桌 第${m[3]}席`;
-  }
+  const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
+  if(mr) return window.LANG==='en'?`${tblLabel(mr[1])} Seat ${mr[2]}`:`${tblLabel(mr[1])} 第${mr[2]}席`;
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m2) return window.LANG==='en'?`Zone ${m2[1]} Row ${m2[2]} Seat ${m2[3]}`:`${m2[1]}區 第${m2[2]}排 第${m2[3]}席`;
   return code;
@@ -1455,8 +1446,8 @@ function renderBarcodeHit(seatCode,scannedCode){
         </div>
         <div class="card-info">
           <div class="card-name">${name}<span class="match-tag high">${t('tag_barcode_hit')}</span></div>
-          <div class="card-seat">${t('lbl_seat_code')}${seatCode}</div>
-          <div class="card-zone">${p.detail}</div>
+          <div class="card-seat">${p.seatLine}</div>
+          ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
         </div>
         <button class="checkin-btn ${CHECKINS[seatCode]?'done':''}"
           onclick="toggleCheckin('${seatCode}',${!CHECKINS[seatCode]})">
@@ -1629,8 +1620,8 @@ function renderScanResults(text){
         </div>
         <div class="card-info">
           <div class="card-name">${name}<span class="match-tag high">${t('tag_badge_hit')}</span></div>
-          <div class="card-seat">${t('lbl_seat_code')}${badgeHit.seatCode}</div>
-          <div class="card-zone">${p.detail}</div>
+          <div class="card-seat">${p.seatLine}</div>
+          ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
         </div>
         <button class="checkin-btn ${CHECKINS[badgeHit.seatCode]?'done':''}"
           onclick="toggleCheckin('${badgeHit.seatCode}',${!CHECKINS[badgeHit.seatCode]})">
@@ -1670,8 +1661,8 @@ function renderScanResults(text){
       </div>
       <div class="card-info">
         <div class="card-name">${hn}${tag}</div>
-        <div class="card-seat">${t('lbl_seat_code')}${code}</div>
-        <div class="card-zone">${p.detail}</div>
+        <div class="card-seat">${p.seatLine}</div>
+        ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
         onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
@@ -1956,15 +1947,10 @@ function splitOrgName(raw){
 }
 
 function cerGroupOf(code){
-  let m=code.match(/^(H\d+)-(\d+)$/);
+  let m=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
   if(m){
-    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
-    return { key:m[1], label:nm?t('cer_map_table',nm):t('cer_map_head') };
-  }
-  m=code.match(/^(R\d+_T(\d+))-(\d+)$/);
-  if(m){
-    const nm=TABLE_NAMES[m[1]]?TABLE_NAMES[m[1]].replace(/\.+$/,'').trim():null;
-    return { key:m[1], label:t('cer_map_table',nm||m[2]) };
+    const nm=tblName(m[1]);
+    return { key:m[1], label:tblLabel(m[1])+(nm?'　'+nm:'') };
   }
   m=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
   if(m) return { key:'Z'+m[1].toUpperCase(), label:t('cer_map_zone',m[1].toUpperCase()) };
@@ -2260,8 +2246,8 @@ function vmRound(codes){
   Object.keys(T).filter(k=>!/^H/.test(k)).forEach(k=>{ const m=k.match(/^R(\d+)_/); const r=m?+m[1]:1; (rows[r]=rows[r]||[]).push(k); });
   const table=(tc,isHead)=>{
     const seats=T[tc].sort((a,b)=>+a.split('-')[1]-+b.split('-')[1]);
-    const nm=TABLE_NAMES[tc]?TABLE_NAMES[tc].replace(/\.+$/,'').trim():'';
-    const lbl=nm?t('cer_map_table',nm):(isHead?t('cer_map_head'):t('cer_map_table',num(tc)));
+    const nm=tblName(tc);
+    const lbl=tblLabel(tc)+(nm?'　'+nm:'');
     let h=`<div class="vm-table"><div class="vm-tc">${_esc(lbl)}</div>`;
     seats.forEach((c,i)=>{
       const a=(i*360/seats.length-90)*Math.PI/180;
