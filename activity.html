@@ -485,7 +485,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V9</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V10</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -599,7 +599,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V9</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V10</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -661,11 +661,11 @@ body.theater #rv-tools{display:none!important;}
   <button class="btn rv-admin" onclick="addPillar('door')">＋ 門</button>
   <button class="btn rv-admin" onclick="addAisle('v')">＋ 中間走道</button>
   <button class="btn rv-admin" onclick="addAisle('h')">＋ 橫向走道</button>
-  <button class="btn rv-admin" onclick="resetTablePos()">↺ 桌位恢復預設</button>
+  <button class="btn rv-admin" onclick="resetTablePos()">🔄 依舞台自動排桌</button>
   <button class="btn" onclick="rvExportOverviewJPG()">⬇ 全場配置 JPG</button>
   <button class="btn" onclick="rvExportDocPDF()" style="border-color:#1D3A6E;color:#1D3A6E;">⬇ 全場＋各桌 PDF</button>
   <button class="btn" onclick="rvExportDocPPT()" style="border-color:#C0392B;color:#C0392B;">⬇ 全場＋各桌 PPT</button>
-  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、舞台、柱子、門、走道到實際位置（自動儲存）；舞台左上角 ⟲ 可轉成直的（放左邊或右邊牆），雙擊舞台回到上方預設；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
+  <span class="rv-hint" id="rv-hint" style="display:none;">拖曳桌子、舞台、柱子、門、走道到實際位置（自動儲存）；移動主桌後，其他桌會依舞台方向自動讓位重排；舞台左上角 ⟲ 可轉成直的（放左邊或右邊牆），雙擊舞台回到上方預設；右下角橘色小方塊調大小（走道＝寬度＋長度），雙擊刪除。中間走道左右拖，沒拖過的桌子會自動跟著分兩邊。移動中座位暫時不能點。</span>
 </div>
 
 <div class="legend">
@@ -1305,7 +1305,7 @@ function rvDefaultLayout(headCodes, rows, shape, headSize, aisle){
         const need = k => aw / 2 + AG + k * CELL + MARGIN;
         W = Math.max(W, Math.ceil(need(maxL) / fx), Math.ceil(need(maxR) / (1 - fx)));
     }
-    const ax = fx * W;
+    const ax = (aisle && aisle.x !== undefined && aisle.x !== null && isFinite(+aisle.x)) ? +aisle.x : fx * W;
     const pos = {};
     const chunk = (arr, k) => { const o = []; for (let i = 0; i < arr.length; i += k) o.push(arr.slice(i, i + k)); return o; };
     const placeLine = (codes, cell, yy, split) => {
@@ -1386,11 +1386,128 @@ window.addAisle = async function(dir){
                           : '已新增橫向走道，請拖到實際位置', 'tok');
     } catch (e) { toast('新增失敗', 'ter'); }
 };
+
+// ═══ 依舞台方向＋主桌位置自動排桌（讓位）═══
+// 舞台在上／下／左／右都可以：一般桌照設定的排數，一排一排往舞台的反方向延伸；
+// 主桌、柱子、門、走道都當成障礙物，擋到的桌子自動往旁邊讓，空間不夠就往外延展。
+let rvArranging = false;
+async function rvAutoArrange(silent) {
+    const g = rvLastGeo;
+    if (!g || rvArranging) return;
+    rvArranging = true;
+    try {
+        const W = g.W, H = g.H, st = g.stage;
+        const side = st.w >= st.h ? (st.y < H / 2 ? 'top' : 'bottom') : (st.x < W / 2 ? 'left' : 'right');
+        const CELL = 200, R = 93;
+        const sizeOf = c => (g.tables.find(t => t.code === c) || {}).size || 150;
+        // 主桌：用目前位置（剛拖過的以 tablePos 為準）
+        const heads = g.tables.filter(t => t.code.startsWith('H')).map(t => {
+            const p = tablePos[t.code] || { x: t.x, y: t.y };
+            return { code: t.code, x: +p.x, y: +p.y, r: t.size / 2 + 18 };
+        });
+        // 一般桌：依 R 排號分排，排內照桌號
+        const rowsMap = {};
+        g.tables.filter(t => !t.code.startsWith('H')).forEach(t => {
+            const m = t.code.match(/^R(\d+)_/), r = m ? +m[1] : 1;
+            (rowsMap[r] = rowsMap[r] || []).push(t.code);
+        });
+        const rows = Object.keys(rowsMap).sort((a, b) => a - b).map(r => rowsMap[r].sort((a, b) => rvTableNo(a) - rvTableNo(b)));
+        // 障礙物
+        const INF = 1e9, rects = [];
+        Object.values(pillars).forEach(p => {
+            if (!p) return;
+            if (p.kind === 'aisle') {
+                const has = v => v !== undefined && v !== null && isFinite(+v);
+                if (p.dir === 'v') {
+                    const aw = Math.max(40, +p.w || 90), ax = has(p.x) ? +p.x : (+p.fx || 0.5) * W;
+                    rects.push({ x1: ax - aw / 2, x2: ax + aw / 2, y1: has(p.y1) ? +p.y1 : -INF, y2: has(p.y2) ? +p.y2 : INF });
+                } else {
+                    const ah = Math.max(30, +p.h || 70), ay = +p.y || H / 2;
+                    rects.push({ x1: has(p.x1) ? +p.x1 : -INF, x2: has(p.x2) ? +p.x2 : INF, y1: ay - ah / 2, y2: ay + ah / 2 });
+                }
+            } else {
+                const w = +p.w || 60, h = +p.h || 60;
+                rects.push({ x1: +p.x - w / 2, x2: +p.x + w / 2, y1: +p.y - h / 2, y2: +p.y + h / 2 });
+            }
+        });
+        rects.push({ x1: st.x - st.w / 2 - 10, x2: st.x + st.w / 2 + 10, y1: st.y - st.h / 2 - 10, y2: st.y + st.h / 2 + 10 });
+        const placed = [];
+        const hits = (x, y, r) => {
+            for (const h of heads) if (Math.hypot(x - h.x, y - h.y) < r + h.r + 24) return true;
+            for (const q of placed) if (Math.hypot(x - q.x, y - q.y) < r + q.r + 10) return true;
+            for (const b of rects) {
+                const dx = Math.max(b.x1 - x, 0, x - b.x2), dy = Math.max(b.y1 - y, 0, y - b.y2);
+                if (Math.hypot(dx, dy) < r + 8) return true;
+            }
+            return false;
+        };
+        // u＝沿著舞台的方向、v＝離舞台的距離
+        const uc = (side === 'top' || side === 'bottom') ? st.x : st.y;
+        const toXY = (u, v) => side === 'top' ? { x: u, y: st.y + st.h / 2 + v }
+            : side === 'bottom' ? { x: u, y: st.y - st.h / 2 - v }
+            : side === 'left' ? { x: st.x + st.w / 2 + v, y: u }
+            : { x: st.x - st.w / 2 - v, y: u };
+        const out = {};
+        rows.forEach((codes, ri) => {
+            const n = codes.length, v = 40 + R + ri * CELL, half = n % 2 === 0 ? CELL / 2 : 0;
+            const cands = [];
+            for (let k = 0; k < n + 40; k++) {
+                const o = half + k * CELL;
+                cands.push(o); if (o !== 0) cands.push(-o);
+            }
+            const chosen = [];
+            for (const o of cands) {
+                if (chosen.length >= n) break;
+                const u = uc + o;
+                if (u < R + 20) continue;   // 不要撞到上／左邊的牆
+                const p = toXY(u, v);
+                if (hits(p.x, p.y, R)) continue;
+                chosen.push({ u, p });
+                placed.push({ x: p.x, y: p.y, r: R });
+            }
+            chosen.sort((a, b) => a.u - b.u);
+            codes.forEach((c, i) => { if (chosen[i]) out[c] = { x: Math.round(chosen[i].p.x), y: Math.round(chosen[i].p.y) }; });
+        });
+        // 往左／往上超出邊界（舞台在右或在下、排數很多時）→ 整個場地一起往右／往下挪
+        // 收齊：所有東西的最左／最上邊貼齊外框（多的空白收掉、不夠的往外推）
+        const xs = [], ys = [];
+        Object.values(out).forEach(p => { xs.push(p.x - R); ys.push(p.y - R); });
+        heads.forEach(h => { xs.push(h.x - h.r); ys.push(h.y - h.r); });
+        xs.push(st.x - st.w / 2); ys.push(st.y - st.h / 2);
+        rects.forEach(b => { if (b.x1 > -INF / 2) xs.push(b.x1); if (b.y1 > -INF / 2) ys.push(b.y1); });
+        const dx = Math.round((24 - Math.min(...xs)) / 10) * 10, dy = Math.round((18 - Math.min(...ys)) / 10) * 10;
+        const pos = {};
+        Object.entries(out).forEach(([c, p]) => pos[c] = { x: p.x + dx, y: p.y + dy });
+        heads.forEach(h => pos[h.code] = { x: Math.round(h.x + dx), y: Math.round(h.y + dy) });
+        await set(ref(db, PROJECT_ID + '/stage2026'), { x: Math.round(st.x + dx), y: Math.round(st.y + dy), w: Math.round(st.w), h: Math.round(st.h) });
+        if (dx || dy) {
+            const np = {};
+            Object.entries(pillars).forEach(([id, p]) => {
+                if (!p) return;
+                const q = Object.assign({}, p);
+                if (p.kind === 'aisle' && p.dir === 'v') {
+                    q.x = Math.round((p.x !== undefined && isFinite(+p.x) ? +p.x : (+p.fx || 0.5) * W) + dx);
+                    if (p.y1 !== undefined) q.y1 = +p.y1 + dy;
+                    if (p.y2 !== undefined) q.y2 = +p.y2 + dy;
+                } else if (p.kind === 'aisle') {
+                    q.y = (+p.y || H / 2) + dy;
+                    if (p.x1 !== undefined) q.x1 = +p.x1 + dx;
+                    if (p.x2 !== undefined) q.x2 = +p.x2 + dx;
+                } else { q.x = +p.x + dx; q.y = +p.y + dy; }
+                np[id] = q;
+            });
+            if (Object.keys(np).length) await set(ref(db, PROJECT_ID + '/pillars2026'), np);
+        }
+        await set(ref(db, PROJECT_ID + '/table_pos2026'), pos);
+        if (!silent) toast('🔄 已依舞台' + ({ top: '（上方）', bottom: '（下方）', left: '（左側）', right: '（右側）' })[side] + '和主桌位置重新排好，可再手動微調', 'tok');
+    } catch (e) { console.error(e); toast('自動排桌失敗', 'ter'); }
+    finally { rvArranging = false; }
+}
+window.rvAutoArrange = rvAutoArrange;
 window.resetTablePos = async function(){
     if (!isAdmin) return;
-    if (!confirm('把所有桌子恢復成預設排列？\n（柱子會保留）')) return;
-    try { await set(ref(db, PROJECT_ID + '/table_pos2026'), null); toast('已恢復預設排列', 'tok'); }
-    catch (e) { toast('重設失敗', 'ter'); }
+    if (!confirm('依目前舞台的方向和主桌的位置，把一般桌全部重新排一次？\n（已拖過的一般桌位置會被重排；主桌、柱子、門、走道不動）')) return;
+    await rvAutoArrange();
 };
 
 // ── 場地形狀選擇 ──
@@ -1520,18 +1637,26 @@ function buildRoundVenue(keys, wrap) {
     const aisleEntries = Object.entries(pillars).filter(([, p]) => p && p.kind === 'aisle');
     const vAisle = (aisleEntries.find(([, p]) => p.dir === 'v') || [])[1] || null;
     const def = rvDefaultLayout(headCodes, rowsArr, shape, headSize, vAisle);
-    const W = def.W; let H = def.H;
+    let W = def.W; let H = def.H;
     const allCodes = [...headCodes, ...rowsArr.flat()];
     const P = {};
     allCodes.forEach(c => {
         const p = tablePos[c];
         P[c] = (p && isFinite(p.x) && isFinite(p.y)) ? { x: +p.x, y: +p.y } : def.pos[c];
         H = Math.max(H, P[c].y + 120);
+        W = Math.max(W, P[c].x + rvTableSize(c, tableSeats[c].length) / 2 + 40);
     });
+    if (allCodes.length && allCodes.every(c => tablePos[c]) && stagePos) {
+        W = 400; H = 300;
+        allCodes.forEach(c => { const r = rvTableSize(c, tableSeats[c].length) / 2; W = Math.max(W, P[c].x + r + 40); H = Math.max(H, P[c].y + r + 40); });
+    }
     if (stagePos && isFinite(+stagePos.y) && isFinite(+stagePos.h)) H = Math.max(H, +stagePos.y + +stagePos.h / 2 + 30);
+    if (stagePos && isFinite(+stagePos.x) && isFinite(+stagePos.w)) W = Math.max(W, +stagePos.x + +stagePos.w / 2 + 20);
     Object.values(pillars).forEach(p => {
         if (!p) return;
         if (p.kind !== 'aisle' || p.dir === 'h') H = Math.max(H, (+p.y || 0) + (+p.h || 60) / 2 + 40);
+        if (p.kind !== 'aisle') W = Math.max(W, (+p.x || 0) + (+p.w || 60) / 2 + 20);
+        if (p.kind === 'aisle' && p.dir === 'v' && p.x !== undefined && isFinite(+p.x)) W = Math.max(W, +p.x + (+p.w || 90) / 2 + 20);
         if (p.kind === 'aisle' && p.dir === 'v' && p.y2 !== undefined && isFinite(+p.y2)) H = Math.max(H, +p.y2 + 20);
     });
 
@@ -1618,7 +1743,7 @@ function buildRoundVenue(keys, wrap) {
         const v = a.dir === 'v';
         let geo;
         if (v) {
-            const aw = Math.max(40, +a.w || 90), cx = Math.round((+a.fx || 0.5) * W);
+            const aw = Math.max(40, +a.w || 90), cx = Math.round(has(a.x) ? +a.x : (+a.fx || 0.5) * W);
             const y1 = has(a.y1) ? +a.y1 : def.aisleTop, y2 = has(a.y2) ? +a.y2 : H - 10;
             geo = { x: cx, y: (y1 + y2) / 2, w: aw, h: Math.max(60, y2 - y1) };
         } else {
@@ -1636,7 +1761,7 @@ function buildRoundVenue(keys, wrap) {
         if (moving) {
             const save = d => set(ref(db, PROJECT_ID + '/pillars2026/' + id), Object.assign({}, a, d)).catch(() => toast('儲存失敗', 'ter'));
             const saveGeo = (x, y, w, h) => v
-                ? save({ fx: Math.round(x / W * 1000) / 1000, w: Math.round(w), y1: Math.round(y - h / 2), y2: Math.round(y + h / 2) })
+                ? save({ fx: Math.round(x / W * 1000) / 1000, x: null, w: Math.round(w), y1: Math.round(y - h / 2), y2: Math.round(y + h / 2) })
                 : save({ y: Math.round(y), h: Math.round(h), x1: Math.round(x - w / 2), x2: Math.round(x + w / 2) });
             el.addEventListener('pointerdown', e => {
                 if (e.target.classList.contains('rv-prs')) return;
@@ -1743,6 +1868,7 @@ function buildRoundVenue(keys, wrap) {
                 e.preventDefault();
                 rvDrag(e, el, sc, P[c], { w: size / 2, h: size / 2 }, W, H, cur => {
                     tablePos[c] = cur;
+                    if (c.startsWith('H')) { rvAutoArrange(); return; }   // 主桌移動：其他桌依舞台方向自動讓位重排
                     set(ref(db, PROJECT_ID + '/table_pos2026/' + c), cur).catch(() => toast('儲存失敗', 'ter'));
                 });
             });
