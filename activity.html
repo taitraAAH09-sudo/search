@@ -636,17 +636,17 @@ body.theater #rv-tools{display:none!important;}
       </details>
     </div>
     <div class="nt-sec">
-      <div class="nt-h">② 提醒信內容 <small>兩個模板都存在雲端，同事下次打開就是上次改好的版本，可以接著改。</small></div>
+      <div class="nt-h">② 提醒信內容 <small>最多 5 個模板，大家都可以新增；全部存在雲端共用，同事下次打開就是上次改好的版本。</small></div>
       <div class="nt-tpls">
-        <button class="nt-tpl" id="nt-t1" onclick="ntPickTpl('1')">模板 1</button>
-        <button class="nt-tpl" id="nt-t2" onclick="ntPickTpl('2')">模板 2</button>
+        <span id="nt-tbtns" style="display:contents;"></span>
+        <button class="nt-tpl" id="nt-tadd" onclick="ntAddTpl()" style="border-style:dashed;color:#0F6E46;background:#fff;">＋ 新增模板</button>
         <span class="nt-cloud" id="nt-cloud"></span>
       </div>
       <div class="ml-lbl">模板名稱</div>
       <input class="ml-in" id="nt-tname" oninput="ntDirty()">
       <div class="ml-lbl">主旨</div>
       <input class="ml-in" id="nt-subject" oninput="ntDirty()">
-      <div class="ml-lbl" style="display:flex;align-items:center;">內文<a href="javascript:void(0)" onclick="ntResetTpl()" style="margin-left:auto;font-weight:400;color:#2563EB;">改回預設</a></div>
+      <div class="ml-lbl" style="display:flex;align-items:center;">內文<a href="javascript:void(0)" onclick="ntResetTpl()" style="margin-left:auto;font-weight:400;color:#2563EB;">改回預設</a><a href="javascript:void(0)" id="nt-tdel" onclick="ntDelTpl()" style="margin-left:14px;font-weight:400;color:#B91C1C;">🗑 刪除這個模板</a></div>
       <textarea class="ml-in" id="nt-body" rows="12" oninput="ntDirty()"></textarea>
       <div class="nt-ph" id="nt-ph"></div>
       <div class="tk-row" id="nt-rmode-row">
@@ -712,7 +712,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V30</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V31</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -871,7 +871,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V30</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V31</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -6052,9 +6052,25 @@ function ntFill(s, ctx) {
 }
 
 // ── 模板（雲端共用）──
-onValue(ref(db, 'mail_templates2026'), snap => { mailTpls = snap.val() || {}; if (ntOpen() && !ntSaveTimer) ntFillTplForm(false); });
+const NT_SLOTS = ['1', '2', '3', '4', '5'], NT_MAX = 5;
+// 模板 1、2 有內建預設（沒動過也算存在，刪除時寫 deleted:true）；3～5 要有人新增才存在
+function ntExists(sl) {
+    const c = (mailTpls[ntMode()] || {})[sl];
+    if (c && c.deleted) return false;
+    return (sl === '1' || sl === '2') ? true : !!(c && typeof c.body === 'string');
+}
+function ntSlotsList() { return NT_SLOTS.filter(ntExists); }
+function ntFixSlot() { if (!ntExists(ntSlot)) ntSlot = ntSlotsList()[0] || ntSlot; }
+onValue(ref(db, 'mail_templates2026'), snap => {
+    mailTpls = snap.val() || {};
+    if (!ntOpen()) return;
+    const was = ntSlot; ntFixSlot();
+    if (was !== ntSlot) { clearTimeout(ntSaveTimer); ntSaveTimer = null; ntFillTplForm(true); toast('這個模板已被同事刪除，已切換到「' + ntTpl().name + '」', 'tin'); }
+    else if (!ntSaveTimer) ntFillTplForm(false);
+    else ntPaintTplBtns();
+});
 function ntTpl(slot) {
-    const m = ntMode(), sl = slot || ntSlot, d = NT_DEF[m][sl];
+    const m = ntMode(), sl = slot || ntSlot, d = NT_DEF[m][sl] || Object.assign({}, NT_DEF[m]['1'], { name: '模板 ' + sl });
     let c = (mailTpls[m] || {})[sl];
     if (c && !(c.v >= 2)) {
         const fix = t => typeof t === 'string' ? t.split('\n').filter(l => !/\{座位\}|\{Seat\}/.test(l)).join('\n').replace('＊入場時請攜帶您的 VIP 證件。', '＊敬請攜帶貴賓證入場參觀。') : t;
@@ -6067,10 +6083,55 @@ function ntTpl(slot) {
         at: c && c.at
     };
 }
+function ntPaintTplBtns() {
+    const box = document.getElementById('nt-tbtns'); if (!box) return;
+    box.innerHTML = '';
+    const list = ntSlotsList();
+    list.forEach(sl => {
+        const b = document.createElement('button');
+        b.className = 'nt-tpl' + (sl === ntSlot ? ' on' : ''); b.id = 'nt-t' + sl;
+        b.textContent = '📄 ' + ntTpl(sl).name;
+        b.onclick = () => ntPickTpl(sl);
+        box.appendChild(b);
+    });
+    const add = document.getElementById('nt-tadd');
+    add.style.display = list.length < NT_MAX ? '' : 'none';
+    add.textContent = '＋ 新增模板（' + list.length + '/' + NT_MAX + '）';
+    document.getElementById('nt-tdel').style.display = list.length > 1 ? '' : 'none';
+}
+function ntStamp() { const d = new Date(); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+// 新增：複製目前這個模板的內容當起點，名字自己改
+window.ntAddTpl = async function () {
+    await ntSaveNow();
+    const free = NT_SLOTS.find(sl => !ntExists(sl));
+    if (!free || ntSlotsList().length >= NT_MAX) { toast('最多 ' + NT_MAX + ' 個模板，請先刪掉一個不用的', 'ter'); return; }
+    const nm = prompt('新模板的名稱（內容會先複製「' + ntTpl().name + '」，再自己改）', '新模板');
+    if (nm === null) return;
+    const cur = ntTpl(), m = ntMode();
+    const data = { name: nm.trim() || '模板 ' + free, subject: cur.subject, body: cur.body, v: 2, at: ntStamp() };
+    (mailTpls[m] = mailTpls[m] || {})[free] = data;
+    try { await set(ref(db, 'mail_templates2026/' + m + '/' + free), data); }
+    catch (e) { toast('新增失敗，請檢查網路', 'ter'); return; }
+    ntSlot = free; ntFillTplForm(true); ntSavePref();
+    toast('已新增「' + data.name + '」，大家都看得到', 'tok');
+    document.getElementById('nt-tname').focus();
+};
+window.ntDelTpl = async function () {
+    if (ntSlotsList().length <= 1) { toast('至少要留一個模板', 'ter'); return; }
+    if (!confirm('刪除模板「' + ntTpl().name + '」？\n所有同事都會看不到這個模板，無法復原。')) return;
+    clearTimeout(ntSaveTimer); ntSaveTimer = null;
+    const m = ntMode(), sl = ntSlot;
+    const val = (sl === '1' || sl === '2') ? { deleted: true } : null;
+    if (val) (mailTpls[m] = mailTpls[m] || {})[sl] = val; else if (mailTpls[m]) delete mailTpls[m][sl];
+    try { await set(ref(db, 'mail_templates2026/' + m + '/' + sl), val); }
+    catch (e) { toast('刪除失敗，請檢查網路', 'ter'); return; }
+    ntFixSlot(); ntFillTplForm(true); ntSavePref();
+    toast('已刪除模板', 'tin');
+};
 function ntCloud(msg, color) { const el = document.getElementById('nt-cloud'); el.textContent = msg; el.style.color = color || '#6B7280'; }
 function ntFillTplForm(force) {
     const a = document.activeElement;
-    ['1', '2'].forEach(sl => { const b = document.getElementById('nt-t' + sl); b.textContent = '📄 ' + ntTpl(sl).name; b.classList.toggle('on', sl === ntSlot); });
+    ntFixSlot(); ntPaintTplBtns();
     if (!force && a && ['nt-tname', 'nt-subject', 'nt-body'].includes(a.id)) return;
     const t = ntTpl();
     document.getElementById('nt-tname').value = t.name;
@@ -6087,15 +6148,16 @@ async function ntSaveNow() {
     if (!ntSaveTimer) return;
     clearTimeout(ntSaveTimer); ntSaveTimer = null;
     const m = ntMode(), sl = ntSlot, d = new Date();
+    if (!ntExists(sl) && sl !== '1' && sl !== '2') return;   // 剛被刪掉的模板不要再寫回去
     const data = {
-        name: document.getElementById('nt-tname').value.trim() || NT_DEF[m][sl].name,
+        name: document.getElementById('nt-tname').value.trim() || (NT_DEF[m][sl] ? NT_DEF[m][sl].name : '模板 ' + sl),
         subject: document.getElementById('nt-subject').value,
         body: document.getElementById('nt-body').value,
         v: 2,
         at: (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
     };
     (mailTpls[m] = mailTpls[m] || {})[sl] = data;
-    document.getElementById('nt-t' + sl).textContent = '📄 ' + data.name;
+    ntPaintTplBtns();
     try { await set(ref(db, 'mail_templates2026/' + m + '/' + sl), data); ntCloud('☁ 已存到雲端 ' + data.at + '（大家共用，下次打開還在）', '#15803D'); }
     catch (e) { ntCloud('⚠ 雲端儲存失敗，請檢查網路', '#B91C1C'); }
 }
@@ -6105,8 +6167,8 @@ window.ntPickTpl = async function (sl) {
 };
 window.ntResetTpl = function () {
     if (!confirm('把「' + ntTpl().name + '」的主旨和內文改回預設？（雲端上的這個模板也會一起改回來）')) return;
-    const d = NT_DEF[ntMode()][ntSlot];
-    document.getElementById('nt-tname').value = d.name;
+    const d = NT_DEF[ntMode()][ntSlot] || NT_DEF[ntMode()]['1'];
+    if (NT_DEF[ntMode()][ntSlot]) document.getElementById('nt-tname').value = d.name;
     document.getElementById('nt-subject').value = d.subject;
     document.getElementById('nt-body').value = d.body;
     ntDirty();
@@ -6137,7 +6199,7 @@ window.openNotify = function (focusT) {
     if (!isAdmin) { toast('請先登入（右上角 🔒 登入）才能產生號碼、寄提醒信', 'ter'); return; }
     if (!Object.keys(seatMap).length) { toast('請先建立座位', 'ter'); return; }
     ntFocusT = (typeof focusT === 'string') ? focusT : null;
-    ntSlot = (mailTpl && mailTpl.slot) || ntSlot || '1';
+    ntSlot = (mailTpl && mailTpl.slot) || ntSlot || '1'; ntFixSlot();
     const round = ntMode() === 'round';
     document.getElementById('nt-mode-tag').textContent = '一人一封・只告訴他報到號碼（不寫座位）';
     document.getElementById('nt-rmode-row').style.display = 'none';
