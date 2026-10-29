@@ -465,6 +465,8 @@ body.theater #rv-tools{display:none!important;}
 .nt-tbl .nt-go{margin-left:auto;}
 .nt-grp.focus .nt-tbl{background:#FEF3C7;}
 @media (max-width:600px){.nt-p{flex-wrap:wrap;}.nt-mail{flex:1 1 100%;}}
+#layout-modal-bg .modal{max-height:94vh;overflow-y:auto;}
+#layout-modal-bg.wide .modal{max-width:760px;}
 </style>
 </head>
 <body>
@@ -710,7 +712,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V28</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V30</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -735,6 +737,10 @@ body.theater #rv-tools{display:none!important;}
       <button id="tab-excel-btn" onclick="switchLayoutTab('excel')"
         style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#6B7280;">
         📂 上傳 Excel
+      </button>
+      <button id="tab-rsvp-btn" onclick="switchLayoutTab('rsvp')"
+        style="flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#6B7280;">
+        📋 名單匯入
       </button>
     </div>
 
@@ -813,6 +819,47 @@ body.theater #rv-tools{display:none!important;}
       <div id="excel-upload-status" style="display:none;font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:10px;"></div>
     </div>
 
+    <!-- 名單匯入（自動排座）面板 -->
+    <div id="layout-tab-rsvp" style="display:none;">
+      <div style="background:#E8F5EE;border:1px solid #A7D7BE;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#14532D;line-height:1.7;">
+        💡 丟一份「收集好的名單」Excel（不用先排座位）。系統會自己找 <b>單位、姓名、職稱、Email</b> 欄位，你確認後，<b>照 Excel 的順序</b>自動排進座位，之後再人工拖曳調整。
+        <a href="javascript:void(0)" onclick="rsDownloadTemplate()" style="color:#0F6E46;font-weight:700;margin-left:4px;">⬇ 下載標準名單範本</a>
+      </div>
+      <div onclick="document.getElementById('rs-file').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#0F6E46';"
+        ondragleave="this.style.borderColor='#E5E7EB';"
+        ondrop="event.preventDefault();this.style.borderColor='#E5E7EB';rsLoadFile(event.dataTransfer.files[0])"
+        style="border:2px dashed #E5E7EB;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#F9FAFB;margin-bottom:12px;">
+        <div style="font-size:26px;">📋</div>
+        <div style="font-size:14px;font-weight:700;color:#111;" id="rs-file-lbl">點擊或拖曳上傳名單 Excel</div>
+      </div>
+      <input type="file" id="rs-file" accept=".xlsx,.xls" style="display:none" onchange="rsLoadFile(this.files[0]);this.value=''">
+      <div id="rs-body" style="display:none;">
+        <div class="ml-lbl">工作表</div>
+        <select class="ml-in" id="rs-sheet" onchange="rsPickSheet(this.value)"></select>
+        <div style="font-size:11.5px;color:#6B7280;margin:4px 0 8px;" id="rs-hdr-info"></div>
+        <details id="rs-map-det" style="margin-bottom:8px;">
+          <summary style="cursor:pointer;font-size:12.5px;color:#15803D;font-weight:700;" id="rs-map-sum">✓ 欄位已自動對好</summary>
+          <div style="font-size:11.5px;color:#6B7280;margin:6px 0;">抓錯才需要改</div>
+          <div id="rs-map" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;"></div>
+        </details>
+        <label style="display:block;font-size:12.5px;" id="rs-skip-row"><input type="checkbox" id="rs-skip" checked onchange="rsPaint()"> 出席欄是 X／不克出席／不出席 的人先不排</label>
+        <div style="display:flex;gap:10px;margin-top:12px;align-items:flex-end;">
+          <div style="flex:2;min-width:0;">
+            <div class="ml-lbl">每排座位數（由左至右各區）</div>
+            <input class="ml-in" id="rs-zones" value="6,7,6" placeholder="例：676 或 6,7,6" oninput="rsRowsAuto=true;rsPaint()">
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="ml-lbl">排數</div>
+            <input class="ml-in" id="rs-rows" type="number" min="1" placeholder="自動" oninput="rsRowsAuto=!this.value;rsPaint()">
+          </div>
+        </div>
+        <div id="rs-sum" style="margin:10px 0 6px;font-size:13px;color:#111;"></div>
+        <div class="nt-list" id="rs-prev" style="max-height:240px;"></div>
+        <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px;margin-top:12px;background:#0F6E46;border-color:#0F6E46;" onclick="rsApply()">✅ 建立座位並匯入名單</button>
+      </div>
+    </div>
+
     <button class="modal-close" id="btn-layout-close" onclick="document.getElementById('layout-modal-bg').classList.remove('show')" style="margin-top:10px;">取消</button>
   </div>
 </div>
@@ -824,7 +871,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V28</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V30</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -3415,19 +3462,12 @@ window.openLookup = function() {
 };
 
 window.switchLayoutTab = function(tab) {
-  const manualBtn = document.getElementById('tab-manual-btn');
-  const excelBtn = document.getElementById('tab-excel-btn');
-  const manualPanel = document.getElementById('layout-tab-manual');
-  const excelPanel = document.getElementById('layout-tab-excel');
-  if (tab === 'manual') {
-    manualBtn.style.background = '#1B4F8A'; manualBtn.style.color = '#fff';
-    excelBtn.style.background = 'transparent'; excelBtn.style.color = '#6B7280';
-    manualPanel.style.display = ''; excelPanel.style.display = 'none';
-  } else {
-    excelBtn.style.background = '#1B4F8A'; excelBtn.style.color = '#fff';
-    manualBtn.style.background = 'transparent'; manualBtn.style.color = '#6B7280';
-    excelPanel.style.display = ''; manualPanel.style.display = 'none';
-  }
+  ['manual', 'excel', 'rsvp'].forEach(t => {
+    const on = t === tab, btn = document.getElementById('tab-' + t + '-btn');
+    btn.style.background = on ? '#1B4F8A' : 'transparent'; btn.style.color = on ? '#fff' : '#6B7280';
+    document.getElementById('layout-tab-' + t).style.display = on ? '' : 'none';
+  });
+  document.getElementById('layout-modal-bg').classList.toggle('wide', tab === 'rsvp');
 };
 
 function showExcelStatus(msg, type) {
@@ -6465,6 +6505,211 @@ window.cdResetCardText = async function () {
     document.getElementById('cd-ed-ok').onclick = cdSaveEditor;
     document.getElementById('cd-ed-x').onclick = cdCloseEditor;
 })();
+
+// ═══════════════ 📋 名單匯入（自動排座）═══════════════
+// 收集好的名單 Excel（每張格式都不一樣）→ 系統自己找欄位 → 你確認 → 照 Excel 順序排進方陣座位
+const RS_FIELDS = [
+    ['unitZh', '單位（中）'], ['nameZh', '姓名（中）'], ['titleZh', '職稱（中）'],
+    ['unitEn', '單位（英）'], ['nameEn', '姓名（英）'], ['titleEn', '職稱（英）'],
+    ['email', 'Email'], ['attend', '出席狀態（選填）']
+];
+let rsWB = null, rsRows = [], rsHdr = [], rsHi = 0, rsMap = {};
+const rsCell = v => (v === null || v === undefined) ? '' : String(v).split(/\r\n|\r|\n/).map(l => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean).join('\n');
+const rsNormH = v => String(v || '').normalize('NFKC').replace(/[\s*＊:：]/g, '').toLowerCase();
+const rsCJK = s => /[㐀-鿿豈-﫿]/.test(s);
+window.rsLoadFile = async function (f) {
+    if (!f) return;
+    if (!isAdmin) { toast('請先登入', 'ter'); return; }
+    try {
+        rsWB = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+        document.getElementById('rs-file-lbl').textContent = '📄 ' + f.name + '（點這裡換一個檔）';
+        const sel = document.getElementById('rs-sheet'); sel.innerHTML = '';
+        // 預設挑「最像名單」的工作表（標題列命中最多欄位）
+        let best = rsWB.SheetNames[0], bestScore = -1;
+        rsWB.SheetNames.forEach(n => {
+            const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o);
+            const sc = rsScanSheet(n).score; if (sc > bestScore) { bestScore = sc; best = n; }
+        });
+        sel.value = best;
+        document.getElementById('rs-body').style.display = '';
+        rsPickSheet(best);
+    } catch (e) { console.error(e); toast('Excel 讀取失敗：' + e.message, 'ter'); }
+};
+function rsScanSheet(name) {
+    const rows = XLSX.utils.sheet_to_json(rsWB.Sheets[name], { header: 1, defval: '' });
+    let hi = 0, score = 0;
+    rows.slice(0, 15).forEach((r, i) => {
+        const s = r.filter(v => /單位|公司|館名|機關|姓名|name|職稱|title|e-?mail|信箱|出席/i.test(rsNormH(v))).length;
+        if (s > score) { score = s; hi = i; }
+    });
+    return { rows, hi, score };
+}
+function rsGuess(hdr, rows) {
+    const H = hdr.map(rsNormH), used = new Set(), m = {};
+    const find = (ok, prefer) => {
+        let idx = -1;
+        H.forEach((h, i) => { if (used.has(i) || !h || !ok(h)) return; if (idx < 0 || (prefer && prefer(h) && !prefer(H[idx]))) idx = i; });
+        if (idx >= 0) used.add(idx);
+        return idx;
+    };
+    const en = h => /英|外文|english|\(en\)/.test(h);
+    m.unitEn = find(h => /(單位|公司|館名|機關)/.test(h) && en(h) || /^(company|organization|organisation)/.test(h));
+    m.nameEn = find(h => /姓名/.test(h) && en(h) || /^(englishname|name\(en\))/.test(h));
+    m.titleEn = find(h => /職稱/.test(h) && en(h) || /^title/.test(h));
+    m.unitZh = find(h => /(單位|公司|館名|機關|本會所屬)/.test(h) && !en(h), h => /中/.test(h));
+    m.nameZh = find(h => (/姓名/.test(h) || h === 'name') && !en(h), h => /中/.test(h));
+    m.titleZh = find(h => /職稱/.test(h) && !en(h), h => /中/.test(h));
+    m.email = find(h => /e-?mail|信箱/.test(h));
+    if (m.email < 0) {   // 沒有 Email 標題：找內容多半有 @ 的那一欄
+        let bi = -1, bc = 0;
+        hdr.forEach((h, i) => { if (used.has(i)) return; const c = rows.filter(r => /@/.test(String(r[i] || ''))).length; if (c > bc) { bc = c; bi = i; } });
+        if (bi >= 0 && bc >= Math.max(2, rows.length * 0.2)) { m.email = bi; used.add(bi); }
+    }
+    m.attend = find(h => /^出席/.test(h));
+    return m;
+}
+window.rsPickSheet = function (name) {
+    const sc = rsScanSheet(name);
+    rsRows = sc.rows; rsHi = sc.hi; rsHdr = (rsRows[rsHi] || []).map(rsCell);
+    const data = rsRows.slice(rsHi + 1);
+    rsMap = rsGuess(rsHdr, data);
+    document.getElementById('rs-hdr-info').textContent = '標題列在第 ' + (rsHi + 1) + ' 列，下面有 ' + data.length + ' 列資料';
+    const box = document.getElementById('rs-map'); box.innerHTML = '';
+    const colName = i => XLSX.utils.encode_col(i);
+    RS_FIELDS.forEach(([k, lbl]) => {
+        const w = document.createElement('div');
+        const l = document.createElement('div'); l.className = 'ml-lbl'; l.style.margin = '0 0 3px'; l.textContent = lbl;
+        const s = document.createElement('select'); s.className = 'ml-in'; s.style.padding = '6px 8px'; s.style.fontSize = '12.5px';
+        s.innerHTML = '<option value="-1">（不使用）</option>' + rsHdr.map((h, i) => '<option value="' + i + '">' + colName(i) + '：' + escapeHtml((h || '（無標題）').replace(/\n/g, ' ').slice(0, 24)) + '</option>').join('');
+        s.value = String(rsMap[k] ?? -1);
+        s.onchange = () => { rsMap[k] = +s.value; rsPaint(); };
+        if ((rsMap[k] ?? -1) >= 0) s.style.borderColor = '#16A34A';
+        w.appendChild(l); w.appendChild(s); box.appendChild(w);
+    });
+    window.rsRowsAuto = true; document.getElementById('rs-map-det').open = false;
+    rsPaint();
+};
+// 一位賓客的顯示名稱：中文姓名「單位↵姓名 職稱」；外國名字「單位↵姓名↵職稱」
+function rsGuest(r) {
+    const g = k => (rsMap[k] ?? -1) >= 0 ? rsCell(r[rsMap[k]]) : '';
+    const unit = (g('unitZh') || g('unitEn')).replace(/\n/g, ' ');
+    let name = (g('nameZh') || g('nameEn')).replace(/\n/g, ' ');
+    const title = (g('titleZh') || g('titleEn')).replace(/\n/g, ' ');
+    if (!name) return null;
+    let disp;
+    if (rsCJK(name)) {
+        const nt = (title && !name.replace(/\s/g, '').endsWith(title.replace(/\s/g, ''))) ? name + ' ' + title : name;
+        disp = [unit, nt].filter(Boolean).join('\n');
+    } else disp = [unit, name, title].filter(Boolean).join('\n');
+    const hay = [g('unitZh'), g('nameZh'), g('titleZh'), g('unitEn'), g('nameEn'), g('titleEn')].filter(Boolean).join(' ').replace(/\n/g, ' ');
+    return { disp, email: splitMails(g('email')).join('; '), attend: g('attend'), hay };
+}
+function rsList() {
+    const skip = document.getElementById('rs-skip').checked && (rsMap.attend ?? -1) >= 0;
+    const out = []; let skipped = 0;
+    rsRows.slice(rsHi + 1).forEach(r => {
+        const gst = rsGuest(r); if (!gst) return;
+        if (skip && /^(x|✕|×|n|no)$/i.test(gst.attend.trim()) || skip && /不克|不出席|不來|婉拒|取消/.test(gst.attend)) { skipped++; return; }
+        out.push(gst);
+    });
+    return { out, skipped };
+}
+function rsZones() {
+    const v = String(document.getElementById('rs-zones').value || '').trim();
+    let z = /[,，、\s\/]/.test(v) ? v.split(/[,，、\s\/]+/) : (/^[1-9]{2,}$/.test(v) ? v.split('') : [v]);
+    return z.map(n => parseInt(n, 10)).filter(n => n > 0).slice(0, 8);
+}
+window.rsRowsAuto = true;   // 排數有沒有被手動改過（inline 事件也要讀得到，所以放 window）
+// 前排優先：第 1 排 A→B→C 排滿，再排第 2 排
+function rsSeats(n) {
+    const zones = rsZones(), per = zones.reduce((a, b) => a + b, 0);
+    if (!per) return { zones, rows: 0, order: [], need: 0 };
+    const need = Math.max(1, Math.ceil(n / per)), ri = document.getElementById('rs-rows');
+    if (window.rsRowsAuto) ri.value = need;
+    const rows = Math.max(1, parseInt(ri.value, 10) || need), order = [], ZK = 'ABCDEFGH';
+    for (let r = 1; r <= rows; r++) zones.forEach((c, zi) => { for (let s = 1; s <= c; s++) order.push(ZK[zi] + r + '-' + s); });
+    return { zones, rows, order, need };
+}
+window.rsPaint = function () {
+    const okN = (rsMap.nameZh ?? -1) >= 0 || (rsMap.nameEn ?? -1) >= 0;
+    const got = RS_FIELDS.filter(([k]) => (rsMap[k] ?? -1) >= 0).map(([, l]) => l.replace(/（.*?）/g, '')).filter((v, i, a) => a.indexOf(v) === i);
+    const sm = document.getElementById('rs-map-sum');
+    sm.textContent = okN ? '✓ 欄位已自動對好（' + got.join('、') + '）　▸ 抓錯才需要展開修改' : '⚠ 抓不到姓名欄，請展開選擇';
+    sm.style.color = okN ? '#15803D' : '#B91C1C';
+    if (!okN) document.getElementById('rs-map-det').open = true;
+    document.getElementById('rs-skip-row').style.display = (rsMap.attend ?? -1) >= 0 ? '' : 'none';
+    const { out, skipped } = rsList(), st = rsSeats(out.length), per = st.zones.reduce((a, b) => a + b, 0);
+    const mail = out.filter(g => g.email).length;
+    const over = out.length - st.order.length;
+    document.getElementById('rs-sum').innerHTML = per
+        ? '共 <b>' + out.length + '</b> 位' + (skipped ? '（' + skipped + ' 位不出席先不排）' : '') + ' → ' + st.zones.join('＋') + '＝每排 ' + per + ' 位 × <b>' + st.rows + '</b> 排＝' + st.order.length + ' 席'
+          + (over > 0 ? '　<span style="color:#B91C1C;font-weight:700;">⚠ 不夠坐 ' + over + ' 位（至少要 ' + st.need + ' 排），多的人會放在「未分配賓客」</span>' : '，空 ' + (-over) + ' 席')
+          + '　有 Email <b>' + mail + '</b> 位'
+        : '<span style="color:#B91C1C;">請填每排座位數，例如 676</span>';
+    const box = document.getElementById('rs-prev'); box.innerHTML = '';
+    out.slice(0, 60).forEach((g, i) => {
+        const row = document.createElement('div'); row.className = 'nt-p';
+        const c = document.createElement('span'); c.className = 'nt-code'; c.textContent = st.order[i] || '—';
+        const w = document.createElement('div'); w.className = 'nt-who'; w.style.whiteSpace = 'pre-line'; w.textContent = g.disp;
+        if (g.email) { const s = document.createElement('small'); s.textContent = g.email; w.appendChild(s); }
+        row.appendChild(c); row.appendChild(w); box.appendChild(row);
+    });
+    if (out.length > 60) { const d = document.createElement('div'); d.className = 'nt-p'; d.style.color = '#6B7280'; d.textContent = '…還有 ' + (out.length - 60) + ' 位'; box.appendChild(d); }
+    if (!out.length) { const d = document.createElement('div'); d.className = 'nt-p'; d.textContent = '抓不到姓名，請在上面選「姓名（中）」或「姓名（英）」是哪一欄'; box.appendChild(d); }
+};
+window.rsApply = async function () {
+    if (!isAdmin) { toast('請先登入', 'ter'); return; }
+    const { out } = rsList(), st = rsSeats(out.length);
+    if (!out.length || !st.order.length) { toast('沒有可匯入的名單或沒填每排座位數', 'ter'); return; }
+    if (!confirm('將建立方陣座位：每排 ' + st.zones.join('＋') + '，共 ' + st.rows + ' 排\n照 Excel 順序、前排優先排入 ' + Math.min(out.length, st.order.length) + ' 位賓客' + (out.length > st.order.length ? '（' + (out.length - st.order.length) + ' 位放未分配）' : '') + '。\n\n⚠ 會覆寫「' + PROJECT_ID + '」目前的座位與分配（報到號碼、信箱、號碼卡設定會保留）。\n確定嗎？')) return;
+    const ZK = 'ABCDEFGH', newMaster = {}, newAssign = {}, newSrch = {};
+    st.zones.forEach((c, zi) => { for (let r = 1; r <= st.rows; r++) for (let s = 1; s <= c; s++) newMaster[ZK[zi] + r + '-' + s] = ''; });
+    const extra = [];
+    out.forEach((g, i) => { const code = st.order[i]; if (!code) { if (!extra.includes(g.disp)) extra.push(g.disp); return; } newAssign[code] = g.disp; if (g.hay && normQ(g.hay) !== normQ(g.disp)) newSrch[code] = g.hay; });
+    // 信箱跟著人走：原本有、名單上又不一樣的 → 逐一確認
+    const finalEmails = Object.assign({}, emails), conflicts = [];
+    const normM = v => String(v || '').toLowerCase().replace(/\s/g, '');
+    out.forEach(g => {
+        if (!g.email) return;
+        const k = ekey(g.disp), old = emails[k] || '';
+        if (!old) finalEmails[k] = g.email;
+        else if (normM(old) !== normM(g.email) && !conflicts.some(c => c.k === k)) conflicts.push({ k, name: g.disp, old, nu: g.email });
+    });
+    if (conflicts.length) { const pick = await askEmailConflicts(conflicts); conflicts.forEach(c => { if (pick.has(c.k)) finalEmails[c.k] = c.nu; }); }
+    Object.keys(finalEmails).forEach(k => { if (!finalEmails[k]) delete finalEmails[k]; });
+    setSyncStatus('saving');
+    try {
+        layoutMode = 'grid'; sessionStorage.setItem('taitra_layout', 'grid');
+        await set(ref(db, PROJECT_ID), {
+            seats_master2026: newMaster,
+            assignments2026: newAssign,
+            search2026: Object.keys(newSrch).length ? newSrch : null,
+            guest_list2026: extra.length ? extra : null,
+            emails2026: Object.keys(finalEmails).length ? fbSafe(finalEmails) : null,
+            badge_codes2026: Object.keys(badgeCodes).length ? fbSafe(badgeCodes) : null,
+            ticket2026: ticketTpl || null, mailtpl2026: mailTpl || null,
+            card_note2026: cardNote !== CARD_NOTE_DEF ? cardNote : null,
+            card_text2026: Object.keys(cardText).length ? { ...cardText } : null,
+            card_name2026: Object.keys(cardNames).length ? fbSafe(cardNames) : null,
+            mail_sent2026: Object.keys(mailSent).length ? fbSafe(mailSent) : null
+        });
+        document.getElementById('layout-modal-bg').classList.remove('show');
+        toast('🎉 已排入 ' + (out.length - extra.length) + ' 位（' + st.rows + ' 排）' + (extra.length ? '，' + extra.length + ' 位放在未分配賓客' : '') + '，可以直接拖曳調整', 'tok');
+    } catch (e) { console.error(e); setSyncStatus('error'); toast('寫入失敗：' + e.message, 'ter'); }
+};
+// 標準名單範本：之後收集名單建議都用這張
+window.rsDownloadTemplate = async function () {
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('貴賓名單');
+    const cols = [['序號', 6], ['出席', 7], ['單位(中)', 30], ['姓名(中)', 16], ['職稱(中)', 16], ['單位(英)', 34], ['姓名(英)', 26], ['職稱(英)', 26], ['Email', 32], ['備註', 24]];
+    cols.forEach(([, w], i) => ws.getColumn(i + 1).width = w);
+    const hr = ws.addRow(cols.map(c => c[0]));
+    hr.eachCell(c => { c.font = { name: '微軟正黑體', bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D3A6E' } }; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
+    ws.addRow([1, 'V', '經濟部國際貿易署', '劉威亷', '署長', 'International Trade Administration', 'Mr. ...', 'Director General', 'abc@example.com', '範例，可刪']);
+    ws.addRow([2, 'V', '貝里斯大使館', '', 'Coordinator', 'Embassy of Belize', 'Ms. Nicole Neal', 'Coordinator', '', '外國人姓名(中)可留白']);
+    ws.addRow([3, 'X', '某某公司', '王小明', '董事長', '', '', '', '', '出席填 X＝匯入時先不排']);
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    await downloadWorkbook(wb, '標準名單範本');
+};
 
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
