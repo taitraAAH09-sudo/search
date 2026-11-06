@@ -76,6 +76,9 @@ body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink)
 .badge-blue { background:var(--accent-light); } .badge-blue .badge-zone { color:var(--accent); }
 .badge-green { background:var(--green-light); } .badge-green .badge-zone { color:var(--green); }
 .badge-gold { background:var(--gold-light); } .badge-gold .badge-zone { color:var(--gold); }
+.badge-stand { background:#EDE9FE; } .badge-stand .badge-zone { color:#6D28D9; } .badge-stand .badge-seat { color:#6D28D9; }
+.result-card.is-stand { border:1.5px dashed #A78BFA; }
+.card-seat.stand { color:#6D28D9; }
 .badge-zone { font-family:"DM Mono",monospace; font-size:13px; font-weight:700; line-height:1.2; text-align:center; }
 .badge-seat { font-family:"Noto Serif TC",serif; font-size:12px; font-weight:700; color:var(--ink-2,#374151); margin-top:1px; }
 
@@ -275,7 +278,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup · V5</div>
+    <div class="header-tag">TAITRA · Event Lookup · V6</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -433,6 +436,11 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
     <div class="stat-tap" data-i18n="stat_tap_map">🗺 看全場席次圖</div>
   </div>
   <div class="stat">
+    <div class="stat-num" id="st-stand" style="color:#6D28D9;">0%</div>
+    <div class="stat-lbl" data-i18n="stat_stand">站票報到</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-stand-sub">0 / 0</div>
+  </div>
+  <div class="stat">
     <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
     <div class="stat-lbl" data-i18n="stat_empty">空位數</div>
   </div>
@@ -486,6 +494,7 @@ const I18N = {
   ba_not_seated:v=>`${v}（目前不在座位表 → 掃描/搜尋不會顯示）`,
   stat_checkin:"整體報到率", stat_ceremony:"揭幕貴賓報到率", stat_empty:"空位數", stat_total:"總席數",
   stat_tap:"👆 點我看名單",
+  stat_stand:"站票報到", lbl_stand:"站票", stand_line:"🧍 站票（沒有座位）", stand_cap:"站票", stand_big:"站", stand_bot:"無座位",
   stat_vphoto:"合影貴賓報到率", stat_vcall:"唱名貴賓報到率", stat_tap_map:"🗺 看全場席次圖",
   vm_title_photo:"🗺 合影貴賓 · 全場席次圖", vm_title_call:"🗺 唱名貴賓 · 全場席次圖",
   vm_tab_photo:"📸 合影", vm_tab_call:"🎤 唱名",
@@ -613,6 +622,7 @@ const I18N = {
   ba_not_seated:v=>`${v} (not on the seating chart → will not appear in scan or search)`,
   stat_checkin:"Check-in rate", stat_ceremony:"Unveiling VIP check-in", stat_empty:"Empty seats", stat_total:"Total seats",
   stat_tap:"👆 Tap for the list",
+  stat_stand:"Standing check-in", lbl_stand:"Standing", stand_line:"🧍 Standing (no seat)", stand_cap:"STAND", stand_big:"站", stand_bot:"No seat",
   stat_vphoto:"Photo VIP check-in", stat_vcall:"Roll-call VIP check-in", stat_tap_map:"🗺 Full seating map",
   vm_title_photo:"🗺 Photo-call VIPs · full map", vm_title_call:"🗺 Roll-call VIPs · full map",
   vm_tab_photo:"📸 Photo", vm_tab_call:"🎤 Roll call",
@@ -796,6 +806,12 @@ function applyEventTitle(){
 }
 applyEventTitle();
 
+let GUESTS=[], STAND={};   // 站票：賓客名單裡沒有座位的人；key＝STAND_<名字>，跟後台同一套
+const standKey=n=>'STAND_'+String(n||'').trim().replace(/[.#$\[\]\/\x00-\x1f\x7f'"`\\]/g,'_').slice(0,700);
+const isStand=c=>String(c).startsWith('STAND_');
+function rebuildStand(){ STAND={}; const seated=new Set(Object.values(DATA).filter(Boolean)); GUESTS.forEach(g=>{ if(g&&String(g).trim()&&!seated.has(g)) STAND[standKey(g)]=g; }); }
+function nameOf(c){ return isStand(c)?(STAND[c]||''):(DATA[c]||''); }
+function allPeople(){ return Object.entries(DATA).filter(([,n])=>n).concat(Object.entries(STAND)); }
 let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, TABLE_NOS={}, HEAD_RANK={}, BADGE_MAP={};
 // 主桌座位號＝禮賓序位（主位 1、主賓 2…），跟後台一致；一般桌照原本號碼
 function seatNo(code){ const m=code.match(/-(\d+)$/); return (/^H/.test(code)&&HEAD_RANK[code])?HEAD_RANK[code]:(m?m[1]:''); }
@@ -842,7 +858,7 @@ function refreshMain(){
 function updateStats(){
   const total=Object.keys(DATA).length;
   const filled=Object.values(DATA).filter(v=>v).length;
-  const checkinCount=Object.keys(CHECKINS).length;
+  const checkinCount=Object.keys(CHECKINS).filter(c=>DATA[c]).length;   // 只算有座位的人；站票另外算
   const empty=total-filled;
 
   const ceremonySeats=Object.keys(TAGS).filter(c=>tagLv(c)>=3&&DATA[c]);
@@ -867,6 +883,9 @@ function updateStats(){
   document.getElementById('st-checkin-sub').textContent=checkinCount+' / '+filled;
   document.getElementById('st-ceremony').textContent=ceremonyPct+'%';
   document.getElementById('st-ceremony-sub').textContent=ceremonyCheckin+' / '+ceremonyTotal;
+  const stK=Object.keys(STAND), stIn=stK.filter(c=>CHECKINS[c]).length;
+  document.getElementById('st-stand').textContent=pct(stIn,stK.length)+'%';
+  document.getElementById('st-stand-sub').textContent=stIn+' / '+stK.length;
   document.getElementById('stats-bar').style.display='';
 
   const now=new Date();
@@ -879,7 +898,13 @@ function rebuildData(){
   DATA={};
   Object.entries(MASTER).forEach(([c,n])=>DATA[c]=n||'');
   Object.entries(ASGN).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+  rebuildStand();
 }
+onValue(ref(db,PROJECT_ID+'/guest_list2026'),snap=>{
+  const d=snap.val(); GUESTS=(Array.isArray(d)?d:Object.values(d||{})).filter(Boolean);
+  rebuildStand();
+  if(loaded){ updateStats(); refreshMain(); }
+});
 onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
   MASTER=snap.val()||{};
   rebuildData();
@@ -944,6 +969,8 @@ onValue(ref(db,PROJECT_ID+'/badge_codes2026'),snap=>{
 });
 
 function parseSeatCode(code){
+  if(isStand(code)) return { detail:t('stand_line'), seatLine:t('stand_line'), sub:'', stand:true,
+    badgeTop:`<span class="bz-cap">${t('stand_cap')}</span><span class="bz-big">${t('stand_big')}</span>`, badgeBot:t('stand_bot'), color:'stand' };
   // 圓桌 R1_T2-5／主桌 H1-3：左邊徽章＝桌號（大字），右邊＝桌號・第幾席（粗體）＋桌名
   const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
   if(mr){
@@ -985,7 +1012,8 @@ window.doSearch=function(){
 
   // 支援空格分隔多個關鍵字（例如「台達 王」），每個字詞都要命中才算符合（AND 邏輯）
   const terms=kw.toLowerCase().split(/[\s\u3000]+/).filter(Boolean);
-  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms));
+  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms))
+    .concat(Object.entries(STAND).filter(([k,name])=>seatHit('',name,terms)));   // 站票也搜得到
 
   // 證件編號比對：關鍵字含數字時，同時比對編號對照表。
   // 「53」可對到「0053」：去前導零相等、後幾碼相符、或包含在編號數字中都算命中
@@ -1012,7 +1040,7 @@ window.doSearch=function(){
   if(exactOnly){ results.length=0; }
   const already=new Set(results.map(([c])=>c));
   Object.keys(badgeSeatHits).forEach(seat=>{
-    if(!already.has(seat)&&DATA.hasOwnProperty(seat)) results.unshift([seat,DATA[seat]]);
+    if(!already.has(seat)&&(DATA.hasOwnProperty(seat)||STAND[seat])) results.unshift([seat,nameOf(seat)]);
   });
 
   if(!results.length){
@@ -1030,14 +1058,14 @@ window.doSearch=function(){
     const hn=name?name.replace(re,'<mark>$1</mark>'):t('lbl_empty_seat');
     const hc=code.replace(re,'<mark>$1</mark>');
     const av=avatarHtml(name,48);   // 中文姓名對得上貴賓資料庫時帶出照片
-    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''} ${av?'has-avatar':''}">
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''} ${av?'has-avatar':''} ${p.stand?'is-stand':''}">
       <div class="seat-badge badge-${p.color}">
         <div class="badge-zone">${p.badgeTop}</div>
         <div class="badge-seat">${p.badgeBot}</div>
       </div>${av}
       <div class="card-info">
         <div class="card-name">${hn}${badgeSeatHits[code]?`<span class="match-tag high">🏷️ ${badgeSeatHits[code]}</span>`:''}</div>${(()=>{const al=srchLines(code,name,terms);return al.length?`<div class="card-alt">${al.map(l=>escH(l).replace(re,'<mark>$1</mark>')).join('\n')}</div>`:'';})()}
-        <div class="card-seat">${p.seatLine}</div>
+        <div class="card-seat${p.stand?' stand':''}">${p.seatLine}</div>
         ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
@@ -1053,10 +1081,10 @@ window.doSearch=function(){
 window.toggleCheckin=async function(code, checkIn){
   const now=new Date();
   const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${code}.json`;
+  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${encodeURIComponent(code)}.json`;
   if(checkIn){
     await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({time,name:DATA[code]||''})});
+      body:JSON.stringify(isStand(code)?{time,name:nameOf(code),standing:true}:{time,name:DATA[code]||''})});
   }else{
     await fetch(url,{method:'DELETE'});
   }
@@ -1089,6 +1117,9 @@ function resolveBadge(bc){
   if(hits.length>1) return {ambiguous:hits.length}; // 同名對到多人 → 不敢亂配
   // 3) 舊格式相容：值＝座位編號
   if(DATA.hasOwnProperty(v)&&DATA[v]) return {seat:v, name:DATA[v]};
+  // 4) 站票：沒有座位但在賓客名單上
+  const sk=Object.keys(STAND).find(k=>STAND[k]===v)||Object.keys(STAND).find(k=>{ const nn=_n(STAND[k]); return tokens.length&&tokens.every(t=>nn.includes(t)); });
+  if(sk) return {seat:sk, name:STAND[sk]};
   return null;
 }
 
@@ -1175,7 +1206,7 @@ window.badgeAdminSearch=function(){
   const box=document.getElementById('badge-guest-results');
   if(!kw){ box.innerHTML=''; return; }
   const terms=kw.split(/[\s\u3000]+/).filter(Boolean);
-  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms)).slice(0,20);
+  const results=Object.entries(DATA).filter(([code,name])=>seatHit(code,name,terms)).concat(Object.entries(STAND).filter(([k,n])=>seatHit('',n,terms))).slice(0,20);
   if(!results.length){
     box.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:13px;padding:6px 2px;">${t('ba_no_guest')}</div>`;
     return;
@@ -1183,14 +1214,14 @@ window.badgeAdminSearch=function(){
   box.innerHTML=results.map(([code,name])=>
     `<div onclick="pickBadgeGuest('${code}')" style="padding:9px 10px;background:rgba(255,255,255,0.08);border-radius:6px;margin-bottom:5px;color:#fff;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;">
       <span>${name||t('ba_unnamed')}</span>
-      <span style="opacity:.55;font-family:'DM Mono',monospace;">${code}</span>
+      <span style="opacity:.55;font-family:'DM Mono',monospace;">${isStand(code)?t('lbl_stand'):code}</span>
     </div>`
   ).join('');
 };
 window.pickBadgeGuest=function(code){
-  if(!DATA[code]){ alert(t('ba_pick_empty')); return; }
+  if(!nameOf(code)){ alert(t('ba_pick_empty')); return; }
   _badgeSelectedCode=code;
-  document.getElementById('badge-selected-guest').innerHTML=t('ba_selected',DATA[code],code);
+  document.getElementById('badge-selected-guest').innerHTML=t('ba_selected',nameOf(code),isStand(code)?t('lbl_stand'):code);
   document.getElementById('badge-guest-results').innerHTML='';
   document.getElementById('badge-guest-search').value='';
   document.getElementById('badge-code-input').focus();
@@ -1199,7 +1230,7 @@ window.submitBadgeCode=async function(){
   if(!_badgeSelectedCode) return alert(t('ba_need_guest'));
   const badge=document.getElementById('badge-code-input').value;
   if(!badge.trim()) return alert(t('ba_need_code'));
-  await saveBadgeCode(badge, DATA[_badgeSelectedCode]); // ← 存姓名：編號綁人不綁座位
+  await saveBadgeCode(badge, nameOf(_badgeSelectedCode)); // ← 存姓名：編號綁人不綁座位
   document.getElementById('badge-code-input').value='';
   document.getElementById('badge-selected-guest').textContent='';
   _badgeSelectedCode=null;
@@ -1217,7 +1248,7 @@ function renderBadgeAdminList(){
   box.innerHTML=entries.map(([badge,val])=>{
     const r=resolveBadge(badge);
     const label=(r&&r.seat)
-      ? t('ba_at_seat',r.name,r.seat)
+      ? t('ba_at_seat',r.name,isStand(r.seat)?t('lbl_stand'):r.seat)
       : (r&&r.ambiguous)
         ? `<span style="color:#fbbf24;">${t('ba_ambiguous',val,r.ambiguous)}</span>`
         : `<span style="opacity:.55;">${t('ba_not_seated',val)}</span>`;
@@ -1229,6 +1260,7 @@ function renderBadgeAdminList(){
 }
 
 function parseSeatLabel(code){
+  if(isStand(code)) return t('lbl_stand');
   const mr=code.match(/^(H\d+|R\d+_T\d+)-(\d+)$/);
   if(mr) return window.LANG==='en'?`${tblLabel(mr[1])} Seat ${seatNo(code)}`:`${tblLabel(mr[1])} 第${seatNo(code)}席`;
   const m2=code.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
@@ -1242,7 +1274,7 @@ window.exportCheckinReport=function(){
     return;
   }
 
-  const allSeats=Object.entries(DATA).filter(([,name])=>name);
+  const allSeats=allPeople();   // 含站票
   const checkedIn=allSeats.filter(([code])=>CHECKINS[code]);
   const notCheckedIn=allSeats.filter(([code])=>!CHECKINS[code]);
 
@@ -1278,7 +1310,7 @@ window.exportCheckinReport=function(){
   const inAoa=[[t('col_code'),t('col_desc'),t('col_name'),t('col_time')]];
   checkedIn.forEach(([code,name])=>{
     const ci=CHECKINS[code];
-    inAoa.push([code, parseSeatLabel(code), name, ci?ci.time||'':'']);
+    inAoa.push([isStand(code)?t('lbl_stand'):code, parseSeatLabel(code), name, ci?ci.time||'':'']);
   });
   const ws1=XLSX.utils.aoa_to_sheet(inAoa);
   ws1['!cols']=[{wch:14},{wch:20},{wch:42},{wch:10}];
@@ -1287,7 +1319,7 @@ window.exportCheckinReport=function(){
   // ── Sheet 3：未報到名單 ──
   const outAoa=[[t('col_code'),t('col_desc'),t('col_name')]];
   notCheckedIn.forEach(([code,name])=>{
-    outAoa.push([code, parseSeatLabel(code), name]);
+    outAoa.push([isStand(code)?t('lbl_stand'):code, parseSeatLabel(code), name]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(outAoa);
   ws2['!cols']=[{wch:14},{wch:20},{wch:42}];
@@ -1412,7 +1444,7 @@ async function processCapturedImage(input){
   const code=await tryDecodeBarcode(input);
   if(code){
     // 情況一：條碼內容本身就是座位代碼（直接命中）
-    if(DATA.hasOwnProperty(code)){
+    if(DATA.hasOwnProperty(code)&&DATA[code]){
       ov.classList.remove('show');
       renderBarcodeHit(code,code);
       return;
@@ -1446,7 +1478,7 @@ function renderBarcodeHit(seatCode,scannedCode){
   _lastMain=()=>renderBarcodeHit(seatCode,scannedCode);
   const main=document.getElementById('main');
   const p=parseSeatCode(seatCode);
-  const name=DATA[seatCode]||t('no_name');
+  const name=nameOf(seatCode)||t('no_name');
   const sub=scannedCode&&scannedCode!==seatCode?t('barcode_code',scannedCode):'';
   main.innerHTML=`<div class="result-count" style="color:#4ade80;">${t('barcode_hit')}${sub}</div>
     <div class="result-list">
@@ -1457,7 +1489,7 @@ function renderBarcodeHit(seatCode,scannedCode){
         </div>
         <div class="card-info">
           <div class="card-name">${name}<span class="match-tag high">${t('tag_barcode_hit')}</span></div>
-          <div class="card-seat">${p.seatLine}</div>
+          <div class="card-seat${p.stand?' stand':''}">${p.seatLine}</div>
           ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
         </div>
         <button class="checkin-btn ${CHECKINS[seatCode]?'done':''}"
@@ -1620,7 +1652,7 @@ function renderScanResults(text){
   let badgeHtml='';
   if(badgeHit){
     const p=parseSeatCode(badgeHit.seatCode);
-    const name=DATA[badgeHit.seatCode]||t('no_name');
+    const name=nameOf(badgeHit.seatCode)||t('no_name');
     const confLabel=badgeHit.dist===0?t('badge_exact'):t('badge_fuzzy');
     badgeHtml=`<div class="result-count" style="color:#4ade80;">${confLabel}：${badgeHit.badge}</div>
     <div class="result-list">
@@ -1631,7 +1663,7 @@ function renderScanResults(text){
         </div>
         <div class="card-info">
           <div class="card-name">${name}<span class="match-tag high">${t('tag_badge_hit')}</span></div>
-          <div class="card-seat">${p.seatLine}</div>
+          <div class="card-seat${p.stand?' stand':''}">${p.seatLine}</div>
           ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
         </div>
         <button class="checkin-btn ${CHECKINS[badgeHit.seatCode]?'done':''}"
@@ -1642,8 +1674,7 @@ function renderScanResults(text){
     </div>`;
   }
 
-  const scored=Object.entries(DATA)
-    .filter(([c,n])=>n)
+  const scored=allPeople()
     .map(([code,name])=>({code,name,score:fuzzyScore(name,text)}))
     .filter(x=>x.score>=1)   // 放寬門檻：只要沾到一個字就先列出來，依相似度排序讓使用者自己判斷
     .sort((a,b)=>b.score-a.score)
@@ -1672,7 +1703,7 @@ function renderScanResults(text){
       </div>
       <div class="card-info">
         <div class="card-name">${hn}${tag}</div>
-        <div class="card-seat">${p.seatLine}</div>
+        <div class="card-seat${p.stand?' stand':''}">${p.seatLine}</div>
         ${p.sub?`<div class="card-zone">${escH(p.sub)}</div>`:''}
       </div>
       <button class="checkin-btn ${CHECKINS[code]?'done':''}"
