@@ -115,6 +115,10 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .chip{font-size:11px;padding:4px 22px 4px 10px;border-radius:99px;background:#F3F4F6;color:#6B7280;border:0.5px solid #E5E7EB;cursor:grab;white-space:nowrap;user-select:none;position:relative;}
 .chip:hover{border-color:#185FA5;color:#185FA5;}
 .chip.dragging{opacity:.4;}
+.chip .st-b{font-size:9px;font-weight:800;background:#EDE9FE;color:#6D28D9;border:1px solid #C4B5FD;padding:0 5px;border-radius:4px;margin-right:5px;}
+.chip .st-ok{font-size:9px;font-weight:800;background:#16A34A;color:#fff;padding:0 5px;border-radius:4px;margin-left:5px;}
+.chip.st-done{background:#DCFCE7;border-color:#86EFAC;color:#166534;}
+.th-chip.st i{background:#C4B5FD;color:#3B0764;}
 .chip-x{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
 .chip-x:hover{background:#EF4444;}
 #m-srch{display:block;box-sizing:border-box;width:100%;font-size:12px;line-height:1.5;padding:7px 9px;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB;color:#374151;resize:vertical;min-height:38px;outline:none;font-family:inherit;margin-bottom:4px;}
@@ -712,7 +716,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V31</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V32</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -871,7 +875,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V31</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V32</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -887,6 +891,7 @@ body.theater #rv-tools{display:none!important;}
     <div class="stat"><span class="sv" id="sa">0</span><span class="sl">已分配</span></div>
     <div class="stat"><span class="sv" id="se">0</span><span class="sl">空位</span></div>
     <div class="stat"><span class="sv" id="sg">0</span><span class="sl">賓客</span></div>
+    <div class="stat"><span class="sv" id="sst" style="color:#7C3AED;">0</span><span class="sl">站票</span></div>
   </div>
   <div style="flex:1;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
     <button class="btn btn-theater" onclick="enterTheater()">🎬 電影院劇院模式</button>
@@ -991,7 +996,7 @@ body.theater #rv-tools{display:none!important;}
 </div>
 
 <div class="panel">
-  <div class="panel-hdr">賓客名單 <span class="count" id="uc-count">0 未分配</span></div>
+  <div class="panel-hdr">賓客名單 <span class="count" id="uc-count">0 站票</span><span style="font-size:11px;font-weight:400;color:#9CA3AF;">下面沒有座位的人＝站票，手機查詢也搜得到；沒選座位時點名字＝報到／取消報到，先點座位再點名字＝排進那個座位</span></div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
     <div class="sr" style="margin-bottom:0;">
       <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">🔍 搜尋</span>
@@ -1475,6 +1480,25 @@ const TAG_NAME={ceremony:'揭幕', photo:'合影', call:'唱名'};
 const tagLv=c=>TAG_LV[tags[c]]||0;
 window.TAG_LV=TAG_LV;
 const guests=[];
+// 🧍 站票：在賓客名單裡、但沒有座位的人。報到記在 checkins2026/STAND_<名字>（手機查詢頁用同一個 key）
+const standKey=n=>'STAND_'+String(n||'').trim().replace(/[.#$\[\]\/\x00-\x1f\x7f'"`\\]/g,'_').slice(0,700);
+window.standKey=standKey;
+function standingList(){ const a=new Set(Object.values(asgn)); return guests.filter(g=>g&&g.trim()&&!a.has(g)); }
+window.toggleStandCheckin=async function(name){
+  if(!name||!PROJECT_ID) return;
+  const k=standKey(name), r=ref(db, PROJECT_ID+'/checkins2026/'+k);
+  if(!window.checkins) window.checkins={};
+  try{
+    if(window.checkins[k]){
+      if(!confirm('取消「'+name.replace(/\n/g,' ')+'」（站票）的報到？')) return;
+      await set(r,null); delete window.checkins[k]; toast('已取消報到','tin');
+    }else{
+      const d=new Date(), data={time:String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),name,standing:true};
+      await set(r,data); window.checkins[k]=data; toast('✅ '+name.replace(/\n/g,' ').slice(0,24)+'（站票）已報到','tok');
+    }
+  }catch(e){ toast('報到失敗，請檢查網路','ter'); }
+  refreshAll();
+};
 let dragGuest=null, dragFrom=null, masterLoaded=false, saveTimer=null;
 let modalCode=null; 
 let currentTableCode=null;
@@ -3351,7 +3375,13 @@ function applyTheaterSearch(){
   });
   const coll=new Intl.Collator('en',{numeric:true});
   thHits.sort((a,b)=>coll.compare(a.code,b.code));
-  if(!thHits.length){ cnt.innerHTML='找不到符合的座位'; return; }
+  const stHits=byCode?[]:standingList().filter(g=>fuzzyHit(g,kw));
+  if(!thHits.length&&!stHits.length){ cnt.innerHTML='找不到符合的座位'; return; }
+  if(!thHits.length){
+    cnt.innerHTML=`找到 <b>${stHits.length}</b> 位站票（沒有座位）　點名牌＝報到／取消`;
+    stHits.slice(0,80).forEach(g=>box.appendChild(thStandChip(g)));
+    return;
+  }
   const ciN=thHits.filter(h=>window.checkins&&window.checkins[h.code]).length;
   cnt.innerHTML=`找到 <b>${thHits.length}</b> 格`+(ciN?`，其中 ${ciN} 格已報到`:'')+(thHits.length>1?'　點下方名牌可直接開啟':'　按 Enter 直接開啟');
   thHits.slice(0,80).forEach(({code,name})=>{
@@ -3364,6 +3394,15 @@ function applyTheaterSearch(){
     c.onclick=()=>{ openModal(code); locateSeat(code); };
     box.appendChild(c);
   });
+  if(stHits.length){ cnt.innerHTML+=`　另有 <b>${stHits.length}</b> 位站票`; stHits.slice(0,80).forEach(g=>box.appendChild(thStandChip(g))); }
+}
+function thStandChip(g){
+  const done=window.checkins&&window.checkins[standKey(g)];
+  const c=document.createElement('span'); c.className='th-chip st'+(done?' done':'');
+  c.innerHTML='<i>🧍 站票</i>';
+  c.appendChild(document.createTextNode((done?'✓ ':'')+g.replace(/\n/g,' ')));
+  c.onclick=()=>toggleStandCheckin(g);
+  return c;
 }
 window.clearTheaterSearch=function(){ const i=document.getElementById('th-q'); i.value=''; applyTheaterSearch(); i.focus(); };
 (function initTheaterSearch(){
@@ -4042,6 +4081,7 @@ function updateStats(){
   document.getElementById('sa').textContent=n+oc;
   document.getElementById('se').textContent=total-n-oc;
   document.getElementById('sg').textContent=gc;
+  { const st=standingList(); const el=document.getElementById('sst'); if(el) el.textContent=st.length; }
   document.getElementById('pf').style.width=(gc?n/gc*100:0)+'%';
   document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
   const thCi=document.getElementById('th-ci'), thAs=document.getElementById('th-as');
@@ -4139,34 +4179,35 @@ window.renderChips=function renderChips(){
       chip.onclick=()=>{ locateSeat(code); if(byCode) openModal(code); };
       box.appendChild(chip);
     });
-    unassignedMatches.forEach(g=>{
-      const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
-      chip.onclick=()=>{
-        if(!isAdmin) return toast('請先登入才能指派座位','ter');
-        if(modalCode&&!occupied[modalCode]){if(asgn[modalCode]!==g)delete srch[modalCode];asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
-        else toast('請先點選一個座位','ter');
-      };
-      const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
-      xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
-      chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
-    });
+    unassignedMatches.forEach(g=>box.appendChild(standChip(g)));
     return;
   }
 
   let list=guests.filter(g=> g && g.trim() !== '' && !aset.has(g));
-  document.getElementById('uc-count').textContent=list.length+' 未分配';
-  if(!list.length){box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">🎉 所有賓客皆已分配！</div>';return;}
-  list.forEach(g=>{
-    const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
-    chip.onclick=()=>{
+  document.getElementById('uc-count').textContent=list.length+' 站票'+(list.length?'（已報到 '+list.filter(g=>window.checkins&&window.checkins[standKey(g)]).length+'）':'');
+  if(!list.length){box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">目前沒有站票；所有賓客都有座位</div>';return;}
+  list.forEach(g=>box.appendChild(standChip(g)));
+}
+// 站票名牌：沒選座位時點一下＝報到／取消；先點座位（彈窗開著）再點＝排進那個座位
+function standChip(g){
+  const k=standKey(g), ci=window.checkins&&window.checkins[k];
+  const chip=document.createElement('span'); chip.className='chip'+(ci?' st-done':'');
+  const b=document.createElement('span'); b.className='st-b'; b.textContent='站'; chip.appendChild(b);
+  chip.appendChild(document.createTextNode(g));
+  if(ci){ const o=document.createElement('span'); o.className='st-ok'; o.textContent='✓ '+(ci.time||'已報到'); chip.appendChild(o); }
+  chip.title='站票（沒有座位）｜點一下＝報到／取消報到；要排座位請先點空位再點名字';
+  chip.onclick=()=>{
+    if(modalCode&&!occupied[modalCode]&&document.getElementById('modal-bg').classList.contains('show')){
       if(!isAdmin) return toast('請先登入才能指派座位','ter');
-      if(modalCode&&!occupied[modalCode]){if(asgn[modalCode]!==g)delete srch[modalCode];asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
-      else toast('請先點選一個座位','ter');
-    };
+      if(asgn[modalCode]!==g)delete srch[modalCode];asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);
+    } else toggleStandCheckin(g);
+  };
+  if(isAdmin){
     const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
     xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
-    chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
-  });
+    chip.appendChild(xBtn); chipDrag(chip,g);
+  }
+  return chip;
 }
 
 function removeGuest(g){
@@ -4666,10 +4707,10 @@ function exportUnassignedSheet(wb) {
     const assignedNames = new Set(Object.values(asgn).filter(Boolean));
     const unassigned = guests.filter(g => g && g.trim() !== '' && !assignedNames.has(g));
     if (unassigned.length > 0) {
-        const ws2 = wb.addWorksheet('未分配賓客');
-        ws2.getColumn(1).width = 36;
-        ws2.addRow(['未分配賓客名單']).font = { bold:true };
-        unassigned.forEach(g => ws2.addRow([g]));
+        const ws2 = wb.addWorksheet('未分配賓客');   // 工作表名稱不改：重新上傳 Excel 時靠這張還原站票名單
+        ws2.getColumn(1).width = 46; ws2.getColumn(2).width = 14;
+        ws2.addRow(['站票名單（沒有座位）', '報到']).font = { bold:true };
+        unassigned.forEach(g => { const ci = window.checkins && window.checkins[standKey(g)]; ws2.addRow([g, ci ? '✓ ' + (ci.time || '') : '']); });
     }
 }
 
