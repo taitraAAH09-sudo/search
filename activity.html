@@ -716,7 +716,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V33</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V35</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -875,7 +875,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V33</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V35</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -1510,6 +1510,12 @@ async function resetGuestsFromDb(){
   if (masterLoaded) refreshAll();
 }
 function standingList(){ const a=new Set(Object.values(asgn)); return guests.filter(g=>g&&g.trim()&&!a.has(g)); }
+/* V35：站票是獨立系統。上方匯入 Excel／名單排座只換座位，下方站票名單和站票報到原封不動帶過去 */
+function keepStanding(){
+  const list=standingList();
+  const ci={}; Object.entries(window.checkins||{}).forEach(([k,v])=>{ if(k.startsWith('STAND_')) ci[k]=v; });
+  return { list, ci: Object.keys(ci).length ? ci : null };
+}
 window.toggleStandCheckin=async function(name){
   if(!name||!PROJECT_ID) return;
   const k=standKey(name), r=ref(db, PROJECT_ID+'/checkins2026/'+k);
@@ -3863,6 +3869,7 @@ async function processExcelFile(file) {
     if (isRound) Object.entries(tablePos).forEach(([k, v]) => { if (tablesNow.has(k)) posKeep[k] = v; });
 
     clearTimeout(saveTimer); saveTimer = null;   // 舊席次圖還沒存的那一筆不要蓋到新的
+    const stKeep = keepStanding();
     await set(ref(db, PROJECT_ID), {
       guest_reset2026: Date.now(),   // 站票名單跟著這張新席次圖重來
 
@@ -3881,14 +3888,14 @@ async function processExcelFile(file) {
       seats2026: roundExtra && Object.keys(roundExtra.occ).length ? roundExtra.occ : null,
       table_names2026: roundExtra && Object.keys(roundExtra.tableNames).length ? roundExtra.tableNames : null,
       table_no2026: roundExtra && Object.keys(roundExtra.tableNos).length ? roundExtra.tableNos : null,
-      guest_list2026: roundExtra && roundExtra.guests.length ? roundExtra.guests : null,
+      guest_list2026: stKeep.list.length ? stKeep.list : null,   // 站票原封不動
       detail_chart2026: detailNew,
       venue_shape2026: isRound && venueShape ? venueShape : null,
       table_pos2026: Object.keys(posKeep).length ? posKeep : null,
       pillars2026: isRound && Object.keys(pillars).length ? { ...pillars } : null,
       stage2026: isRound && stagePos ? stagePos : null,
       room2026: isRound && roomSize ? roomSize : null,
-      checkins2026: null
+      checkins2026: stKeep.ci   // 座位報到清掉，站票報到保留
     });
     await resetGuestsFromDb();
 
@@ -3946,13 +3953,16 @@ window.applyLayout = async function() {
     try {
         // 【核心修正】：這裡強制清空該活動路徑並寫入新結構，確保 Firebase 有效觸發 onValue
         // 如果是新活動，這一行會直接建立資料庫
+        const stKeep = keepStanding();   // V35：站票獨立，重建座位不動它
         await set(ref(db, PROJECT_ID), {
+            guest_reset2026: Date.now(),
+            guest_list2026: stKeep.list.length ? stKeep.list : null,
             seats_master2026: newMaster,
             assignments2026: null, // 新架構必須清除舊分配
             tags2026: null,
             seats2026: null,
             table_names2026: null, // 同步清除舊桌名，避免跟新格局殘留並存
-            checkins2026: null,
+            checkins2026: stKeep.ci,
             venue_shape2026: mode === 'round' ? layoutShapePick : null,
             pillars2026: mode === 'round' && Object.keys(pillars).length ? { ...pillars } : null,
             stage2026: mode === 'round' && stagePos ? stagePos : null,
@@ -6814,12 +6824,15 @@ window.rsApply = async function () {
     try {
         layoutMode = 'grid'; sessionStorage.setItem('taitra_layout', 'grid');
         clearTimeout(saveTimer); saveTimer = null;   // 舊席次圖還沒存的那一筆不要蓋到新的
+        const stKeep = keepStanding();
+        extra.forEach(g => { if (!stKeep.list.includes(g)) stKeep.list.push(g); });   // 坐不下的人加進站票，原本的站票不動
         await set(ref(db, PROJECT_ID), {
             guest_reset2026: Date.now(),   // 站票名單跟著這張新席次圖重來
             seats_master2026: newMaster,
             assignments2026: newAssign,
             search2026: Object.keys(newSrch).length ? newSrch : null,
-            guest_list2026: extra.length ? extra : null,
+            guest_list2026: stKeep.list.length ? stKeep.list : null,
+            checkins2026: stKeep.ci,
             emails2026: Object.keys(finalEmails).length ? fbSafe(finalEmails) : null,
             badge_codes2026: Object.keys(badgeCodes).length ? fbSafe(badgeCodes) : null,
             ticket2026: ticketTpl || null, mailtpl2026: mailTpl || null,
