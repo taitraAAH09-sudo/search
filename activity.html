@@ -716,7 +716,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V32</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V33</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -875,7 +875,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V32</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V33</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -1033,7 +1033,7 @@ body.theater #rv-tools{display:none!important;}
 </div>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getDatabase,ref,onValue,set,remove,update}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getDatabase,ref,onValue,set,remove,update,get}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const fb=initializeApp({
     apiKey: "AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
@@ -1244,6 +1244,10 @@ window.confirmEventSelect = async function() {
   }
   errEl.style.display = 'none';
 
+  // 換活動前：上一場還沒存的修改先存完（用的還是上一場的 ref），避免 0.8 秒後才存、存進新活動
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; try { await saveAll(); } catch(e) {} }
+  guestResetSeen = undefined;
+
   // 自動依據使用者輸入的名稱建立 Firebase 專屬節點（過濾違規字元）
   const safeNodeId = 'EVENT_' + eventName.replace(/[.#$\[\]]/g, '_').replace(/\s+/g, '_');
   PROJECT_ID = safeNodeId;
@@ -1341,6 +1345,13 @@ window.confirmEventSelect = async function() {
     list.forEach(n=>{ if(n && !guests.includes(n)) guests.push(n); });
     guests.sort();
     if(masterLoaded)refreshAll();
+  }));
+
+  // 匯入 Excel 重開席次圖時會寫 guest_reset2026：任何一台開著的電腦收到 → 站票名單整份換成新席次圖的
+  activeListeners.push(onValue(ref(db, PROJECT_ID+'/guest_reset2026'), snap => {
+    const v = snap.val() || 0;
+    if (guestResetSeen !== undefined && v !== guestResetSeen) resetGuestsFromDb();
+    guestResetSeen = v;
   }));
 
   activeListeners.push(onValue(tableNamesRef, snap => {
@@ -1483,6 +1494,21 @@ const guests=[];
 // 🧍 站票：在賓客名單裡、但沒有座位的人。報到記在 checkins2026/STAND_<名字>（手機查詢頁用同一個 key）
 const standKey=n=>'STAND_'+String(n||'').trim().replace(/[.#$\[\]\/\x00-\x1f\x7f'"`\\]/g,'_').slice(0,700);
 window.standKey=standKey;
+/* 重開席次圖（匯入 Excel）後：本機的賓客名單不再沿用舊的，改成只認資料庫裡這張新席次圖的
+   ＝新排入座位的人＋Excel 裡「未分配賓客」。舊名單裡的人不會再變成站票。 */
+let guestResetSeen;
+async function resetGuestsFromDb(){
+  clearTimeout(saveTimer); saveTimer = null;   // 舊名單還沒存的那一筆不要再寫回去
+  try{
+    const [gs, as] = await Promise.all([get(guestsRef), get(assignRef)]);
+    const gl = gs.val();
+    const list = Array.isArray(gl) ? gl : Object.values(gl || {});
+    guests.length = 0;
+    [...list, ...Object.values(as.val() || {})].forEach(n => { if (n && !guests.includes(n)) guests.push(n); });
+    guests.sort();
+  }catch(e){ console.warn('站票名單重設失敗', e); }
+  if (masterLoaded) refreshAll();
+}
 function standingList(){ const a=new Set(Object.values(asgn)); return guests.filter(g=>g&&g.trim()&&!a.has(g)); }
 window.toggleStandCheckin=async function(name){
   if(!name||!PROJECT_ID) return;
@@ -3836,7 +3862,10 @@ async function processExcelFile(file) {
     const posKeep = {};
     if (isRound) Object.entries(tablePos).forEach(([k, v]) => { if (tablesNow.has(k)) posKeep[k] = v; });
 
+    clearTimeout(saveTimer); saveTimer = null;   // 舊席次圖還沒存的那一筆不要蓋到新的
     await set(ref(db, PROJECT_ID), {
+      guest_reset2026: Date.now(),   // 站票名單跟著這張新席次圖重來
+
       seats_master2026: newMaster,
       assignments2026: Object.keys(newAssign).length ? newAssign : null,
       tags2026: totalTags > 0 ? newTags : null,
@@ -3861,6 +3890,7 @@ async function processExcelFile(file) {
       room2026: isRound && roomSize ? roomSize : null,
       checkins2026: null
     });
+    await resetGuestsFromDb();
 
     showExcelStatus(`✅ 寫入完成！${totalAssign} 筆賓客 / ${totalMaster} 格座位（${isRound ? '圓桌' : '方陣'}模式）` + (conflicts.length ? `；信箱 ${mailSwapped} 位改用 Excel、${conflicts.length - mailSwapped} 位保留原本` : '') + (codeKept ? `；${codeKept} 位維持原本的報到號碼` : ''), 'ok');
     toast('🎉 座位架構已由 Excel 建立完成！', 'tok');
@@ -6783,7 +6813,9 @@ window.rsApply = async function () {
     setSyncStatus('saving');
     try {
         layoutMode = 'grid'; sessionStorage.setItem('taitra_layout', 'grid');
+        clearTimeout(saveTimer); saveTimer = null;   // 舊席次圖還沒存的那一筆不要蓋到新的
         await set(ref(db, PROJECT_ID), {
+            guest_reset2026: Date.now(),   // 站票名單跟著這張新席次圖重來
             seats_master2026: newMaster,
             assignments2026: newAssign,
             search2026: Object.keys(newSrch).length ? newSrch : null,
@@ -6796,6 +6828,7 @@ window.rsApply = async function () {
             card_name2026: Object.keys(cardNames).length ? fbSafe(cardNames) : null,
             mail_sent2026: Object.keys(mailSent).length ? fbSafe(mailSent) : null
         });
+        await resetGuestsFromDb();
         document.getElementById('layout-modal-bg').classList.remove('show');
         toast('🎉 已排入 ' + (out.length - extra.length) + ' 位（' + st.rows + ' 排）' + (extra.length ? '，' + extra.length + ' 位放在未分配賓客' : '') + '，可以直接拖曳調整', 'tok');
     } catch (e) { console.error(e); setSyncStatus('error'); toast('寫入失敗：' + e.message, 'ter'); }
