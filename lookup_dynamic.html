@@ -278,7 +278,7 @@ textarea.wk-input { min-height:76px; resize:vertical; line-height:1.6; }
 
 <div class="header">
   <div class="top-row">
-    <div class="header-tag">TAITRA · Event Lookup · V6</div>
+    <div class="header-tag">TAITRA · Event Lookup · V8</div>
     <div class="lang-switch">
       <button type="button" class="lang-btn" data-lang="zh-TW" onclick="setLang('zh-TW')">中文</button>
       <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
@@ -809,7 +809,13 @@ applyEventTitle();
 let GUESTS=[], STAND={};   // 站票：賓客名單裡沒有座位的人；key＝STAND_<名字>，跟後台同一套
 const standKey=n=>'STAND_'+String(n||'').trim().replace(/[.#$\[\]\/\x00-\x1f\x7f'"`\\]/g,'_').slice(0,700);
 const isStand=c=>String(c).startsWith('STAND_');
-function rebuildStand(){ STAND={}; const seated=new Set(Object.values(DATA).filter(Boolean)); GUESTS.forEach(g=>{ if(g&&String(g).trim()&&!seated.has(g)) STAND[standKey(g)]=g; }); }
+let STAND_LIST=[], STAND_INIT=false;   // V7：後台 V36 起站票是獨立名單 stand_list2026，換座位不會讓人掉進站票
+function rebuildStand(){
+  // V8：沒有坐在座位上的人一律＝站票（賓客名單＋後台手動新增的站票，扣掉目前有座位的）
+  STAND={};
+  const seated=new Set(Object.values(DATA).filter(Boolean));
+  [...GUESTS, ...STAND_LIST].forEach(g=>{ if(g&&String(g).trim()&&!seated.has(g)) STAND[standKey(g)]=g; });
+}
 function nameOf(c){ return isStand(c)?(STAND[c]||''):(DATA[c]||''); }
 function allPeople(){ return Object.entries(DATA).filter(([,n])=>n).concat(Object.entries(STAND)); }
 let DATA={}, MASTER={}, ASGN={}, TAGS={}, CHECKINS={}, TABLE_NAMES={}, TABLE_NOS={}, HEAD_RANK={}, BADGE_MAP={};
@@ -902,6 +908,16 @@ function rebuildData(){
 }
 onValue(ref(db,PROJECT_ID+'/guest_list2026'),snap=>{
   const d=snap.val(); GUESTS=(Array.isArray(d)?d:Object.values(d||{})).filter(Boolean);
+  rebuildStand();
+  if(loaded){ updateStats(); refreshMain(); }
+});
+onValue(ref(db,PROJECT_ID+'/stand_list2026'),snap=>{
+  const d=snap.val(); STAND_LIST=(Array.isArray(d)?d:Object.values(d||{})).filter(Boolean);
+  rebuildStand();
+  if(loaded){ updateStats(); refreshMain(); }
+});
+onValue(ref(db,PROJECT_ID+'/stand_init2026'),snap=>{
+  STAND_INIT=!!snap.val();
   rebuildStand();
   if(loaded){ updateStats(); refreshMain(); }
 });
