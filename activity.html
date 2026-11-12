@@ -129,6 +129,18 @@ h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:fle
 .th-chip.st i{background:#C4B5FD;color:#3B0764;}
 .chip-x{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
 .chip-x:hover{background:#EF4444;}
+/* V38：站票直接改名 */
+.chip.st-adm{padding-right:40px;}
+.chip-e{position:absolute;right:22px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#C4B5FD;color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
+.chip-e:hover{background:#7C3AED;}
+.st-edit{font-size:12px;padding:3px 10px;border-radius:99px;border:1.5px solid #7C3AED;outline:none;font-family:inherit;min-width:140px;box-shadow:0 0 0 3px #EDE9FE;}
+#sb-old{margin-top:10px;border:1px solid #EDE9FE;border-radius:8px;background:#FBFAFF;}
+#sb-old summary{cursor:pointer;font-size:12px;font-weight:700;color:#6D28D9;padding:6px 8px;}
+#sb-old-list{max-height:200px;overflow-y:auto;padding:0 8px 8px;}
+#sb-old-list .row{display:flex;gap:6px;align-items:center;margin-top:4px;}
+#sb-old-list .row input{flex:1;font-size:12px;padding:4px 8px;border:1px solid #E5E7EB;border-radius:6px;font-family:inherit;}
+#sb-old-list .row input:focus{outline:none;border-color:#7C3AED;}
+#sb-old-list .row .ok{font-size:10px;color:#16A34A;font-weight:700;}
 #m-srch{display:block;box-sizing:border-box;width:100%;font-size:12px;line-height:1.5;padding:7px 9px;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB;color:#374151;resize:vertical;min-height:38px;outline:none;font-family:inherit;margin-bottom:4px;}
 #m-srch:focus{border-color:#93C5FD;background:#fff;box-shadow:0 0 0 2px rgba(37,99,235,.12);}
 .srch-hint{font-size:11px;color:#9CA3AF;margin-bottom:12px;}
@@ -535,6 +547,7 @@ body.theater #rv-tools{display:none!important;}
     <textarea id="sb-text" placeholder="外貿協會 ABC 組長&#10;台灣螺絲工業同業公會 蔡永裕 理事長&#10;…" oninput="standBatchPreview()"></textarea>
     <div id="sb-count" style="font-size:12px;margin-top:6px;color:#6D28D9;font-weight:700;"></div>
     <div id="sb-prev"></div>
+    <details id="sb-old" open><summary>✏️ 已在名單裡的站票（<span id="sb-old-n">0</span>）— 直接在這裡改名字，按 Enter 或點別處就存</summary><div id="sb-old-list"></div></details>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
       <button class="btn" onclick="closeStandBatch()">取消</button>
       <button class="btn" onclick="applyStandBatch()" style="background:#7C3AED;border-color:#7C3AED;color:#fff;font-weight:700;">➕ 加入站票</button>
@@ -737,7 +750,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V37</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V38</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -896,7 +909,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V37</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V38</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -1588,6 +1601,33 @@ function removeStand(g){
   const k=standKey(g); if(window.checkins&&window.checkins[k]){ delete window.checkins[k]; set(ref(db, PROJECT_ID+'/checkins2026/'+k), null).catch(()=>{}); }
   refreshAll(); saveStand(); scheduleSave();
 }
+/* V38：站票直接改名（不用先排進座位）。名單、站票報到、報到號碼、信箱都跟著搬到新名字 */
+const standShow=g=>String(g||'').replace(/\n/g,' ');
+async function renameStand(oldN, raw){
+  if(!isAdmin){ toast('請先登入','ter'); return false; }
+  const nu=splitStandLines(String(raw||'').replace(/\n/g,' '))[0]||'';
+  if(!nu){ toast('名字不能空白；要刪除請按 ✕','ter'); return false; }
+  if(nu===oldN||nu===standShow(oldN)) return true;   // 沒改
+  if(Object.values(asgn).includes(nu)){ toast('「'+nu.slice(0,20)+'」已經坐在座位上，不能改成同名','ter'); return false; }
+  if(standingList().includes(nu)){ toast('站票名單裡已經有「'+nu.slice(0,20)+'」','ter'); return false; }
+  if(!standInit){ standingLegacy().forEach(x=>{ if(!stand.includes(x)) stand.push(x); }); standInit=true; }
+  const i=stand.indexOf(oldN); if(i>-1) stand[i]=nu; else stand.push(nu);
+  const j=guests.indexOf(oldN); if(j>-1) guests[j]=nu; else if(!guests.includes(nu)) guests.push(nu);
+  guests.sort();
+  // 站票報到紀錄跟著走
+  const ko=standKey(oldN), kn=standKey(nu), ci=window.checkins&&window.checkins[ko];
+  if(ci){
+    const data=Object.assign({},ci,{name:nu});
+    window.checkins[kn]=data; delete window.checkins[ko];
+    try{ await set(ref(db, PROJECT_ID+'/checkins2026/'+kn), data); await set(ref(db, PROJECT_ID+'/checkins2026/'+ko), null); }
+    catch(e){ toast('報到紀錄搬移失敗，請檢查網路','ter'); }
+  }
+  if((typeof emailOf==='function'&&emailOf(oldN))||(typeof codeOf==='function'&&codeOf(oldN))) await window.migratePerson(oldN, nu);
+  refreshAll(); saveStand(); scheduleSave();
+  toast('✏️ 已改名：'+nu.slice(0,24),'tok');
+  return true;
+}
+window.renameStand=renameStand;
 /* V35／V36：站票是獨立系統。上方匯入 Excel／名單排座／重建架構只換座位，下方站票名單和站票報到原封不動帶過去 */
 function keepStanding(){
   const list=standingList(), all=allPeople();
@@ -4328,11 +4368,53 @@ function standChip(g){
     } else toggleStandCheckin(g);
   };
   if(isAdmin){
+    chip.classList.add('st-adm');
+    const eBtn=document.createElement('button');eBtn.className='chip-e';eBtn.textContent='✏';eBtn.title='直接改名字（不用排進座位）';
+    eBtn.onclick=e=>{e.stopPropagation(); editStandChip(chip,g);};
+    chip.appendChild(eBtn);
     const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
     xBtn.onclick=e=>{e.stopPropagation(); if(confirm('從站票移除「'+g.replace(/\n/g,' ')+'」？')) { removeStand(g); toast('已移除站票','tin'); } };
     chip.appendChild(xBtn);
   }
   return chip;
+}
+// V38：名牌原地變成輸入框。Enter／點別處＝存，Esc＝取消
+function editStandChip(chip,g){
+  const inp=document.createElement('input'); inp.className='st-edit'; inp.value=standShow(g);
+  inp.size=Math.max(12, standShow(g).length+4);
+  let done=false;
+  const finish=async save=>{
+    if(done) return; done=true;
+    if(save){ const ok=await renameStand(g, inp.value); if(ok) return; }
+    refreshAll();
+  };
+  inp.onkeydown=e=>{ if(e.isComposing) return; if(e.key==='Enter'){e.preventDefault();finish(true);} else if(e.key==='Escape'){e.preventDefault();finish(false);} };
+  inp.onblur=()=>finish(true);
+  inp.onclick=e=>e.stopPropagation();
+  chip.replaceWith(inp); inp.focus(); inp.select();
+}
+// V38：批次貼上視窗裡，列出現有站票，直接改
+function renderStandOld(){
+  const list=standingList(), box=document.getElementById('sb-old-list');
+  document.getElementById('sb-old-n').textContent=list.length;
+  box.innerHTML='';
+  if(!list.length){ box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding-top:4px;">目前沒有站票</div>'; return; }
+  list.forEach(g=>{
+    const row=document.createElement('div'); row.className='row';
+    const inp=document.createElement('input'); inp.value=standShow(g);
+    const ok=document.createElement('span'); ok.className='ok';
+    let cur=g, busy=false;
+    const commit=async()=>{
+      if(busy) return; const v=inp.value.trim();
+      if(v===standShow(cur)) return;
+      busy=true; const r=await renameStand(cur, v); busy=false;
+      if(r){ cur=splitStandLines(v)[0]; inp.value=cur; ok.textContent='✓ 已存'; setTimeout(()=>ok.textContent='',1500); standBatchPreview(true); }
+      else inp.value=standShow(cur);
+    };
+    inp.onkeydown=e=>{ if(e.isComposing) return; if(e.key==='Enter'){e.preventDefault();inp.blur();} else if(e.key==='Escape'){inp.value=standShow(cur);inp.blur();} };
+    inp.onblur=commit;
+    row.appendChild(inp); row.appendChild(ok); box.appendChild(row);
+  });
 }
 
 function removeGuest(g){
@@ -4353,7 +4435,7 @@ window.addGuest=function(){
 };
 window.openStandBatch=function(){
   if(!isAdmin) return toast('請先登入','ter');
-  const t=document.getElementById('sb-text'); t.value=''; standBatchPreview();
+  const t=document.getElementById('sb-text'); t.value=''; standBatchPreview(); renderStandOld();
   document.getElementById('stand-modal-bg').classList.add('show'); setTimeout(()=>t.focus(),50);
 };
 window.closeStandBatch=function(){ document.getElementById('stand-modal-bg').classList.remove('show'); };
@@ -4362,9 +4444,9 @@ window.standBatchPreview=function(){
   const seen=new Set(); let nw=0;
   const box=document.getElementById('sb-prev'); box.innerHTML='';
   names.forEach((n,i)=>{
-    const d=document.createElement('div'); const dup=standingList().includes(n)||seen.has(n);
+    const d=document.createElement('div'); const inList=standingList().includes(n); const dup=inList||seen.has(n);
     if(!dup) nw++; seen.add(n);
-    d.className=dup?'dup':''; d.textContent=(i+1)+'. '+n+(dup?'（重複，略過）':''); box.appendChild(d);
+    d.className=dup?'dup':''; d.textContent=(i+1)+'. '+n+(dup?(inList?'（已在名單，略過；要改請用下方 ✏️）':'（這次貼了兩次，略過）'):''); box.appendChild(d);
   });
   box.style.display=names.length?'':'none';
   document.getElementById('sb-count').textContent=names.length?('共 '+names.length+' 行 → 會新增 '+nw+' 位站票'):'';
