@@ -470,6 +470,27 @@ body.theater #rv-tools{display:none!important;}
 .nt-ph{font-size:11.5px;color:#6B7280;line-height:1.9;margin:4px 0;}
 .nt-ph code{background:#EEF2F7;border-radius:4px;padding:1px 5px;color:#1D3A6E;cursor:pointer;font-family:inherit;}
 .nt-ph code:hover{background:#DBEAFE;}
+/* V39：自訂標籤（時間、地點…），這場活動共用 */
+.nt-ph code.tag{background:#FEF3C7;color:#92400E;}
+.nt-ph code.tag:hover{background:#FDE68A;}
+.nt-tagadd{margin-left:6px;padding:2px 10px;border:1.5px dashed #0F6E46;border-radius:6px;background:#fff;color:#0F6E46;font-size:12px;font-weight:700;cursor:pointer;}
+.nt-tagadd:hover{background:#E8F5EE;}
+.nt-tags{border:1px solid #E5E7EB;border-radius:10px;background:#FAFAF7;padding:8px 10px;margin:6px 0 8px;}
+.nt-tags-h{font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;display:flex;align-items:center;}
+.nt-tags-h small{font-weight:400;color:#6B7280;margin-left:8px;}
+.nt-tag-row{display:flex;align-items:center;gap:8px;margin:4px 0;}
+.nt-tag-k{flex:none;width:110px;font-size:12px;font-weight:700;color:#92400E;background:#FEF3C7;border-radius:5px;padding:4px 6px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nt-tag-v{flex:1;min-width:0;padding:6px 9px;border:1px solid #D1D5DB;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;}
+.nt-tag-v.miss{border-color:#F87171;background:#FEF2F2;}
+.nt-tag-x{flex:none;width:26px;height:26px;border:none;background:none;color:#9CA3AF;cursor:pointer;font-size:14px;border-radius:6px;}
+.nt-tag-x:hover{background:#FEE2E2;color:#B91C1C;}
+.nt-tag-x.lock{visibility:hidden;}
+/* V40：公版 */
+.nt-tpl.pub{border-color:#C2410C;color:#C2410C;background:#FFF7ED;}
+.nt-tpl.pub.on{background:#C2410C;color:#fff;}
+.nt-pubbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:8px 12px;margin:6px 0 4px;font-size:13px;color:#9A3412;}
+.nt-pubbar select{padding:5px 8px;border:1px solid #FDBA74;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;}
+.nt-pubbar button{padding:6px 14px;border:none;border-radius:7px;background:#C2410C;color:#fff;font-weight:700;font-size:13px;cursor:pointer;}
 .nt-list{border:1px solid #E5E7EB;border-radius:10px;max-height:380px;overflow-y:auto;background:#fff;}
 .nt-p{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #F1F5F9;}
 .nt-code{flex:none;min-width:42px;text-align:center;font-family:Arial,sans-serif;font-weight:800;font-size:12px;background:#FFF7E6;color:#92400E;border:1px solid #F0C474;border-radius:6px;padding:2px 6px;}
@@ -680,6 +701,7 @@ body.theater #rv-tools{display:none!important;}
         <button class="nt-tpl" id="nt-tadd" onclick="ntAddTpl()" style="border-style:dashed;color:#0F6E46;background:#fff;">＋ 新增模板</button>
         <span class="nt-cloud" id="nt-cloud"></span>
       </div>
+      <div class="nt-pubbar" id="nt-pubbar">✏️ 你在編輯「公版」，改的東西不會自動存。改好後存到：<select id="nt-pubto"></select><button type="button" onclick="ntPubSave()">💾 存進去</button></div>
       <div class="ml-lbl">模板名稱</div>
       <input class="ml-in" id="nt-tname" oninput="ntDirty()">
       <div class="ml-lbl">主旨</div>
@@ -687,6 +709,7 @@ body.theater #rv-tools{display:none!important;}
       <div class="ml-lbl" style="display:flex;align-items:center;">內文<a href="javascript:void(0)" onclick="ntResetTpl()" style="margin-left:auto;font-weight:400;color:#2563EB;">改回預設</a><a href="javascript:void(0)" id="nt-tdel" onclick="ntDelTpl()" style="margin-left:14px;font-weight:400;color:#B91C1C;">🗑 刪除這個模板</a></div>
       <textarea class="ml-in" id="nt-body" rows="12" oninput="ntDirty()"></textarea>
       <div class="nt-ph" id="nt-ph"></div>
+      <div class="nt-tags" id="nt-tags"></div>
       <div class="tk-row" id="nt-rmode-row">
         <label><input type="radio" name="nt-rmode" value="bcc" checked onchange="ntSavePref()"> 密件副本（同桌的人看不到彼此信箱）</label>
         <label><input type="radio" name="nt-rmode" value="to" onchange="ntSavePref()"> 收件人（互相看得到）</label>
@@ -750,7 +773,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V38</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V43</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -909,7 +932,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V38</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V43</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -6262,6 +6285,9 @@ const mailSent = {};                // mail_sent2026：p_<人> / t_<桌> → 產
 const CARD_NOTE_DEF = '敬請攜帶貴賓證入場參觀　*Please bring your VIP badge for admission.';
 let cardNote = CARD_NOTE_DEF;       // card_note2026：號碼卡最下方附註（這場活動共用）
 let mailTpls = {}, ntSlot = '1', ntSaveTimer = null, ntFocusT = null;
+// V41：標籤跟著模板走（存在 mail_templates2026/{m}/{slot}/tags），每個模板各自一套；公版自帶 時間／地點／Time／Venue
+const NT_PUB_TAGS = [{ k: '時間', v: '' }, { k: '地點', v: '' }, { k: 'Time', v: '' }, { k: 'Venue', v: '' }];
+let ntPubTags = NT_PUB_TAGS.map(t => ({ ...t })), ntTagTimer = null;
 const ntMode = () => 'grid';   // 圓桌、劇院型都一樣：一人一封，只告訴他報到號碼（不寫座位，席次隨時可能變）
 const NT_SIGN = '──────────';
 const NT_DEF = {
@@ -6294,6 +6320,14 @@ const NT_DEF = {
         }
     }
 };
+// V40：公版（寫死在程式裡，不存雲端）。按「公版」→ 帶進編輯區 → 改完選要存到哪個模板
+const NT_PUB = {
+    name: '公版',
+    subject: '【{活動}】報到號碼 Check-in No. {報到號碼}',
+    body: '敬愛的貴賓 您好：\n\n提醒您，「{活動}」即將舉行，期待您的出席。\n活動資訊如下：\n\n📅 時間：{時間}\n📍 地點：{地點}\n\n您的報到號碼為 {報到號碼}。\n報到時請出示附件號碼卡，並敬請攜帶貴賓證入場參觀。\n\n' + NT_SIGN +
+        '\n\nDear Distinguished Guest,\n\nThis is a kind reminder of the upcoming {活動}.\nWe would be truly honored by your presence at this special occasion.\nPlease find the event details below:\n\n📅 Time: {Time}\n📍 Venue: {Venue}\n\nYour check-in No. is {報到號碼}.\nPlease show the attached card at check-in.\n*Please bring your VIP badge for admission.\n\nThank you!'
+};
+const ntIsPub = () => ntSlot === 'pub';
 const NT_PH = {
     grid: ['{活動}', '{姓名}', '{報到號碼}'],
     round: ['{活動}', '{桌號}', '{桌名}', '{Table}', '{TableName}']
@@ -6312,13 +6346,21 @@ function ntSeatEn(code) {
 }
 function ntCtxPerson(code) {
     const name = asgn[code] || '';
-    return { '活動': dcEventName(), '姓名': name.replace(/\n/g, ' '), '座位': ntSeatZh(code), 'Seat': ntSeatEn(code), '報到號碼': codeOf(name) || '—' };
+    return ntTagCtx({ '活動': dcEventName(), '姓名': name.replace(/\n/g, ' '), '座位': ntSeatZh(code), 'Seat': ntSeatEn(code), '報到號碼': codeOf(name) || '—' });
 }
 function ntCtxTable(t) {
     const nm = tableNames[t];
-    return { '活動': dcEventName(), '桌號': tLabelOf(t), 'Table': (t.startsWith('H') ? 'Head Table ' : 'Table ') + tNoOf(t),
-        '桌名': nm ? '（' + nm + '）' : '', 'TableName': nm ? ' (' + nm + ')' : '' };
+    return ntTagCtx({ '活動': dcEventName(), '桌號': tLabelOf(t), 'Table': (t.startsWith('H') ? 'Head Table ' : 'Table ') + tNoOf(t),
+        '桌名': nm ? '（' + nm + '）' : '', 'TableName': nm ? ' (' + nm + ')' : '' });
 }
+function ntTagsOf(sl) {
+    if (sl === 'pub') return ntPubTags.map(t => ({ ...t }));
+    const c = (mailTpls[ntMode()] || {})[sl], a = c && c.tags;
+    const arr = Array.isArray(a) ? a : (a ? Object.values(a) : []);
+    return arr.filter(t => t && t.k).map(t => ({ k: t.k, v: t.v || '' }));
+}
+function ntTags() { return ntTagsOf(ntSlot); }
+function ntTagCtx(ctx) { ntTags().forEach(t => { if (ctx[t.k] === undefined) ctx[t.k] = t.v; }); return ctx; }
 function ntFill(s, ctx) {
     return String(s || '').replace(/\{([^{}\n]{1,12})\}/g, (m, k) => ctx[k] !== undefined ? ctx[k] : m).replace(/\n{3,}/g, '\n\n');
 }
@@ -6332,7 +6374,7 @@ function ntExists(sl) {
     return (sl === '1' || sl === '2') ? true : !!(c && typeof c.body === 'string');
 }
 function ntSlotsList() { return NT_SLOTS.filter(ntExists); }
-function ntFixSlot() { if (!ntExists(ntSlot)) ntSlot = ntSlotsList()[0] || ntSlot; }
+function ntFixSlot() { if (!ntIsPub() && !ntExists(ntSlot)) ntSlot = ntSlotsList()[0] || ntSlot; }
 onValue(ref(db, 'mail_templates2026'), snap => {
     mailTpls = snap.val() || {};
     if (!ntOpen()) return;
@@ -6342,6 +6384,10 @@ onValue(ref(db, 'mail_templates2026'), snap => {
     else ntPaintTplBtns();
 });
 function ntTpl(slot) {
+    if (!slot && ntIsPub()) {   // 公版：用編輯區現在的字
+        const g = id => (document.getElementById(id) || {}).value;
+        return { name: g('nt-tname') || NT_PUB.name, subject: g('nt-subject') ?? NT_PUB.subject, body: g('nt-body') ?? NT_PUB.body, at: null };
+    }
     const m = ntMode(), sl = slot || ntSlot, d = NT_DEF[m][sl] || Object.assign({}, NT_DEF[m]['1'], { name: '模板 ' + sl });
     let c = (mailTpls[m] || {})[sl];
     if (c && !(c.v >= 2)) {
@@ -6359,6 +6405,10 @@ function ntPaintTplBtns() {
     const box = document.getElementById('nt-tbtns'); if (!box) return;
     box.innerHTML = '';
     const list = ntSlotsList();
+    const pb = document.createElement('button');
+    pb.className = 'nt-tpl pub' + (ntIsPub() ? ' on' : ''); pb.textContent = '📋 公版';
+    pb.title = '帶入公版文字，改完再選要存到哪個模板';
+    pb.onclick = ntPickPub; box.appendChild(pb);
     list.forEach(sl => {
         const b = document.createElement('button');
         b.className = 'nt-tpl' + (sl === ntSlot ? ' on' : ''); b.id = 'nt-t' + sl;
@@ -6369,18 +6419,58 @@ function ntPaintTplBtns() {
     const add = document.getElementById('nt-tadd');
     add.style.display = list.length < NT_MAX ? '' : 'none';
     add.textContent = '＋ 新增模板（' + list.length + '/' + NT_MAX + '）';
-    document.getElementById('nt-tdel').style.display = list.length > 1 ? '' : 'none';
+    document.getElementById('nt-tdel').style.display = (list.length > 1 && !ntIsPub()) ? '' : 'none';
+    ntPaintPubBar();
 }
+function ntPaintPubBar() {
+    const bar = document.getElementById('nt-pubbar'); if (!bar) return;
+    bar.style.display = ntIsPub() ? 'flex' : 'none';
+    if (!ntIsPub()) return;
+    const sel = document.getElementById('nt-pubto'), keep = sel.value;
+    sel.innerHTML = '';
+    ntSlotsList().forEach(sl => { const o = document.createElement('option'); o.value = sl; o.textContent = '覆蓋「' + ntTpl(sl).name + '」'; sel.appendChild(o); });
+    if (ntSlotsList().length < NT_MAX) { const o = document.createElement('option'); o.value = 'new'; o.textContent = '＋ 存成新模板'; sel.appendChild(o); }
+    sel.value = [...sel.options].some(o => o.value === keep) ? keep : (sel.querySelector('option[value="new"]') ? 'new' : sel.options[0].value);
+}
+window.ntPickPub = async function () {
+    await ntSaveNow(); if (ntTagTimer) await ntTagSaveNow();
+    ntPubTags = NT_PUB_TAGS.map(t => ({ ...t }));
+    ntSlot = 'pub'; ntFillTplForm(true);
+    document.getElementById('nt-body').focus();
+};
+window.ntPubSave = async function () {
+    const to = document.getElementById('nt-pubto').value, m = ntMode();
+    const subject = document.getElementById('nt-subject').value, body = document.getElementById('nt-body').value;
+    let sl = to, name;
+    if (to === 'new') {
+        sl = NT_SLOTS.find(x => !ntExists(x));
+        if (!sl) { toast('最多 ' + NT_MAX + ' 個模板，請選一個覆蓋', 'ter'); return; }
+        const nm = prompt('新模板的名稱', (document.getElementById('nt-tname').value.trim() || '公版'));
+        if (nm === null) return;
+        name = nm.trim() || '模板 ' + sl;
+    } else {
+        name = ntTpl(to).name;
+        if (!confirm('用現在編輯的內容覆蓋「' + name + '」？\n所有同事都會看到新的內容。')) return;
+    }
+    if (ntTagTimer) await ntTagSaveNow();
+    const data = { name, subject, body, tags: ntPubTags.length ? ntPubTags.map(t => ({ ...t })) : null, v: 2, at: ntStamp() };
+    (mailTpls[m] = mailTpls[m] || {})[sl] = data;
+    try { await set(ref(db, 'mail_templates2026/' + m + '/' + sl), data); }
+    catch (e) { toast('儲存失敗，請檢查網路', 'ter'); return; }
+    ntSlot = sl; ntFillTplForm(true); ntSavePref();
+    toast('已存到「' + name + '」，大家都看得到', 'tok');
+};
 function ntStamp() { const d = new Date(); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 // 新增：複製目前這個模板的內容當起點，名字自己改
 window.ntAddTpl = async function () {
-    await ntSaveNow();
+    await ntSaveNow(); if (ntTagTimer) await ntTagSaveNow();
     const free = NT_SLOTS.find(sl => !ntExists(sl));
     if (!free || ntSlotsList().length >= NT_MAX) { toast('最多 ' + NT_MAX + ' 個模板，請先刪掉一個不用的', 'ter'); return; }
     const nm = prompt('新模板的名稱（內容會先複製「' + ntTpl().name + '」，再自己改）', '新模板');
     if (nm === null) return;
     const cur = ntTpl(), m = ntMode();
-    const data = { name: nm.trim() || '模板 ' + free, subject: cur.subject, body: cur.body, v: 2, at: ntStamp() };
+    const curTags = ntTags();
+    const data = { name: nm.trim() || '模板 ' + free, subject: cur.subject, body: cur.body, tags: curTags.length ? curTags : null, v: 2, at: ntStamp() };
     (mailTpls[m] = mailTpls[m] || {})[free] = data;
     try { await set(ref(db, 'mail_templates2026/' + m + '/' + free), data); }
     catch (e) { toast('新增失敗，請檢查網路', 'ter'); return; }
@@ -6404,20 +6494,32 @@ function ntCloud(msg, color) { const el = document.getElementById('nt-cloud'); e
 function ntFillTplForm(force) {
     const a = document.activeElement;
     ntFixSlot(); ntPaintTplBtns();
-    if (!force && a && ['nt-tname', 'nt-subject', 'nt-body'].includes(a.id)) return;
+    if (ntIsPub()) {
+        if (force) {
+            document.getElementById('nt-tname').value = NT_PUB.name;
+            document.getElementById('nt-subject').value = NT_PUB.subject;
+            document.getElementById('nt-body').value = NT_PUB.body;
+        }
+        ntCloud('📋 公版：改完在上面選要存到哪個模板');
+        ntPaintPh(); ntPaintTags(!!force); return;
+    }
+    if (!force && a && ['nt-tname', 'nt-subject', 'nt-body'].includes(a.id)) { if (!ntTagTimer) { ntPaintPh(); ntPaintTags(false); } return; }
     const t = ntTpl();
     document.getElementById('nt-tname').value = t.name;
     document.getElementById('nt-subject').value = t.subject;
     document.getElementById('nt-body').value = t.body;
     ntCloud(t.at ? '☁ 雲端版本：' + t.at : '☁ 預設內容（改了就會存到雲端）');
+    if (!ntTagTimer) { ntPaintPh(); ntPaintTags(!!force); } else ntTagMarks();
 }
 window.ntDirty = function () {
+    setTimeout(ntTagMarks, 0);
+    if (ntIsPub()) { ntCloud('📋 公版已修改（還沒存，在上面選要存到哪個模板）', '#C2410C'); return; }
     ntCloud('✏️ 修改中…', '#B45309');
     clearTimeout(ntSaveTimer);
     ntSaveTimer = setTimeout(ntSaveNow, 800);
 };
 async function ntSaveNow() {
-    if (!ntSaveTimer) return;
+    if (!ntSaveTimer || ntIsPub()) return;
     clearTimeout(ntSaveTimer); ntSaveTimer = null;
     const m = ntMode(), sl = ntSlot, d = new Date();
     if (!ntExists(sl) && sl !== '1' && sl !== '2') return;   // 剛被刪掉的模板不要再寫回去
@@ -6425,6 +6527,7 @@ async function ntSaveNow() {
         name: document.getElementById('nt-tname').value.trim() || (NT_DEF[m][sl] ? NT_DEF[m][sl].name : '模板 ' + sl),
         subject: document.getElementById('nt-subject').value,
         body: document.getElementById('nt-body').value,
+        tags: ntTagsOf(sl).length ? ntTagsOf(sl) : null,
         v: 2,
         at: (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
     };
@@ -6434,10 +6537,13 @@ async function ntSaveNow() {
     catch (e) { ntCloud('⚠ 雲端儲存失敗，請檢查網路', '#B91C1C'); }
 }
 window.ntPickTpl = async function (sl) {
-    await ntSaveNow();
+    if (ntIsPub() && (document.getElementById('nt-subject').value !== NT_PUB.subject || document.getElementById('nt-body').value !== NT_PUB.body)
+        && !confirm('公版改過的內容還沒存，切換後會不見。確定要切換？')) return;
+    await ntSaveNow(); if (ntTagTimer) await ntTagSaveNow();
     ntSlot = sl; ntFillTplForm(true); ntSavePref();
 };
 window.ntResetTpl = function () {
+    if (ntIsPub()) { if (confirm('把編輯區和標籤改回原本的公版？')) { ntPubTags = NT_PUB_TAGS.map(t => ({ ...t })); ntFillTplForm(true); } return; }
     if (!confirm('把「' + ntTpl().name + '」的主旨和內文改回預設？（雲端上的這個模板也會一起改回來）')) return;
     const d = NT_DEF[ntMode()][ntSlot] || NT_DEF[ntMode()]['1'];
     if (NT_DEF[ntMode()][ntSlot]) document.getElementById('nt-tname').value = d.name;
@@ -6451,6 +6557,78 @@ window.ntIns = function (tok) {
     ta.focus(); ta.selectionStart = ta.selectionEnd = a + tok.length;
     ntDirty();
 };
+// ── V39：插入列＋標籤編輯 ──
+function ntPaintPh() {
+    const box = document.getElementById('nt-ph'); if (!box) return;
+    box.innerHTML = '';
+    box.appendChild(document.createTextNode('點一下插入：'));
+    const chip = (tok, cls) => { const c = ntMk('code', cls || '', tok); c.onclick = () => ntIns(tok); box.appendChild(c); box.appendChild(document.createTextNode(' ')); };
+    NT_PH[ntMode()].forEach(p => chip(p));
+    ntTags().forEach(t => chip('{' + t.k + '}', 'tag'));
+    const add = ntMk('button', 'nt-tagadd', '＋ 新增標籤'); add.type = 'button'; add.onclick = ntAddTag; box.appendChild(add);
+    box.appendChild(document.createTextNode('　（藍色：每個人換成他自己的資料；黃色：這個模板的標籤，內容在下面填）'));
+}
+function ntTagUsed(k) { const tok = '{' + k + '}', t = ntTpl(); return (t.subject + '\n' + t.body).includes(tok); }
+function ntPaintTags(force) {
+    const box = document.getElementById('nt-tags'); if (!box) return;
+    if (!force && box.contains(document.activeElement)) { ntTagMarks(); return; }
+    box.innerHTML = '';
+    const h = ntMk('div', 'nt-tags-h', '標籤內容・' + ntTpl().name);
+    h.appendChild(ntMk('small', '', ntIsPub() ? '公版的標籤，存到模板時會一起帶過去' : '只屬於這個模板，存在雲端；信裡的 {標籤} 會換成這裡填的字。紅框＝內文有用到但還沒填'));
+    box.appendChild(h);
+    if (!ntTags().length) { const e = ntMk('div', '', '這個模板還沒有標籤。按上面「＋ 新增標籤」建一個，例如 時間、地點。'); e.style.cssText = 'font-size:12px;color:#9CA3AF;padding:4px 2px;'; box.appendChild(e); }
+    ntTags().forEach(t => {
+        const row = ntMk('div', 'nt-tag-row');
+        const k = ntMk('span', 'nt-tag-k', '{' + t.k + '}'); k.title = '點一下插入內文'; k.style.cursor = 'pointer'; k.onclick = () => ntIns('{' + t.k + '}');
+        row.appendChild(k);
+        const inp = ntMk('input', 'nt-tag-v'); inp.type = 'text'; inp.value = t.v; inp.dataset.k = t.k;
+        inp.placeholder = ({ '時間': '例：2026年11月25日（星期三）上午10:30', '地點': '例：南港展覽館1館 4樓 M區 大會舞台', 'Time': 'e.g. 10:30 a.m., Wednesday, November 25, 2026', 'Venue': 'e.g. Stage, Area M, 4F, TaiNEX 1' })[t.k] || '這個標籤要出現的內容';
+        inp.oninput = () => { ntTagMarks(); ntTagDirty(); };
+        row.appendChild(inp);
+        const x = ntMk('button', 'nt-tag-x', '✕'); x.type = 'button'; x.title = '刪除這個標籤';
+        x.onclick = () => ntDelTag(t.k);
+        row.appendChild(x);
+        box.appendChild(row);
+    });
+    ntTagMarks();
+}
+function ntTagMarks() {
+    document.querySelectorAll('#nt-tags .nt-tag-v').forEach(inp => inp.classList.toggle('miss', !inp.value.trim() && ntTagUsed(inp.dataset.k)));
+}
+function ntTagsFromForm() {
+    const vals = {}; document.querySelectorAll('#nt-tags .nt-tag-v').forEach(i => vals[i.dataset.k] = i.value);
+    return ntTags().map(t => ({ k: t.k, v: vals[t.k] !== undefined ? vals[t.k] : t.v }));
+}
+function ntTagDirty() { clearTimeout(ntTagTimer); ntTagTimer = setTimeout(ntTagSaveNow, 700); }
+async function ntTagSaveNow(list) {
+    clearTimeout(ntTagTimer); ntTagTimer = null;
+    const sl = ntSlot, m = ntMode();
+    const data = (list || ntTagsFromForm()).map(t => ({ k: t.k, v: String(t.v || '') }));
+    if (sl === 'pub') { ntPubTags = data; return; }   // 公版的標籤只在這次編輯用，存到模板時才上雲端
+    mailTpls[m] = mailTpls[m] || {};
+    mailTpls[m][sl] = Object.assign({}, mailTpls[m][sl] || {}, { tags: data.length ? data : null });
+    try { await set(ref(db, 'mail_templates2026/' + m + '/' + sl + '/tags'), data.length ? data : null); }
+    catch (e) { toast('標籤儲存失敗，請檢查網路', 'ter'); }
+}
+async function ntAddTag() {
+    let k = prompt('新標籤的名稱（例：集合地點、Dress Code、聯絡人）\n建好後內文打 {名稱} 就會換成你在下面填的內容', '');
+    if (k === null) return;
+    k = k.trim().replace(/^\{|\}$/g, '').trim();
+    if (!k) return;
+    if (/[{}\n]/.test(k) || k.length > 12) { toast('標籤名稱最多 12 個字，不能有 { }', 'ter'); return; }
+    const taken = NT_PH.grid.concat(NT_PH.round, ['{座位}', '{Seat}']).map(p => p.slice(1, -1)).concat(ntTags().map(t => t.k));
+    if (taken.includes(k)) { toast('已經有 {' + k + '} 這個標籤了', 'ter'); return; }
+    const list = ntTagsFromForm(); list.push({ k, v: '' });
+    await ntTagSaveNow(list);
+    ntPaintPh(); ntPaintTags(true);
+    const inp = [...document.querySelectorAll('#nt-tags .nt-tag-v')].find(i => i.dataset.k === k); if (inp) inp.focus();
+    toast('已新增標籤 {' + k + '}，在下面填它的內容', 'tok');
+}
+async function ntDelTag(k) {
+    if (!confirm('刪除標籤 {' + k + '}？\n模板裡如果還有 {' + k + '}，寄出時會原樣留在信裡。')) return;
+    await ntTagSaveNow(ntTagsFromForm().filter(t => t.k !== k));
+    ntPaintPh(); ntPaintTags(true);
+}
 window.ntSavePref = function () {
     const mode = (document.querySelector('input[name="nt-rmode"]:checked') || {}).value || 'bcc';
     mailTpl = { slot: ntSlot, mode };
@@ -6476,8 +6654,7 @@ window.openNotify = function (focusT) {
     document.getElementById('nt-mode-tag').textContent = '一人一封・只告訴他報到號碼（不寫座位）';
     document.getElementById('nt-rmode-row').style.display = 'none';
     document.querySelectorAll('input[name="nt-rmode"]').forEach(r => r.checked = r.value === ((mailTpl && mailTpl.mode) || 'bcc'));
-    document.getElementById('nt-ph').innerHTML = '點一下插入：' + NT_PH[ntMode()].map(p => '<code onclick="ntIns(\'' + p + '\')">' + p + '</code>').join(' ')
-        + '　（每個人收到的信會換成他自己的資料；信裡不寫座位，現場用號碼查座位）';
+    ntPaintPh(); ntPaintTags(true);
     document.getElementById('nt-h3').innerHTML = '③ 寄送 <small>每個人按「📨」產生他自己的一封信；或右邊一次打包全部' + (round ? '（從桌次打開時，下面只列那一桌的人）' : '') + '</small>';
     document.getElementById('ml-done').style.display = 'none';
     document.getElementById('nt-q').value = ntFocusT ? tLabelOf(ntFocusT) : '';
@@ -6490,7 +6667,7 @@ window.openNotify = function (focusT) {
     }, 60);
 };
 window.openCodeModal = window.openNotify;
-window.closeNotify = async function () { await ntSaveNow(); document.getElementById('notify-modal-bg').classList.remove('show'); };
+window.closeNotify = async function () { await ntSaveNow(); if (ntTagTimer) await ntTagSaveNow(); document.getElementById('notify-modal-bg').classList.remove('show'); };
 
 // ── 收件清單 ──
 function ntMk(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
