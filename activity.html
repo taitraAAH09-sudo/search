@@ -485,6 +485,13 @@ body.theater #rv-tools{display:none!important;}
 .nt-tag-x{flex:none;width:26px;height:26px;border:none;background:none;color:#9CA3AF;cursor:pointer;font-size:14px;border-radius:6px;}
 .nt-tag-x:hover{background:#FEE2E2;color:#B91C1C;}
 .nt-tag-x.lock{visibility:hidden;}
+.nt-pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 4px;padding-left:2px;}
+.nt-pick-l{font-size:12px;font-weight:700;color:#0F6E46;}
+.nt-pick input{padding:4px 8px;border:1px solid #A7D7BE;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;}
+.nt-pick-h{font-size:11px;color:#9CA3AF;}
+.nt-venue{padding:4px 12px;border:1.5px solid #A7D7BE;border-radius:999px;background:#fff;color:#0F6E46;font-size:12.5px;font-weight:700;cursor:pointer;}
+.nt-venue:hover{background:#E8F5EE;}
+.nt-venue.on{background:#0F6E46;border-color:#0F6E46;color:#fff;}
 .nt-tag-sep{border-top:1px dashed #D6D3C9;margin:7px 4px;}
 .nt-ph .nt-ph-sep{color:#D1D5DB;margin:0 2px;}
 /* V40：公版 */
@@ -775,7 +782,7 @@ body.theater #rv-tools{display:none!important;}
 <div class="modal-bg" id="login-modal-bg" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V46</span></div>
+    <div class="modal-code" style="display:flex;align-items:center;justify-content:space-between;"><span>🔒 管理員登入</span><span class="ver-tag" onclick="verTap(this)">V50</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
       <input type="password" id="login-pw" placeholder="請輸入管理密碼" style="font-size:14px;padding:10px;border-radius:8px;border:1px solid #D1D5DB;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLogin()">
       <div id="login-err" style="font-size:12px;color:#B91C1C;min-height:16px;"></div>
@@ -934,7 +941,7 @@ body.theater #rv-tools{display:none!important;}
   <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">請登入並選擇活動</div>
 
 <div id="landing-page" style="padding:60px 20px;text-align:center;max-width:400px;margin:0 auto;">
-  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V46</span></div>
+  <div style="font-size:56px;margin-bottom:20px;position:relative;display:inline-block;">🎟<span class="ver-tag" style="position:absolute;top:2px;left:calc(100% + 10px);cursor:default;">V50</span></div>
   <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:10px;">TAITRA 活動座位管理系統</div>
   <div style="font-size:13px;color:#6B7280;margin-bottom:36px;line-height:1.7;">支援建立無限多個活動專屬資料庫<br>方陣與圓桌彈性架構</div>
   <button onclick="handleAuth()" style="width:100%;max-width:300px;padding:18px;background:#1B4F8A;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(27,79,138,0.3);">
@@ -6288,9 +6295,9 @@ const CARD_NOTE_DEF = '敬請攜帶貴賓證入場參觀　*Please bring your VI
 let cardNote = CARD_NOTE_DEF;       // card_note2026：號碼卡最下方附註（這場活動共用）
 let mailTpls = {}, ntSlot = '1', ntSaveTimer = null, ntFocusT = null;
 // V41：標籤跟著模板走（存在 mail_templates2026/{m}/{slot}/tags），每個模板各自一套；公版自帶 時間／地點／Time／Venue
-const NT_PUB_TAGS = [{ k: '活動名稱', v: '' }, { k: 'Event', v: '' }, { k: '時間', v: '' }, { k: 'Time', v: '' }, { k: '地點', v: '' }, { k: 'Venue', v: '' }];
+const NT_PUB_TAGS = [{ k: '活動名稱', v: '' }, { k: 'Event', v: '' }, { k: '地點', v: '' }, { k: 'Venue', v: '' }, { k: '時間', v: '' }, { k: 'Time', v: '' }, { k: '報到時間', v: '' }, { k: 'Check-in Time', v: '' }];
 // V45：中英成對顯示（中文在上、英文在下），每一對之間一條小分隔線
-const NT_TAG_PAIR = { '活動名稱': 'Event', '時間': 'Time', '地點': 'Venue' };
+const NT_TAG_PAIR = { '活動名稱': 'Event', '時間': 'Time', '地點': 'Venue', '報到時間': 'Check-in Time' };
 function ntTagGroups(list) {
     const left = list.slice(), out = [];
     const pairOf = k => NT_TAG_PAIR[k] || Object.keys(NT_TAG_PAIR).find(z => NT_TAG_PAIR[z] === k);
@@ -6305,7 +6312,10 @@ function ntTagGroups(list) {
         }
         out.push(g);
     }
-    return out;
+    // V50：固定順序 活動名稱 → 地點 → 時間 → 報到時間，自己新增的排後面
+    const RANK = ['活動名稱', '地點', '時間', '報到時間'];
+    const rk = g => { const i = RANK.indexOf(g[0].k); return i < 0 ? 99 : i; };
+    return out.map((g, i) => [g, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
 }
 let ntPubTags = NT_PUB_TAGS.map(t => ({ ...t })), ntTagTimer = null;
 const ntMode = () => 'grid';   // 圓桌、劇院型都一樣：一人一封，只告訴他報到號碼（不寫座位，席次隨時可能變）
@@ -6343,13 +6353,13 @@ const NT_DEF = {
 // V40：公版（寫死在程式裡，不存雲端）。按「公版」→ 帶進編輯區 → 改完選要存到哪個模板
 const NT_PUB = {
     name: '公版',
-    subject: '【{活動名稱}】報到號碼 Check-in No. {報到號碼}',
-    body: '敬愛的貴賓 您好：\n\n提醒您，「{活動名稱}」即將舉行，期待您的出席。\n活動資訊如下：\n\n📅 時間：{時間}\n📍 地點：{地點}\n\n您的報到號碼為 {報到號碼}。\n報到時請出示附件號碼卡，並敬請攜帶貴賓證入場參觀。\n\n' + NT_SIGN +
-        '\n\nDear Distinguished Guest,\n\nThis is a kind reminder of the upcoming {Event}.\nWe would be truly honored by your presence at this special occasion.\nPlease find the event details below:\n\n📅 Time: {Time}\n📍 Venue: {Venue}\n\nYour check-in No. is {報到號碼}.\nPlease show the attached card at check-in.\n*Please bring your VIP badge for admission.\n\nThank you!'
+    subject: '【提醒信】{活動名稱} / 【Reminder】{Event}',
+    body: '敬愛的貴賓 您好：\n\n提醒您，「{活動名稱}」即將舉行，誠摯期待您的出席。\n活動資訊如下：\n\n📅 時間：{時間}\n📍 地點：{地點}\n\n🕙 溫馨提醒：\n• 您的報到號碼為 {報到號碼}，報到時請出示附件號碼卡。\n• 為利報到與引導作業順暢，敬請於 {報到時間} 前抵達會場完成報到並入座。\n• 敬請攜帶貴賓證入場。\n\n期待在會場與您相見！\n敬祝 順心如意\n\n' + NT_SIGN +
+        '\n\nDear Distinguished Guest,\n\nThis is a kind reminder of the upcoming {Event}.\nWe would be truly honored by your presence at this special occasion.\nPlease find the event details below:\n\n📅 Time: {Time}\n📍 Venue: {Venue}\n\n🕙 Reminders:\n• Your check-in No. is {Check-in No.}. Please present the attached card at check-in.\n• Please arrive by {Check-in Time} for check-in and seating to ensure a smooth registration process.\n• Please remember to bring your VIP badge for admission.\n\nWe look forward to seeing you!\n\nBest regards,'
 };
 const ntIsPub = () => ntSlot === 'pub';
 const NT_PH = {
-    grid: ['{報到號碼}'],   // V44：{活動}、{姓名} 不放插入列（舊模板裡有寫的照樣會換）
+    grid: ['{報到號碼}', '{Check-in No.}'],   // V44：{活動}、{姓名} 不放插入列（舊模板裡有寫的照樣會換）
     round: ['{活動}', '{桌號}', '{桌名}', '{Table}', '{TableName}']
 };
 
@@ -6366,7 +6376,7 @@ function ntSeatEn(code) {
 }
 function ntCtxPerson(code) {
     const name = asgn[code] || '';
-    return ntTagCtx({ '活動': dcEventName(), '姓名': name.replace(/\n/g, ' '), '座位': ntSeatZh(code), 'Seat': ntSeatEn(code), '報到號碼': codeOf(name) || '—' });
+    return ntTagCtx({ '活動': dcEventName(), '姓名': name.replace(/\n/g, ' '), '座位': ntSeatZh(code), 'Seat': ntSeatEn(code), '報到號碼': codeOf(name) || '—', 'Check-in No.': codeOf(name) || '—' });
 }
 function ntCtxTable(t) {
     const nm = tableNames[t];
@@ -6382,7 +6392,7 @@ function ntTagsOf(sl) {
 function ntTags() { return ntTagsOf(ntSlot); }
 function ntTagCtx(ctx) { ntTags().forEach(t => { if (ctx[t.k] === undefined) ctx[t.k] = t.v; }); return ctx; }
 function ntFill(s, ctx) {
-    return String(s || '').replace(/\{([^{}\n]{1,12})\}/g, (m, k) => ctx[k] !== undefined ? ctx[k] : m).replace(/\n{3,}/g, '\n\n');
+    return String(s || '').replace(/\{([^{}\n]{1,20})\}/g, (m, k) => ctx[k] !== undefined ? ctx[k] : m).replace(/\n{3,}/g, '\n\n');
 }
 
 // ── 模板（雲端共用）──
@@ -6592,6 +6602,88 @@ function ntPaintPh() {
     box.appendChild(document.createTextNode('　（藍色：每個人換成他自己的資料；黃色：這個模板的標籤，內容在下面填）'));
 }
 function ntTagUsed(k) { const tok = '{' + k + '}', t = ntTpl(); return (t.subject + '\n' + t.body).includes(tok); }
+// V47：時間用日曆＋時鐘選，中英一起填；場館內建三個可選
+const NT_VENUES = [
+    { n: '南港一館', zh: '台北南港展覽館1館', en: 'Taipei Nangang Exhibition Center, Hall 1 (TaiNEX 1)' },
+    { n: '南港二館', zh: '台北南港展覽館2館', en: 'Taipei Nangang Exhibition Center, Hall 2 (TaiNEX 2)' },
+    { n: '世貿一館', zh: '台北世貿1館', en: 'TWTC, Hall 1' }
+];
+const NT_WD_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+const NT_WD_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const NT_MON_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function ntClock(hm) {   // '10:30' → { zh: '上午10:30', en: '10:30 a.m.' }
+    const m = /^(\d{1,2}):(\d{2})/.exec(hm || ''); if (!m) return null;
+    const h = +m[1], mm = m[2], h12 = h % 12 || 12;
+    return { zh: (h < 12 ? '上午' : h === 12 ? '中午' : '下午') + h12 + ':' + mm, en: h12 + ':' + mm + (h < 12 ? ' a.m.' : ' p.m.') };
+}
+function ntDate(ymd) {   // '2026-11-25' → { zh: '2026年11月25日（星期三）', en: 'November 25, 2026 (Wednesday)' }
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]), w = d.getDay();
+    return { zh: +m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日（星期' + NT_WD_ZH[w] + '）', en: NT_MON_EN[+m[2] - 1] + ' ' + (+m[3]) + ', ' + m[1] + ' (' + NT_WD_EN[w] + ')' };
+}
+// V48：地點中文 → Venue 英文（場館名、樓、區、舞台）
+// 例：台北南港展覽館1館 4樓 M區 大會舞台 → Stage, Area M, 4F, Taipei Nangang Exhibition Center, Hall 1 (TaiNEX 1)
+function ntVenueEn(zh) {
+    let r = String(zh || '').trim(), base = '';
+    const alias = [[/^(台北|臺北)?南港(展覽館)?(1|一)館/, 0], [/^(台北|臺北)?南港(展覽館)?(2|二)館/, 1], [/^(台北|臺北)?世貿(展覽館)?(1|一)館/, 2]];
+    for (const [re, i] of alias) { const m = r.match(re); if (m) { base = NT_VENUES[i].en; r = r.slice(m[0].length); break; } }
+    const parts = [];
+    if (/舞台|舞臺/.test(r)) parts.push('Stage');
+    const area = r.match(/([A-Za-z0-9]+)\s*區/); if (area) parts.push('Area ' + area[1].toUpperCase());
+    const fl = r.match(/(B?\d+)\s*(樓|F|f)/); if (fl) parts.push(fl[1].toUpperCase() + 'F');
+    if (base) parts.push(base);
+    return parts.join(', ');
+}
+// 報到時間＝開始時間往前 10 分鐘
+const NT_CHECKIN_BEFORE = 10;
+function ntMinus(hm, min) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(hm || ''); if (!m) return '';
+    let t = (+m[1]) * 60 + (+m[2]) - min; t = (t + 1440) % 1440;
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+}
+function ntSetPair(kz, ke, vz, ve) {
+    document.querySelectorAll('#nt-tags .nt-tag-v').forEach(i => { if (i.dataset.k === kz) i.value = vz; if (i.dataset.k === ke) i.value = ve; });
+    ntTagMarks(); ntTagDirty();
+}
+function ntPickerRow(g) {
+    const ks = g.map(t => t.k), row = ntMk('div', 'nt-pick');
+    if (ks.includes('時間') && ks.includes('Time')) {
+        row.appendChild(ntMk('span', 'nt-pick-l', '📅 選日期時間'));
+        const d = ntMk('input'); d.type = 'date';
+        const t = ntMk('input'); t.type = 'time'; t.step = 300;
+        const go = () => {
+            const a = ntDate(d.value), b = ntClock(t.value); if (!a && !b) return;
+            ntSetPair('時間', 'Time', [a && a.zh, b && b.zh].filter(Boolean).join(''), [a && a.en, b && b.en].filter(Boolean).join(', '));
+            const ci = ntClock(ntMinus(t.value, NT_CHECKIN_BEFORE));
+            if (ci) {
+                ntSetPair('報到時間', 'Check-in Time', ci.zh, ci.en);
+                const cp = document.querySelector('#nt-tags .nt-ci-pick'); if (cp) cp.value = ntMinus(t.value, NT_CHECKIN_BEFORE);
+            }
+        };
+        d.onchange = go; t.onchange = go; t.oninput = go;
+        row.append(d, t, ntMk('span', 'nt-pick-h', '選好中英會一起填；要改字直接改下面'));
+        return row;
+    }
+    if (ks.includes('報到時間') && ks.includes('Check-in Time')) {
+        row.appendChild(ntMk('span', 'nt-pick-l', '🕙 選報到時間'));
+        const t = ntMk('input', 'nt-ci-pick'); t.type = 'time'; t.step = 300;
+        t.onchange = t.oninput = () => { const b = ntClock(t.value); if (b) ntSetPair('報到時間', 'Check-in Time', b.zh, b.en); };
+        row.append(t, ntMk('span', 'nt-pick-h', '上面選開始時間會自動帶「前 ' + NT_CHECKIN_BEFORE + ' 分鐘」；要不同再自己選'));
+        return row;
+    }
+    if (ks.includes('地點') && ks.includes('Venue')) {
+        row.appendChild(ntMk('span', 'nt-pick-l', '📍 選場館'));
+        const cur = (document.querySelector('#nt-tags .nt-tag-v[data-k="地點"]') || {}).value || (g.find(x => x.k === '地點') || {}).v || '';
+        NT_VENUES.forEach(v => {
+            const b = ntMk('button', 'nt-venue' + (cur.startsWith(v.zh) ? ' on' : ''), v.n); b.type = 'button'; b.title = v.zh + '\n' + v.en;
+            b.onclick = () => { ntSetPair('地點', 'Venue', v.zh, ntVenueEn(v.zh)); row.querySelectorAll('.nt-venue').forEach(x => x.classList.toggle('on', x === b)); };
+            row.appendChild(b);
+        });
+        row.appendChild(ntMk('span', 'nt-pick-h', '選好後在地點後面補「4樓 M區 大會舞台」，Venue 會自動翻成英文'));
+        return row;
+    }
+    return null;
+}
 function ntPaintTags(force) {
     const box = document.getElementById('nt-tags'); if (!box) return;
     if (!force && box.contains(document.activeElement)) { ntTagMarks(); return; }
@@ -6600,13 +6692,16 @@ function ntPaintTags(force) {
     h.appendChild(ntMk('small', '', ntIsPub() ? '公版的標籤，存到模板時會一起帶過去' : '只屬於這個模板，存在雲端；信裡的 {標籤} 會換成這裡填的字。紅框＝內文有用到但還沒填'));
     box.appendChild(h);
     if (!ntTags().length) { const e = ntMk('div', '', '這個模板還沒有標籤。按上面「＋ 新增標籤」建一個，例如 時間、地點。'); e.style.cssText = 'font-size:12px;color:#9CA3AF;padding:4px 2px;'; box.appendChild(e); }
-    ntTagGroups(ntTags()).forEach((g, gi) => { if (gi) box.appendChild(ntMk('div', 'nt-tag-sep')); g.forEach(t => {
+    ntTagGroups(ntTags()).forEach((g, gi) => { if (gi) box.appendChild(ntMk('div', 'nt-tag-sep')); const pk = ntPickerRow(g); if (pk) box.appendChild(pk); g.forEach(t => {
         const row = ntMk('div', 'nt-tag-row');
         const k = ntMk('span', 'nt-tag-k', '{' + t.k + '}'); k.title = '點一下插入內文'; k.style.cursor = 'pointer'; k.onclick = () => ntIns('{' + t.k + '}');
         row.appendChild(k);
         const inp = ntMk('input', 'nt-tag-v'); inp.type = 'text'; inp.value = t.v; inp.dataset.k = t.k;
-        inp.placeholder = ({ '活動名稱': '例：2026台北國際電子產業科技展開幕典禮', 'Event': 'e.g. Opening Ceremony of TAITRONICS & AIoT Taiwan 2026（前面不用加 the）', '時間': '例：2026年11月25日（星期三）上午10:30', '地點': '例：南港展覽館1館 4樓 M區 大會舞台', 'Time': 'e.g. 10:30 a.m., Wednesday, November 25, 2026', 'Venue': 'e.g. Stage, Area M, 4F, TaiNEX 1' })[t.k] || '這個標籤要出現的內容';
-        inp.oninput = () => { ntTagMarks(); ntTagDirty(); };
+        inp.placeholder = ({ '活動名稱': '例：2026台北國際電子產業科技展開幕典禮', 'Event': 'e.g. Opening Ceremony of TAITRONICS & AIoT Taiwan 2026（前面不用加 the）', '時間': '用上面的日曆選，或自己打', '地點': '例：台北南港展覽館1館 4樓 M區 大會舞台（打中文，Venue 自動跟著變）', 'Time': 'e.g. November 25, 2026 (Wednesday), 10:30 a.m.', '報到時間': '例：上午10:20', 'Check-in Time': 'e.g. 10:20 a.m.', 'Venue': 'e.g. Stage, Area M, 4F, TaiNEX 1' })[t.k] || '這個標籤要出現的內容';
+        inp.oninput = () => {
+            if (t.k === '地點') { const ve = document.querySelector('#nt-tags .nt-tag-v[data-k="Venue"]'), en = ntVenueEn(inp.value); if (ve && en) ve.value = en; }
+            ntTagMarks(); ntTagDirty();
+        };
         row.appendChild(inp);
         const x = ntMk('button', 'nt-tag-x', '✕'); x.type = 'button'; x.title = '刪除這個標籤';
         x.onclick = () => ntDelTag(t.k);
@@ -6638,7 +6733,7 @@ async function ntAddTag() {
     if (k === null) return;
     k = k.trim().replace(/^\{|\}$/g, '').trim();
     if (!k) return;
-    if (/[{}\n]/.test(k) || k.length > 12) { toast('標籤名稱最多 12 個字，不能有 { }', 'ter'); return; }
+    if (/[{}\n]/.test(k) || k.length > 20) { toast('標籤名稱最多 20 個字，不能有 { }', 'ter'); return; }
     const taken = NT_PH.grid.concat(NT_PH.round, ['{座位}', '{Seat}', '{活動}', '{姓名}']).map(p => p.slice(1, -1)).concat(ntTags().map(t => t.k));
     if (taken.includes(k)) { toast('已經有 {' + k + '} 這個標籤了', 'ter'); return; }
     const list = ntTagsFromForm(); list.push({ k, v: '' });
